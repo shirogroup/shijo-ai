@@ -92,7 +92,7 @@ export default function Home() {
               Why Shijo.ai is Different
             </h2>
             <p className="text-xl text-slate-600 dark:text-slate-300">
-              We're not just another keyword tool. We're built for where search is heading.
+              We are not just another keyword tool. We are built for where search is heading.
             </p>
           </div>
 
