@@ -11,6 +11,12 @@ const config: Config = {
       colors: {
         background: "var(--background)",
         foreground: "var(--foreground)",
+        brand: {
+          red: "#DC2626",      // Primary red
+          darkred: "#991B1B",  // Darker red for hover
+          black: "#0A0A0A",    // Deep black
+          gray: "#1F1F1F",     // Dark gray
+        },
       },
     },
   },
