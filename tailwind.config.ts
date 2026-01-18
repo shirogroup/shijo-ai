@@ -9,17 +9,62 @@ const config: Config = {
   theme: {
     extend: {
       colors: {
-        background: "var(--background)",
-        foreground: "var(--foreground)",
-        brand: {
-          red: "#DC2626",      // Primary red
-          darkred: "#991B1B",  // Darker red for hover
-          black: "#0A0A0A",    // Deep black
-          gray: "#1F1F1F",     // Dark gray
+        border: "hsl(var(--border))",
+        input: "hsl(var(--input))",
+        ring: "hsl(var(--ring))",
+        background: "hsl(var(--background))",
+        foreground: "hsl(var(--foreground))",
+        primary: {
+          DEFAULT: "#DC0019",
+          foreground: "#ffffff",
         },
+        secondary: {
+          DEFAULT: "#0a0a0a",
+          foreground: "#ffffff",
+        },
+        destructive: {
+          DEFAULT: "hsl(var(--destructive))",
+          foreground: "hsl(var(--destructive-foreground))",
+        },
+        muted: {
+          DEFAULT: "#f5f5f5",
+          foreground: "#737373",
+        },
+        accent: {
+          DEFAULT: "#fef2f2",
+          foreground: "#DC0019",
+        },
+        card: {
+          DEFAULT: "hsl(var(--card))",
+          foreground: "hsl(var(--card-foreground))",
+        },
+        popover: {
+          DEFAULT: "hsl(var(--popover))",
+          foreground: "hsl(var(--popover-foreground))",
+        },
+      },
+      borderRadius: {
+        lg: "0.625rem",
+        md: "calc(0.625rem - 2px)",
+        sm: "calc(0.625rem - 4px)",
+      },
+      keyframes: {
+        "accordion-down": {
+          from: { height: "0" },
+          to: { height: "var(--radix-accordion-content-height)" },
+        },
+        "accordion-up": {
+          from: { height: "var(--radix-accordion-content-height)" },
+          to: { height: "0" },
+        },
+      },
+      animation: {
+        "accordion-down": "accordion-down 0.2s ease-out",
+        "accordion-up": "accordion-up 0.2s ease-out",
       },
     },
   },
   plugins: [],
 };
+
 export default config;
