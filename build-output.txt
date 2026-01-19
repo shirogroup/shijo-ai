@@ -1,0 +1,43 @@
+
+> shijo-ai@0.1.0 build
+> next build
+
+ ⚠ Warning: Next.js inferred your workspace root, but it may not be correct.
+ We detected multiple lockfiles and selected the directory of C:\Users\AI Agent\projects\shiro-group-monorepo\my-turborepo\pnpm-lock.yaml as the root directory.
+ To silence this warning, set `outputFileTracingRoot` in your Next.js config, or consider removing one of the lockfiles if it's not needed.
+   See https://nextjs.org/docs/app/api-reference/config/next-config-js/output#caveats for more information.
+ Detected additional lockfiles: 
+   * C:\Users\AI Agent\projects\shiro-group-monorepo\my-turborepo\apps\shijo-ai\package-lock.json
+
+   ▲ Next.js 15.5.9
+   - Environments: .env.local, .env
+
+   Creating an optimized production build ...
+ ✓ Compiled successfully in 3.7s
+   Linting and checking validity of types ...
+   Collecting page data ...
+   Generating static pages (0/7) ...
+   Generating static pages (1/7) 
+   Generating static pages (3/7) 
+   Generating static pages (5/7) 
+ ✓ Generating static pages (7/7)
+   Finalizing page optimization ...
+   Collecting build traces ...
+
+Route (app)                                 Size  First Load JS
+┌ ○ /                                    7.67 kB         156 kB
+├ ○ /_not-found                            993 B         103 kB
+├ ƒ /api/keywords                          131 B         102 kB
+├ ƒ /api/keywords/[id]/classify            131 B         102 kB
+├ ƒ /api/keywords/[id]/expand              131 B         102 kB
+├ ○ /dashboard                           1.26 kB         150 kB
+└ ○ /dashboard/keywords                  35.3 kB         184 kB
++ First Load JS shared by all             102 kB
+  ├ chunks/255-cb395327542b56ef.js       45.9 kB
+  ├ chunks/4bd1b696-c023c6e3521b1417.js  54.2 kB
+  └ other shared chunks (total)             2 kB
+
+
+○  (Static)   prerendered as static content
+ƒ  (Dynamic)  server-rendered on demand
+
