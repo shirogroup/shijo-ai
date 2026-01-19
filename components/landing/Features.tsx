@@ -14,11 +14,19 @@ import {
   Activity,
   Users,
   Lightbulb,
+  CheckCircle,
+  Edit3,
+  Database,
+  Zap,
+  GitBranch,
+  LineChart,
+  Camera,
 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Card } from '@/components/ui/card';
 
 const features = [
+  // Phase 1 - Available Now (5 features)
   {
     icon: Search,
     title: 'AI Keyword Research',
@@ -54,10 +62,26 @@ const features = [
     status: 'live',
     badge: 'AVAILABLE NOW',
   },
+  
+  // Phase 2 - Content & On-Page (4 features)
+  {
+    icon: CheckCircle,
+    title: 'Page SEO Analyzer',
+    description: 'Comprehensive on-page SEO audit with actionable recommendations',
+    status: 'soon',
+    badge: 'COMING SOON',
+  },
   {
     icon: FileText,
     title: 'Content Briefs',
     description: 'Generate SEO-optimized content outlines in seconds',
+    status: 'soon',
+    badge: 'COMING SOON',
+  },
+  {
+    icon: Edit3,
+    title: 'Meta Tag Generator',
+    description: 'AI-powered SEO meta titles and descriptions in seconds',
     status: 'soon',
     badge: 'COMING SOON',
   },
@@ -68,11 +92,13 @@ const features = [
     status: 'soon',
     badge: 'COMING SOON',
   },
+  
+  // Phase 3 - SERP & Competitive (3 features)
   {
-    icon: Eye,
-    title: 'AI Visibility Tracking',
-    description: 'Monitor your brand mentions in ChatGPT, Claude & Perplexity',
-    status: 'highlighted',
+    icon: Database,
+    title: 'Search Volume Data',
+    description: 'Get exact monthly search volumes, not ranges',
+    status: 'soon',
     badge: 'COMING SOON',
   },
   {
@@ -83,12 +109,37 @@ const features = [
     badge: 'COMING SOON',
   },
   {
-    icon: Activity,
-    title: 'Rank Tracking',
-    description: 'Monitor keyword positions across search engines daily',
+    icon: Zap,
+    title: 'SERP Stability Tracker',
+    description: 'Monitor ranking volatility and predict opportunities',
     status: 'soon',
     badge: 'COMING SOON',
   },
+  
+  // Phase 4 - AI Search (3 features) - HIGHLIGHTED
+  {
+    icon: Eye,
+    title: 'AI Visibility Tracking',
+    description: 'Monitor your brand mentions in ChatGPT, Claude & Perplexity',
+    status: 'highlighted',
+    badge: 'COMING SOON',
+  },
+  {
+    icon: GitBranch,
+    title: 'AI Answer Preview',
+    description: 'See how ChatGPT and Claude answer queries about your brand',
+    status: 'soon',
+    badge: 'COMING SOON',
+  },
+  {
+    icon: LineChart,
+    title: 'SEO Forecasting',
+    description: 'AI predicts which keywords will be easier to rank for',
+    status: 'soon',
+    badge: 'COMING SOON',
+  },
+  
+  // Phase 5 - Strategy & Workflow (2 features)
   {
     icon: Lightbulb,
     title: 'SEO Strategy Advisor',
@@ -100,6 +151,22 @@ const features = [
     icon: Users,
     title: 'Team Collaboration',
     description: 'Share projects and insights with your team members',
+    status: 'soon',
+    badge: 'COMING SOON',
+  },
+  
+  // Phase 6 - Rank Tracking (2 features)
+  {
+    icon: Activity,
+    title: 'Rank Tracking',
+    description: 'Monitor keyword positions across search engines daily',
+    status: 'soon',
+    badge: 'COMING SOON',
+  },
+  {
+    icon: Camera,
+    title: 'Quick Rank Check',
+    description: 'Instant ranking position check for any keyword',
     status: 'soon',
     badge: 'COMING SOON',
   },
@@ -132,7 +199,7 @@ export function Features() {
                 key={index}
                 initial={{ opacity: 0, y: 20 }}
                 whileInView={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.5, delay: index * 0.05 }}
+                transition={{ duration: 0.5, delay: index * 0.03 }}
                 viewport={{ once: true }}
               >
                 <Card
