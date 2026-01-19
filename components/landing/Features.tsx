@@ -26,7 +26,6 @@ import { Badge } from '@/components/ui/badge';
 import { Card } from '@/components/ui/card';
 
 const features = [
-  // Phase 1 - Available Now (5 features)
   {
     icon: Search,
     title: 'AI Keyword Research',
@@ -62,8 +61,6 @@ const features = [
     status: 'live',
     badge: 'AVAILABLE NOW',
   },
-  
-  // Phase 2 - Content & On-Page (4 features)
   {
     icon: CheckCircle,
     title: 'Page SEO Analyzer',
@@ -92,8 +89,6 @@ const features = [
     status: 'soon',
     badge: 'COMING SOON',
   },
-  
-  // Phase 3 - SERP & Competitive (3 features)
   {
     icon: Database,
     title: 'Search Volume Data',
@@ -115,8 +110,6 @@ const features = [
     status: 'soon',
     badge: 'COMING SOON',
   },
-  
-  // Phase 4 - AI Search (3 features) - HIGHLIGHTED
   {
     icon: Eye,
     title: 'AI Visibility Tracking',
@@ -138,8 +131,6 @@ const features = [
     status: 'soon',
     badge: 'COMING SOON',
   },
-  
-  // Phase 5 - Strategy & Workflow (2 features)
   {
     icon: Lightbulb,
     title: 'SEO Strategy Advisor',
@@ -154,8 +145,6 @@ const features = [
     status: 'soon',
     badge: 'COMING SOON',
   },
-  
-  // Phase 6 - Rank Tracking (2 features)
   {
     icon: Activity,
     title: 'Rank Tracking',
