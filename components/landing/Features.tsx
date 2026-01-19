@@ -18,120 +18,94 @@ import {
 import { Badge } from '@/components/ui/badge';
 import { Card } from '@/components/ui/card';
 
-// ALIGNED WITH ROADMAP - Phase 1 Features
 const features = [
   {
     icon: Search,
-    title: 'Seed Keyword Input',
-    description: 'Add and manage unlimited seed keywords for your SEO research',
-    status: 'live', // Phase 1 - Feature #1
-    badge: 'UNLIMITED',
-    roadmapName: 'Seed Keyword Input',
-    phase: 'Phase 1',
+    title: 'AI Keyword Research',
+    description: 'Discover high-potential keywords with Claude-powered semantic analysis',
+    status: 'live',
+    badge: 'AVAILABLE NOW',
   },
   {
     icon: TrendingUp,
-    title: 'Long-tail Keyword Expansion',
-    description: 'AI-powered expansion generates hundreds of keyword variations automatically',
-    status: 'live', // Phase 1 - Feature #2
-    badge: '3/DAY FREE',
-    roadmapName: 'Long-Tail Keyword Expansion',
-    phase: 'Phase 1',
+    title: 'Long-tail Expansion',
+    description: 'Generate hundreds of keyword variations automatically',
+    status: 'live',
+    badge: 'AVAILABLE NOW',
   },
   {
     icon: Brain,
-    title: 'Keyword Intent Classification',
-    description: 'Automatically classify keywords as informational, commercial, or navigational',
-    status: 'live', // Phase 1 - Feature #3
-    badge: 'UNLIMITED',
-    roadmapName: 'Keyword Intent Classification',
-    phase: 'Phase 1',
+    title: 'Intent Classification',
+    description: 'Understand search intent: informational, commercial, or navigational',
+    status: 'live',
+    badge: 'AVAILABLE NOW',
   },
   {
     icon: Network,
-    title: 'Keyword Clustering',
-    description: 'Smart AI clustering groups related keywords into content topic clusters',
-    status: 'live', // Phase 1 - Feature #4
-    badge: '1/DAY FREE',
-    roadmapName: 'Keyword Clustering',
-    phase: 'Phase 1',
+    title: 'Smart Clustering',
+    description: 'Group related keywords into content topic clusters',
+    status: 'live',
+    badge: 'AVAILABLE NOW',
   },
   {
     icon: Target,
-    title: 'Keyword Opportunity Scoring',
-    description: 'AI analyzes ranking potential and provides opportunity scores',
-    status: 'live', // Phase 1 - Feature #5
-    badge: 'LIVE',
-    roadmapName: 'Keyword Opportunity Scoring',
-    phase: 'Phase 1',
+    title: 'Opportunity Scoring',
+    description: 'AI-powered ranking potential analysis for every keyword',
+    status: 'live',
+    badge: 'AVAILABLE NOW',
   },
   {
     icon: FileText,
-    title: 'Content Brief Generator',
-    description: 'Generate SEO-optimized content outlines and briefs in seconds',
-    status: 'soon', // Phase 2 - Feature #7
+    title: 'Content Briefs',
+    description: 'Generate SEO-optimized content outlines in seconds',
+    status: 'soon',
     badge: 'COMING SOON',
-    roadmapName: 'Content Brief Generator',
-    phase: 'Phase 2',
   },
   {
     icon: Sparkles,
-    title: 'AEO Score',
-    description: 'Optimize content for Answer Engines like ChatGPT and Perplexity',
-    status: 'soon', // Phase 2 - Feature #9
+    title: 'AEO Optimization',
+    description: 'Optimize for Answer Engines like ChatGPT and Perplexity',
+    status: 'soon',
     badge: 'COMING SOON',
-    roadmapName: 'AEO Score (Answer Engine Optimization)',
-    phase: 'Phase 2',
   },
   {
     icon: Eye,
-    title: 'AI Visibility / LLM Tracking',
+    title: 'AI Visibility Tracking',
     description: 'Monitor your brand mentions in ChatGPT, Claude & Perplexity',
-    status: 'highlighted', // Phase 4 - Feature #13 (KEY DIFFERENTIATOR)
-    badge: 'Q2 2025',
-    roadmapName: 'AI Visibility / LLM Answer Tracking',
-    phase: 'Phase 4',
+    status: 'highlighted',
+    badge: 'COMING SOON',
   },
   {
     icon: BarChart3,
-    title: 'SERP Competitor Snapshot',
-    description: 'Track competitor rankings and search visibility trends in real-time',
-    status: 'soon', // Phase 3 - Feature #11
+    title: 'SERP Analysis',
+    description: 'Track competitor rankings and search visibility trends',
+    status: 'soon',
     badge: 'COMING SOON',
-    roadmapName: 'SERP Competitor Snapshot',
-    phase: 'Phase 3',
   },
   {
     icon: Activity,
-    title: 'Keyword Rank Tracking',
-    description: 'Monitor keyword positions across search engines with daily updates',
-    status: 'soon', // Phase 6 - Feature #18
+    title: 'Rank Tracking',
+    description: 'Monitor keyword positions across search engines daily',
+    status: 'soon',
     badge: 'COMING SOON',
-    roadmapName: 'Keyword Rank Tracking',
-    phase: 'Phase 6',
   },
   {
     icon: Lightbulb,
     title: 'SEO Strategy Advisor',
     description: 'Get AI-powered recommendations for your content strategy',
-    status: 'soon', // Phase 5 - Feature #16
+    status: 'soon',
     badge: 'COMING SOON',
-    roadmapName: 'SEO Strategy Advisor (AI)',
-    phase: 'Phase 5',
   },
   {
     icon: Users,
-    title: 'SEO Workflow / Task Manager',
-    description: 'Share projects, assign tasks, and collaborate with your team',
-    status: 'soon', // Phase 5 - Feature #17
+    title: 'Team Collaboration',
+    description: 'Share projects and insights with your team members',
+    status: 'soon',
     badge: 'COMING SOON',
-    roadmapName: 'SEO Workflow / Task Manager',
-    phase: 'Phase 5',
   },
 ];
 
 export function Features() {
-  // Count live vs coming soon
   const liveCount = features.filter(f => f.status === 'live').length;
   const comingSoonCount = features.filter(f => f.status !== 'live').length;
 
@@ -140,11 +114,10 @@ export function Features() {
       <div className="container mx-auto px-6">
         <div className="text-center mb-16">
           <h2 className="text-4xl md:text-5xl font-bold mb-4">
-            Powerful <span className="text-primary">SEO Features</span>
+            Powerful SEO Tools, <span className="text-primary">AI-Powered Results</span>
           </h2>
           <p className="text-xl text-muted-foreground max-w-2xl mx-auto">
-            Everything you need to dominate search rankings and AI search visibility.
-            Phase 1 features are live now.
+            Everything you need to dominate search rankings and AI search visibility
           </p>
         </div>
 
@@ -164,19 +137,13 @@ export function Features() {
               >
                 <Card
                   className={`p-6 h-full hover:shadow-lg transition-all ${
-                    isHighlighted
-                      ? 'border-2 border-primary shadow-primary/10'
-                      : ''
+                    isHighlighted ? 'border-2 border-primary shadow-primary/10' : ''
                   }`}
                 >
                   <div className="flex items-start justify-between mb-4">
                     <div
                       className={`w-12 h-12 rounded-lg flex items-center justify-center ${
-                        isLive
-                          ? 'bg-green-100'
-                          : isHighlighted
-                          ? 'bg-primary/10'
-                          : 'bg-muted'
+                        isLive ? 'bg-green-100' : isHighlighted ? 'bg-primary/10' : 'bg-muted'
                       }`}
                     >
                       <Icon
@@ -203,12 +170,7 @@ export function Features() {
                     </Badge>
                   </div>
                   <h3 className="text-lg font-bold mb-2">{feature.title}</h3>
-                  <p className="text-sm text-muted-foreground mb-3">
-                    {feature.description}
-                  </p>
-                  <p className="text-xs text-muted-foreground">
-                    Roadmap: {feature.phase}
-                  </p>
+                  <p className="text-sm text-muted-foreground">{feature.description}</p>
                 </Card>
               </motion.div>
             );
@@ -217,18 +179,10 @@ export function Features() {
 
         <div className="text-center mt-12">
           <p className="text-sm text-muted-foreground">
-            <span className="inline-flex items-center gap-2">
-              <span className="w-2 h-2 bg-green-500 rounded-full" />
-              {liveCount} Phase 1 features live
-            </span>
-            <span className="mx-3">•</span>
-            <span className="inline-flex items-center gap-2">
-              <span className="w-2 h-2 bg-gray-400 rounded-full" />
-              {comingSoonCount} features in development
-            </span>
+            More features launching every month
           </p>
           <p className="text-xs text-muted-foreground mt-2">
-            Based on official roadmap - Phase 1 (Keywords) complete
+            {liveCount} live features • {comingSoonCount} in development
           </p>
         </div>
       </div>

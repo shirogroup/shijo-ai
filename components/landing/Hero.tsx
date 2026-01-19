@@ -1,102 +1,102 @@
 'use client';
 
 import { motion } from 'framer-motion';
-import { Search, TrendingUp, Zap, Sparkles } from 'lucide-react';
+import { ArrowRight, Sparkles, Search, TrendingUp } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
+import { trackCTAClick } from '@/lib/analytics';
 
 export function Hero() {
   return (
     <section className="relative pt-32 pb-20 overflow-hidden">
-      {/* Animated background elements */}
       <div className="absolute inset-0 -z-10">
-        <div className="absolute top-20 left-10 w-72 h-72 bg-primary/5 rounded-full blur-3xl animate-pulse" />
-        <div className="absolute bottom-20 right-10 w-96 h-96 bg-primary/5 rounded-full blur-3xl animate-pulse" style={{ animationDelay: '1s' }} />
+        <div className="absolute top-20 left-10 w-72 h-72 bg-primary/20 rounded-full blur-3xl animate-pulse" />
+        <div className="absolute bottom-20 right-10 w-96 h-96 bg-primary/10 rounded-full blur-3xl animate-pulse delay-1000" />
       </div>
 
       <div className="container mx-auto px-6">
-        <div className="max-w-4xl mx-auto text-center">
+        <div className="max-w-5xl mx-auto text-center">
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.5 }}
+            className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-primary/10 border border-primary/20 mb-8"
           >
-            <Badge className="mb-6 bg-primary/10 text-primary border-primary/20 hover:bg-primary/20">
-              <Sparkles className="w-3 h-3 mr-1" />
+            <Sparkles className="w-4 h-4 text-primary" />
+            <span className="text-sm font-medium">
               AI-Powered SEO Automation
-            </Badge>
+            </span>
+          </motion.div>
 
-            <h1 className="text-5xl md:text-7xl font-bold mb-6 tracking-tight">
-              Keyword Research Meets
-              <br />
-              <span className="text-primary">AI Search Visibility</span>
-            </h1>
+          <motion.h1
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.5, delay: 0.1 }}
+            className="text-5xl md:text-7xl font-bold mb-6 leading-tight"
+          >
+            Keyword Research Meets{' '}
+            <span className="text-primary">AI Search Visibility</span>
+          </motion.h1>
 
-            <p className="text-xl text-muted-foreground mb-8 max-w-2xl mx-auto">
-              Track your visibility in ChatGPT, Claude & Perplexity. AI-powered keyword research,
-              content optimization, and SERP analysis in one platform.
-            </p>
+          <motion.p
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.5, delay: 0.2 }}
+            className="text-xl md:text-2xl text-muted-foreground mb-12 max-w-3xl mx-auto"
+          >
+            Track your visibility in ChatGPT, Claude & Perplexity. AI-powered keyword
+            research, content optimization, and SERP analysis in one platform.
+          </motion.p>
 
-            <div className="flex flex-col sm:flex-row items-center justify-center gap-4 mb-16">
-              <Button size="lg" className="bg-primary hover:bg-primary/90 text-lg px-8 h-12">
-                Start Free Trial
-              </Button>
-              <Button
-                size="lg"
-                variant="outline"
-                className="text-lg px-8 h-12 border-black/20"
-                disabled
-              >
-                Watch Demo (Coming Soon)
-              </Button>
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.5, delay: 0.3 }}
+            className="flex flex-col sm:flex-row items-center justify-center gap-4 mb-12"
+          >
+            <Button
+              size="lg"
+              className="bg-primary hover:bg-primary/90 text-lg px-8 h-14"
+              onClick={() => trackCTAClick('trial')}
+            >
+              Start Free Trial
+              <ArrowRight className="ml-2 w-5 h-5" />
+            </Button>
+            <Button
+              size="lg"
+              variant="outline"
+              className="text-lg px-8 h-14 border-2"
+              onClick={() => trackCTAClick('demo')}
+            >
+              Watch Demo (Coming Soon)
+            </Button>
+          </motion.div>
+
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.5, delay: 0.4 }}
+            className="grid grid-cols-1 md:grid-cols-3 gap-6 max-w-4xl mx-auto"
+          >
+            <div className="flex items-center justify-center gap-3 p-4 rounded-lg bg-white/50 backdrop-blur-sm border border-black/10">
+              <Search className="w-6 h-6 text-primary flex-shrink-0" />
+              <div className="text-left">
+                <p className="font-semibold text-sm">AI Keyword Research</p>
+                <p className="text-xs text-muted-foreground">90%+ margins, 1-2 day builds</p>
+              </div>
             </div>
-
-            {/* Feature highlights */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mt-16">
-              <motion.div
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.5, delay: 0.2 }}
-                className="flex items-center gap-3 justify-center md:justify-start"
-              >
-                <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center flex-shrink-0">
-                  <Search className="w-5 h-5 text-primary" />
-                </div>
-                <div className="text-left">
-                  <p className="font-semibold">AI Keyword Research</p>
-                  <p className="text-sm text-muted-foreground">90%+ margins, 1-2 day builds</p>
-                </div>
-              </motion.div>
-
-              <motion.div
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.5, delay: 0.3 }}
-                className="flex items-center gap-3 justify-center md:justify-start"
-              >
-                <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center flex-shrink-0">
-                  <TrendingUp className="w-5 h-5 text-primary" />
-                </div>
-                <div className="text-left">
-                  <p className="font-semibold">SERP Analysis</p>
-                  <p className="text-sm text-muted-foreground">Track competitor positions</p>
-                </div>
-              </motion.div>
-
-              <motion.div
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.5, delay: 0.4 }}
-                className="flex items-center gap-3 justify-center md:justify-start"
-              >
-                <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center flex-shrink-0">
-                  <Zap className="w-5 h-5 text-primary" />
-                </div>
-                <div className="text-left">
-                  <p className="font-semibold">AI Search Visibility</p>
-                  <p className="text-sm text-muted-foreground">Monitor LLM mentions</p>
-                </div>
-              </motion.div>
+            <div className="flex items-center justify-center gap-3 p-4 rounded-lg bg-white/50 backdrop-blur-sm border border-black/10">
+              <TrendingUp className="w-6 h-6 text-primary flex-shrink-0" />
+              <div className="text-left">
+                <p className="font-semibold text-sm">SERP Analysis</p>
+                <p className="text-xs text-muted-foreground">Track competitor positions</p>
+              </div>
+            </div>
+            <div className="flex items-center justify-center gap-3 p-4 rounded-lg bg-white/50 backdrop-blur-sm border border-black/10">
+              <Sparkles className="w-6 h-6 text-primary flex-shrink-0" />
+              <div className="text-left">
+                <p className="font-semibold text-sm">AI Search Visibility</p>
+                <p className="text-xs text-muted-foreground">Monitor LLM mentions</p>
+              </div>
             </div>
           </motion.div>
         </div>
