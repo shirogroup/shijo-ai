@@ -1,72 +1,86 @@
-import { NextRequest, NextResponse } from 'next/server';
-import { getSession } from '@/lib/auth';
-import { db } from '@/db/client';
+import { NextResponse } from 'next/server';
+import { db } from '@/db';
 import { keywords, keywordExpansions } from '@/db/schema';
 import { eq } from 'drizzle-orm';
-import { expandKeyword } from '@/lib/ai/claude';
-import { checkFeatureAccess, logUsage } from '@/lib/usage';
+import Anthropic from '@anthropic-ai/sdk';
+
+const anthropic = new Anthropic({
+  apiKey: process.env.ANTHROPIC_API_KEY,
+});
 
 export async function POST(
-  req: NextRequest,
-  props: { params: Promise<{ id: string }> }
+  request: Request,
+  { params }: { params: Promise<{ id: string }> }
 ) {
-  const params = await props.params;
   try {
-    const session = await getSession();
-    if (!session) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
+    // In Next.js 15, params is now a Promise that must be awaited
+    const { id: keywordId } = await params;
 
     // Get keyword
-    const keyword = await db.query.keywords.findFirst({
-      where: eq(keywords.id, params.id),
-    });
+    const [keyword] = await db
+      .select()
+      .from(keywords)
+      .where(eq(keywords.id, keywordId))
+      .limit(1);
 
-    if (!keyword || keyword.userId !== session.userId) {
-      return NextResponse.json({ error: 'Keyword not found' }, { status: 404 });
-    }
-
-    // Check usage limits
-    const access = await checkFeatureAccess(
-      session.userId,
-      'keyword_expansion'
-    );
-
-    if (!access.allowed) {
+    if (!keyword) {
       return NextResponse.json(
-        {
-          error: access.message,
-          upgrade: access.upgrade,
-        },
-        { status: 403 }
+        { error: 'Keyword not found' },
+        { status: 404 }
       );
     }
 
-    // Call Claude
-    const expansions = await expandKeyword(keyword.keyword, 20);
+    // Call Claude to expand keyword
+    const message = await anthropic.messages.create({
+      model: 'claude-3-5-sonnet-20241022',
+      max_tokens: 2048,
+      messages: [
+        {
+          role: 'user',
+          content: `Generate 10-15 long-tail keyword variations for: "${keyword.keyword}"
 
-    // Save to DB
+These should be:
+- Longer, more specific versions
+- Natural language questions
+- Related search queries
+- Different angles/intent variations
+
+Respond in JSON format:
+{
+  "expansions": [
+    "long tail keyword 1",
+    "long tail keyword 2",
+    ...
+  ]
+}`,
+        },
+      ],
+    });
+
+    const content = message.content[0];
+    if (content.type !== 'text') {
+      throw new Error('Unexpected response type from Claude');
+    }
+
+    const result = JSON.parse(content.text);
+
+    // Save all expansions to DB
     const saved = await db.insert(keywordExpansions).values(
-      expansions.map((exp) => ({
+      result.expansions.map((expansion: string) => ({
         keywordId: keyword.id,
-        expansion: exp.keyword,
-        relevanceScore: exp.relevance.toString(),
-        method: 'claude',
+        expansion,
+        method: 'claude-ai',
       }))
     ).returning();
 
-    // Log usage
-    await logUsage(session.userId, 'keyword_expansion', {
-      keywordId: keyword.id,
-      count: expansions.length,
-    });
-
     return NextResponse.json({
       success: true,
-      expansions: saved,
+      count: saved.length,
+      data: saved,
     });
+
   } catch (error) {
-    console.error('Expansion error:', error);
+    console.error('Error expanding keyword:', error);
     return NextResponse.json(
       { error: 'Failed to expand keyword' },
       { status: 500 }
