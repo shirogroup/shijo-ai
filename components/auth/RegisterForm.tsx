@@ -1,12 +1,9 @@
 'use client';
 
 import { useState } from 'react';
-import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 
 export function RegisterForm() {
-  const router = useRouter();
-
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -18,6 +15,8 @@ export function RegisterForm() {
     setError('');
     setLoading(true);
 
+    console.log('[REGISTER] Attempting registration with:', { name, email, passwordLength: password.length });
+
     try {
       const response = await fetch('/api/auth/register', {
         method: 'POST',
@@ -25,17 +24,23 @@ export function RegisterForm() {
         body: JSON.stringify({ name, email, password }),
       });
 
+      console.log('[REGISTER] Response status:', response.status);
+
       const data = await response.json();
+      console.log('[REGISTER] Response data:', data);
 
       if (response.ok) {
-        router.push('/dashboard');
-        router.refresh();
+        console.log('[REGISTER] Registration successful, redirecting to dashboard...');
+        // Use window.location for full page reload
+        window.location.href = '/dashboard';
       } else {
+        console.error('[REGISTER] Registration failed:', data.error);
         setError(data.error || 'Registration failed');
+        setLoading(false);
       }
     } catch (err) {
+      console.error('[REGISTER] Exception:', err);
       setError('An error occurred. Please try again.');
-    } finally {
       setLoading(false);
     }
   };

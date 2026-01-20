@@ -1,11 +1,10 @@
 'use client';
 
 import { useState } from 'react';
-import { useRouter, useSearchParams } from 'next/navigation';
+import { useSearchParams } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 
 export function LoginForm() {
-  const router = useRouter();
   const searchParams = useSearchParams();
   const redirect = searchParams.get('redirect') || '/dashboard';
 
@@ -39,16 +38,16 @@ export function LoginForm() {
 
       if (response.ok) {
         console.log('[LOGIN] Login successful, redirecting to:', redirect);
-        router.push(redirect);
-        router.refresh();
+        // Use window.location for full page reload after login
+        window.location.href = redirect;
       } else {
         console.error('[LOGIN] Login failed:', data.error);
         setError(data.error || 'Login failed');
+        setLoading(false);
       }
     } catch (err) {
       console.error('[LOGIN] Exception:', err);
       setError('An error occurred. Please try again.');
-    } finally {
       setLoading(false);
     }
   };
