@@ -1,13 +1,17 @@
 'use client';
 
 import { useState } from 'react';
-import { useSearchParams } from 'next/navigation';
+import { useRouter } from 'next/navigation';
+import Link from 'next/link';
+import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Alert, AlertDescription } from '@/components/ui/alert';
 
 export function LoginForm() {
-  const searchParams = useSearchParams();
-  const redirect = searchParams.get('redirect') || '/dashboard';
-
+  const router = useRouter();
+  const { login } = useAuth();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
@@ -18,89 +22,90 @@ export function LoginForm() {
     setError('');
     setLoading(true);
 
-    console.log('[LOGIN] Form submitted');
-    console.log('[LOGIN] Email:', email);
-    console.log('[LOGIN] Redirect target:', redirect);
+    console.log('🔐 LOGIN ATTEMPT:', { email });
 
     try {
-      console.log('[LOGIN] Sending request to /api/auth/login');
-      
-      const response = await fetch('/api/auth/login', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, password }),
-      });
+      const result = await login(email, password);
 
-      console.log('[LOGIN] Response status:', response.status);
-
-      const data = await response.json();
-      console.log('[LOGIN] Response data:', data);
-
-      if (response.ok) {
-        console.log('[LOGIN] Login successful, redirecting to:', redirect);
-        // Use window.location for full page reload after login
-        window.location.href = redirect;
+      if (result.success) {
+        console.log('✅ LOGIN SUCCESS - Redirecting to dashboard');
+        // Use window.location for reliable redirect after login
+        window.location.href = '/dashboard';
       } else {
-        console.error('[LOGIN] Login failed:', data.error);
-        setError(data.error || 'Login failed');
-        setLoading(false);
+        console.log('❌ LOGIN FAILED:', result.error);
+        setError(result.error || 'Invalid email or password');
       }
     } catch (err) {
-      console.error('[LOGIN] Exception:', err);
-      setError('An error occurred. Please try again.');
+      console.error('❌ LOGIN ERROR:', err);
+      setError('An unexpected error occurred. Please try again.');
+    } finally {
       setLoading(false);
     }
   };
 
   return (
-    <div>
-      {/* Error Message */}
+    <div className="w-full max-w-md space-y-6">
+      <div className="space-y-2 text-center">
+        <h1 className="text-3xl font-bold">Welcome back</h1>
+        <p className="text-gray-400">Sign in to your SHIJO.AI account</p>
+      </div>
+
       {error && (
-        <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-lg">
-          <p className="text-sm text-red-600">{error}</p>
-        </div>
+        <Alert variant="destructive">
+          <AlertDescription>{error}</AlertDescription>
+        </Alert>
       )}
 
-      {/* Form */}
       <form onSubmit={handleSubmit} className="space-y-4">
-        <div>
-          <label htmlFor="email" className="block text-sm font-medium mb-2">
-            Email
-          </label>
-          <input
+        <div className="space-y-2">
+          <Label htmlFor="email">Email</Label>
+          <Input
             id="email"
             type="email"
-            required
+            placeholder="you@example.com"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
-            className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent outline-none"
-            placeholder="you@example.com"
+            required
+            disabled={loading}
           />
         </div>
 
-        <div>
-          <label htmlFor="password" className="block text-sm font-medium mb-2">
-            Password
-          </label>
-          <input
+        <div className="space-y-2">
+          <div className="flex items-center justify-between">
+            <Label htmlFor="password">Password</Label>
+            <Link 
+              href="/forgot-password" 
+              className="text-sm text-blue-500 hover:text-blue-400"
+            >
+              Forgot password?
+            </Link>
+          </div>
+          <Input
             id="password"
             type="password"
-            required
+            placeholder="••••••••"
             value={password}
             onChange={(e) => setPassword(e.target.value)}
-            className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent outline-none"
-            placeholder="••••••••"
+            required
+            disabled={loading}
           />
         </div>
 
         <Button
           type="submit"
+          className="w-full"
           disabled={loading}
-          className="w-full bg-primary hover:bg-primary/90"
         >
           {loading ? 'Signing in...' : 'Sign In'}
         </Button>
       </form>
+
+      <div className="text-center text-sm text-gray-400">
+        Don&apos;t have an account?{' '}
+        <Link href="/register" className="text-blue-500 hover:text-blue-400">
+          Sign up
+        </Link>
+      </div>
     </div>
   );
 }

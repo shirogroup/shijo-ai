@@ -1,48 +1,52 @@
 'use client';
 
-import { Search, Bell, HelpCircle } from 'lucide-react';
+import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
+import { Bell, Search, User } from 'lucide-react';
 
 export function TopBar() {
+  const { user, loading } = useAuth();
+
   return (
-    <header className="h-16 border-b bg-white flex items-center justify-between px-6">
+    <div className="flex h-16 items-center justify-between border-b border-gray-800 bg-gray-950 px-6">
       {/* Search */}
-      <div className="flex-1 max-w-xl">
-        <div className="relative">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+      <div className="flex flex-1 items-center gap-4">
+        <div className="relative w-full max-w-md">
+          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
           <input
             type="text"
-            placeholder="Search keywords..."
-            className="w-full pl-10 pr-4 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary"
+            placeholder="Search keywords, content..."
+            className="w-full rounded-lg border border-gray-800 bg-gray-900 py-2 pl-10 pr-4 text-sm text-white placeholder:text-gray-400 focus:border-blue-500 focus:outline-none"
           />
         </div>
       </div>
 
-      {/* Right Actions */}
-      <div className="flex items-center gap-3">
-        {/* Help */}
-        <Button variant="ghost" size="sm">
-          <HelpCircle className="w-5 h-5" />
+      {/* Right side */}
+      <div className="flex items-center gap-4">
+        {/* Notifications */}
+        <Button variant="ghost" size="sm" className="relative">
+          <Bell className="h-5 w-5 text-gray-400" />
+          <span className="absolute right-1 top-1 h-2 w-2 rounded-full bg-red-500" />
         </Button>
 
-        {/* Notifications */}
-        <div className="relative">
-          <Button variant="ghost" size="sm">
-            <Bell className="w-5 h-5" />
-          </Button>
-          <Badge className="absolute -top-1 -right-1 w-5 h-5 p-0 flex items-center justify-center bg-primary text-white text-xs">
-            3
-          </Badge>
-        </div>
-
-        {/* Credits Badge */}
-        <div className="px-3 py-1.5 bg-muted rounded-lg">
-          <span className="text-sm font-medium">
-            <span className="text-primary">3</span> / 3 expansions left
-          </span>
-        </div>
+        {/* User Info */}
+        {loading ? (
+          <div className="h-8 w-32 animate-pulse rounded bg-gray-800" />
+        ) : (
+          <div className="flex items-center gap-2 rounded-lg border border-gray-800 px-3 py-1.5">
+            <div className="flex h-6 w-6 items-center justify-center rounded-full bg-gradient-to-br from-blue-500 to-purple-500">
+              {user?.avatarUrl ? (
+                <img src={user.avatarUrl} alt={user.name || 'User'} className="h-6 w-6 rounded-full" />
+              ) : (
+                <User className="h-3 w-3 text-white" />
+              )}
+            </div>
+            <span className="text-sm text-gray-300">
+              {user?.name || user?.email?.split('@')[0] || 'User'}
+            </span>
+          </div>
+        )}
       </div>
-    </header>
+    </div>
   );
 }

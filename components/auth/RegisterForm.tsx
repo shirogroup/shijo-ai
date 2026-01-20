@@ -1,118 +1,145 @@
 'use client';
 
 import { useState } from 'react';
+import { useRouter } from 'next/navigation';
+import Link from 'next/link';
+import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Alert, AlertDescription } from '@/components/ui/alert';
 
 export function RegisterForm() {
+  const router = useRouter();
+  const { register } = useAuth();
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
-    setLoading(true);
 
-    console.log('[REGISTER] Attempting registration with:', { name, email, passwordLength: password.length });
+    // Validation
+    if (password !== confirmPassword) {
+      setError('Passwords do not match');
+      return;
+    }
+
+    if (password.length < 8) {
+      setError('Password must be at least 8 characters');
+      return;
+    }
+
+    setLoading(true);
+    console.log('📝 REGISTER ATTEMPT:', { email, name });
 
     try {
-      const response = await fetch('/api/auth/register', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name, email, password }),
-      });
+      const result = await register(email, password, name);
 
-      console.log('[REGISTER] Response status:', response.status);
-
-      const data = await response.json();
-      console.log('[REGISTER] Response data:', data);
-
-      if (response.ok) {
-        console.log('[REGISTER] Registration successful, redirecting to dashboard...');
-        // Use window.location for full page reload
+      if (result.success) {
+        console.log('✅ REGISTRATION SUCCESS - Redirecting to dashboard');
+        // Use window.location for reliable redirect after registration
         window.location.href = '/dashboard';
       } else {
-        console.error('[REGISTER] Registration failed:', data.error);
-        setError(data.error || 'Registration failed');
-        setLoading(false);
+        console.log('❌ REGISTRATION FAILED:', result.error);
+        setError(result.error || 'Registration failed');
       }
     } catch (err) {
-      console.error('[REGISTER] Exception:', err);
-      setError('An error occurred. Please try again.');
+      console.error('❌ REGISTRATION ERROR:', err);
+      setError('An unexpected error occurred. Please try again.');
+    } finally {
       setLoading(false);
     }
   };
 
   return (
-    <div>
-      {/* Error Message */}
+    <div className="w-full max-w-md space-y-6">
+      <div className="space-y-2 text-center">
+        <h1 className="text-3xl font-bold">Create your account</h1>
+        <p className="text-gray-400">Start your free trial of SHIJO.AI today</p>
+      </div>
+
       {error && (
-        <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-lg">
-          <p className="text-sm text-red-600">{error}</p>
-        </div>
+        <Alert variant="destructive">
+          <AlertDescription>{error}</AlertDescription>
+        </Alert>
       )}
 
-      {/* Form */}
       <form onSubmit={handleSubmit} className="space-y-4">
-        <div>
-          <label htmlFor="name" className="block text-sm font-medium mb-2">
-            Name
-          </label>
-          <input
+        <div className="space-y-2">
+          <Label htmlFor="name">Full Name</Label>
+          <Input
             id="name"
             type="text"
-            required
+            placeholder="John Doe"
             value={name}
             onChange={(e) => setName(e.target.value)}
-            className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent outline-none"
-            placeholder="John Doe"
+            required
+            disabled={loading}
           />
         </div>
 
-        <div>
-          <label htmlFor="email" className="block text-sm font-medium mb-2">
-            Email
-          </label>
-          <input
+        <div className="space-y-2">
+          <Label htmlFor="email">Email</Label>
+          <Input
             id="email"
             type="email"
-            required
+            placeholder="you@example.com"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
-            className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent outline-none"
-            placeholder="you@example.com"
+            required
+            disabled={loading}
           />
         </div>
 
-        <div>
-          <label htmlFor="password" className="block text-sm font-medium mb-2">
-            Password
-          </label>
-          <input
+        <div className="space-y-2">
+          <Label htmlFor="password">Password</Label>
+          <Input
             id="password"
             type="password"
-            required
-            minLength={8}
+            placeholder="••••••••"
             value={password}
             onChange={(e) => setPassword(e.target.value)}
-            className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent outline-none"
-            placeholder="••••••••"
+            required
+            disabled={loading}
+            minLength={8}
           />
-          <p className="mt-1 text-xs text-gray-500">
-            Must be at least 8 characters
-          </p>
+          <p className="text-xs text-gray-400">At least 8 characters</p>
+        </div>
+
+        <div className="space-y-2">
+          <Label htmlFor="confirmPassword">Confirm Password</Label>
+          <Input
+            id="confirmPassword"
+            type="password"
+            placeholder="••••••••"
+            value={confirmPassword}
+            onChange={(e) => setConfirmPassword(e.target.value)}
+            required
+            disabled={loading}
+            minLength={8}
+          />
         </div>
 
         <Button
           type="submit"
+          className="w-full"
           disabled={loading}
-          className="w-full bg-primary hover:bg-primary/90"
         >
           {loading ? 'Creating account...' : 'Create Account'}
         </Button>
       </form>
+
+      <div className="text-center text-sm text-gray-400">
+        Already have an account?{' '}
+        <Link href="/login" className="text-blue-500 hover:text-blue-400">
+          Sign in
+        </Link>
+      </div>
     </div>
   );
 }

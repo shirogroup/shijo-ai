@@ -1,13 +1,13 @@
-import type { Metadata } from 'next';
-import { Inter } from 'next/font/google';
-import './globals.css';
-import Script from 'next/script';
+import type { Metadata } from "next";
+import { Inter } from "next/font/google";
+import "./globals.css";
+import { AuthProvider } from "@/contexts/AuthContext";
 
-const inter = Inter({ subsets: ['latin'] });
+const inter = Inter({ subsets: ["latin"] });
 
 export const metadata: Metadata = {
-  title: 'SHIJO.ai - AI-Powered SEO Tools',
-  description: 'AI-powered SEO automation platform',
+  title: "SHIJO.AI - AI-Powered SEO Platform",
+  description: "Transform your SEO strategy with AI-powered insights and automation",
 };
 
 export default function RootLayout({
@@ -17,22 +17,11 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en">
-      <head>
-        {/* Google Analytics */}
-        <Script
-          src="https://www.googletagmanager.com/gtag/js?id=G-8SSXDRYL30"
-          strategy="afterInteractive"
-        />
-        <Script id="google-analytics" strategy="afterInteractive">
-          {`
-            window.dataLayer = window.dataLayer || [];
-            function gtag(){dataLayer.push(arguments);}
-            gtag('js', new Date());
-            gtag('config', 'G-8SSXDRYL30');
-          `}
-        </Script>
-      </head>
-      <body className={inter.className}>{children}</body>
+      <body className={inter.className}>
+        <AuthProvider>
+          {children}
+        </AuthProvider>
+      </body>
     </html>
   );
 }

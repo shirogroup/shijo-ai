@@ -474,6 +474,29 @@ export const rateLimits = pgTable('rate_limits', {
 });
 
 // ========================================
+// PASSWORD RESET TOKENS
+// ========================================
+
+export const passwordResets = pgTable(
+  'password_resets',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    userId: uuid('user_id')
+      .notNull()
+      .references(() => users.id, { onDelete: 'cascade' }),
+    token: varchar('token', { length: 255 }).notNull().unique(),
+    expiresAt: timestamp('expires_at').notNull(),
+    used: boolean('used').default(false),
+    usedAt: timestamp('used_at'),
+    createdAt: timestamp('created_at').defaultNow(),
+  },
+  (table) => ({
+    tokenIdx: index('idx_password_resets_token').on(table.token),
+    userIdIdx: index('idx_password_resets_user_id').on(table.userId),
+  })
+);
+
+// ========================================
 // RELATIONS
 // ========================================
 
