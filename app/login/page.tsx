@@ -1,6 +1,5 @@
 import { Suspense } from 'react';
 import Link from 'next/link';
-import { Logo } from '@/components/landing/Logo';
 import { LoginForm } from '@/components/auth/LoginForm';
 
 export default function LoginPage() {
@@ -11,8 +10,24 @@ export default function LoginPage() {
           {/* Logo */}
           <div className="flex justify-center mb-8">
             <Link href="/" className="flex items-center gap-2">
-              <Logo className="w-10 h-10 text-primary" />
-              <span className="text-2xl font-bold">
+              <svg
+                viewBox="0 0 32 32"
+                fill="none"
+                xmlns="http://www.w3.org/2000/svg"
+                className="w-8 h-8 text-primary flex-shrink-0"
+              >
+                <path
+                  d="M16 2L4 9v14l12 7 12-7V9L16 2z"
+                  fill="currentColor"
+                  opacity="0.2"
+                />
+                <path
+                  d="M16 9L10 12.5v7L16 23l6-3.5v-7L16 9z"
+                  fill="currentColor"
+                />
+                <circle cx="16" cy="16" r="2" fill="white" />
+              </svg>
+              <span className="text-xl font-bold whitespace-nowrap">
                 SHIJO<span className="text-primary">.ai</span>
               </span>
             </Link>

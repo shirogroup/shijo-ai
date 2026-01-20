@@ -19,22 +19,34 @@ export function LoginForm() {
     setError('');
     setLoading(true);
 
+    console.log('[LOGIN] Form submitted');
+    console.log('[LOGIN] Email:', email);
+    console.log('[LOGIN] Redirect target:', redirect);
+
     try {
+      console.log('[LOGIN] Sending request to /api/auth/login');
+      
       const response = await fetch('/api/auth/login', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email, password }),
       });
 
+      console.log('[LOGIN] Response status:', response.status);
+
       const data = await response.json();
+      console.log('[LOGIN] Response data:', data);
 
       if (response.ok) {
+        console.log('[LOGIN] Login successful, redirecting to:', redirect);
         router.push(redirect);
         router.refresh();
       } else {
+        console.error('[LOGIN] Login failed:', data.error);
         setError(data.error || 'Login failed');
       }
     } catch (err) {
+      console.error('[LOGIN] Exception:', err);
       setError('An error occurred. Please try again.');
     } finally {
       setLoading(false);
