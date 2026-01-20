@@ -1,0 +1,67 @@
+🚀 SHIJO.AI Stripe Setup - Final Version
+========================================
+Time: Mon Jan 19 19:27:55 CST 2026
+
+Checking Stripe CLI...
+stripe version 1.29.0
+✅ Stripe CLI ready
+
+📦 Checking existing products...
+⚠️  Found existing Pro product: prod_Tp7u1h6YhDsz84
+   Using existing product instead of creating new one
+
+💰 Creating Prices...
+
+1️⃣  Creating Pro Price ($39/month)...
+   Price ID: price_1SrTjeHF4DsT3nuc4CoCdQNz
+✅ Pro Price Created ($39/month)
+
+2️⃣  Creating Enterprise Product...
+   Product ID: prod_Tp7zOpUPcG6i5k
+   Creating Enterprise Price ($129/month)...
+   Price ID: price_1SrTjfHF4DsT3nucTM6xX6eu
+✅ Enterprise Created ($129/month)
+
+3️⃣  Creating 10 Credits...
+   Product ID: prod_Tp7zE0HT9iE7se
+   Price ID: price_1SrTjgHF4DsT3nuc1a646JL5
+✅ 10 Credits Created ($1.00)
+
+4️⃣  Creating 50 Credits (5% Bonus)...
+   Product ID: prod_Tp7zbxIWh3cjnu
+   Price ID: price_1SrTjiHF4DsT3nucBXGXeP7s
+✅ 50 Credits Created ($4.75)
+
+5️⃣  Creating 100 Credits (10% Bonus)...
+   Product ID: prod_Tp7zKmv7yYysX5
+   Price ID: price_1SrTjkHF4DsT3nucxXEFQXHz
+✅ 100 Credits Created ($9.00)
+
+💾 Saving Configuration...
+✅ Configuration saved
+
+========================================
+🎉 STRIPE SETUP COMPLETE!
+========================================
+
+✅ All 5 products and prices created
+
+📄 Configuration files:
+   • stripe-config.txt (human readable)
+   • stripe-config.env (environment format)
+   • stripe-setup-final.log (full log)
+
+📋 PRICE IDs (copy these):
+   Pro:        price_1SrTjeHF4DsT3nuc4CoCdQNz
+   Enterprise: price_1SrTjfHF4DsT3nucTM6xX6eu
+   10 Credits: price_1SrTjgHF4DsT3nuc1a646JL5
+   50 Credits: price_1SrTjiHF4DsT3nucBXGXeP7s
+   100 Credits: price_1SrTjkHF4DsT3nucxXEFQXHz
+
+🔗 View in dashboard:
+   https://dashboard.stripe.com/test/products
+
+⚠️  IMPORTANT: Create webhook endpoint manually
+   Follow instructions in stripe-config.txt
+
+========================================

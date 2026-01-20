@@ -1,80 +1,68 @@
 import { NextResponse } from 'next/server';
-import { db } from '@/db';
-import { keywords, keywordIntents } from '@/db/schema';
+import { db } from '../../../../../db';
+import { keywords, keywordIntents } from '../../../../../db/schema';
 import { eq } from 'drizzle-orm';
 import Anthropic from '@anthropic-ai/sdk';
 
 const anthropic = new Anthropic({
-  apiKey: process.env.ANTHROPIC_API_KEY,
+  apiKey: process.env.ANTHROPIC_API_KEY!,
 });
 
 export async function POST(
-  request: Request,
-  { params }: { params: Promise<{ id: string }> }
+  req: Request,
+  context: { params: Promise<{ id: string }> }
 ) {
   try {
-    // In Next.js 15, params is now a Promise that must be awaited
-    const { id: keywordId } = await params;
-
-    // Get keyword
+    const { id } = await context.params;
+    
+    const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+    if (!uuidRegex.test(id)) {
+      return NextResponse.json(
+        { error: 'Invalid keyword ID format' },
+        { status: 400 }
+      );
+    }
+    
     const [keyword] = await db
       .select()
       .from(keywords)
-      .where(eq(keywords.id, keywordId))
+      .where(eq(keywords.id, id))
       .limit(1);
-
+    
     if (!keyword) {
       return NextResponse.json(
         { error: 'Keyword not found' },
         { status: 404 }
       );
     }
-
-    // Call Claude to classify intent
+    
     const message = await anthropic.messages.create({
-      model: 'claude-3-5-sonnet-20241022',
+      model: 'claude-sonnet-4-20250514',
       max_tokens: 1024,
       messages: [
         {
           role: 'user',
-          content: `Classify the search intent for this keyword: "${keyword.keyword}"
-
-Possible intents:
-- informational (user wants to learn)
-- navigational (user wants to find a specific site)
-- commercial (user is researching before buying)
-- transactional (user wants to buy/do something)
-
-Respond in JSON format:
-{
-  "intent": "one of the four types",
-  "confidence": 0.95
-}`,
-        },
+          content: `Classify the search intent for this keyword: "${keyword.keyword}". Return ONLY a JSON object with: {"intent": "informational|navigational|commercial|transactional", "confidence": 0.0-1.0}`
+        }
       ],
     });
-
-    const content = message.content[0];
-    if (content.type !== 'text') {
-      throw new Error('Unexpected response type from Claude');
-    }
-
-    const result = JSON.parse(content.text);
-
-    // Save to DB
-    const [saved] = await db.insert(keywordIntents).values({
+    
+    const responseText = message.content[0].type === 'text' ? message.content[0].text : '';
+    const result = JSON.parse(responseText);
+    
+    await db.insert(keywordIntents).values({
       keywordId: keyword.id,
       intent: result.intent,
       confidence: result.confidence.toString(),
-    }).returning();
-
-    return NextResponse.json({
-      success: true,
-      data: saved,
     });
-
+    
+    return NextResponse.json({
+      intent: result.intent,
+      confidence: result.confidence,
+    });
+    
   } catch (error) {
-    console.error('Error classifying keyword:', error);
+    console.error('Classification error:', error);
     return NextResponse.json(
       { error: 'Failed to classify keyword' },
       { status: 500 }

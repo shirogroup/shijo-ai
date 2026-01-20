@@ -1,0 +1,57 @@
+====================================
+SHIJO.AI STRIPE CONFIGURATION
+====================================
+Generated: Mon Jan 19 19:28:02 CST 2026
+
+PRODUCTS:
+  Pro:        prod_Tp7u1h6YhDsz84
+  Enterprise: prod_Tp7zOpUPcG6i5k
+  10 Credits: prod_Tp7zE0HT9iE7se
+  50 Credits: prod_Tp7zbxIWh3cjnu
+  100 Credits: prod_Tp7zKmv7yYysX5
+
+PRICES (Use these IDs in your code):
+  PRO_PRICE_ID="price_1SrTjeHF4DsT3nuc4CoCdQNz"
+  ENTERPRISE_PRICE_ID="price_1SrTjfHF4DsT3nucTM6xX6eu"
+  CREDITS_10_PRICE_ID="price_1SrTjgHF4DsT3nuc1a646JL5"
+  CREDITS_50_PRICE_ID="price_1SrTjiHF4DsT3nucBXGXeP7s"
+  CREDITS_100_PRICE_ID="price_1SrTjkHF4DsT3nucxXEFQXHz"
+
+PRICING:
+  Pro:        $39/month recurring
+  Enterprise: $129/month recurring
+  10 Credits: $1.00 one-time
+  50 Credits: $4.75 one-time (5% bonus)
+  100 Credits: $9.00 one-time (10% bonus)
+
+====================================
+NEXT STEPS:
+====================================
+
+1. View products in Stripe Dashboard:
+   https://dashboard.stripe.com/test/products
+
+2. Create webhook endpoint:
+   https://dashboard.stripe.com/test/webhooks
+   
+   Click "Add endpoint"
+   Endpoint URL: https://shijo.ai/api/webhooks/stripe
+   
+   Select these events:
+   ✓ checkout.session.completed
+   ✓ customer.subscription.created
+   ✓ customer.subscription.updated
+   ✓ customer.subscription.deleted
+   ✓ invoice.payment_succeeded
+   ✓ invoice.payment_failed
+   
+   After creating, copy the "Signing secret" (starts with whsec_)
+
+3. Add webhook secret to .env.local:
+   echo 'STRIPE_WEBHOOK_SECRET=whsec_xxxxx' >> .env.local
+
+4. Add webhook secret to Vercel:
+   Go to: https://vercel.com/shiro-technologies/shijo-ai/settings/environment-variables
+   Add: STRIPE_WEBHOOK_SECRET = whsec_xxxxx
+
+====================================

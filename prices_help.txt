@@ -1,0 +1,65 @@
+Usage:
+  stripe prices create [--param=value] [-d "nested[param]=value"]
+
+Request Parameters:
+      --active
+      --billing-scheme
+      --currency
+      --custom-unit-amount.enabled
+      --custom-unit-amount.maximum
+      --custom-unit-amount.minimum
+      --custom-unit-amount.preset
+      --lookup-key
+      --nickname
+      --product
+      --product-data.active
+      --product-data.id
+      --product-data.name
+      --product-data.statement-descriptor
+      --product-data.tax-code
+      --product-data.unit-label
+      --recurring.interval
+      --recurring.interval-count
+      --recurring.meter
+      --recurring.trial-period-days
+      --recurring.usage-type
+      --tax-behavior
+      --tiers-mode
+      --transfer-lookup-key
+      --transform-quantity.divide-by
+      --transform-quantity.round
+      --unit-amount
+      --unit-amount-decimal
+
+Note: all types are specifically for the Stripe CLI itself, not the Stripe API. The CLI handles
+transforming types to what the API expects.
+
+Flags:
+  -c, --confirm                 Skip the warning prompt and automatically
+                                confirm the command being entered
+      --dark-style              Use a darker color scheme better suited
+                                for lighter command-lines
+  -d, --data stringArray        Data for the API request
+  -e, --expand stringArray      Response attributes to expand inline
+  -h, --help                    help for create
+  -i, --idempotency string      Set the idempotency key for the request,
+                                prevents replaying the same requests
+                                within 24 hours
+      --live                    Make a live request (default: test)
+  -s, --show-headers            Show response headers
+      --stripe-account string   Set a header identifying the connected account
+      --stripe-context string   Set a header identifying the compartment
+                                context
+  -v, --stripe-version string   Set the Stripe API version to use for your
+                                request
+
+Global Flags:
+      --api-key string        Your API key to use for the command
+      --color string          turn on/off color output (on, off, auto)
+      --config string         config file (default is
+                              $HOME/.config/stripe/config.toml)
+      --device-name string    device name
+      --log-level string      log level (debug, info, trace, warn, error)
+                              (default "info")
+  -p, --project-name string   the project name to read from for config
+                              (default "default")

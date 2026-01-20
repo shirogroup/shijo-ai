@@ -1,0 +1,33 @@
+🚀 SHIJO.AI Stripe Setup
+================================
+Log file: stripe-setup.log
+Time: Mon Jan 19 19:18:09 CST 2026
+
+Checking Stripe CLI...
+✅ Stripe CLI found
+Checking Stripe login...
+✅ Stripe CLI authenticated
+
+📦 Creating Products...
+
+1️⃣  Creating Pro Plan ($39/month)...
+   → Creating product...
+unknown flag: --metadata[plan_tier]
+❌ ERROR: Could not extract Pro product ID
+Check stripe-setup.log for details
+🚀 SHIJO.AI Stripe Setup (CLI v1.29.0 Compatible)
+==================================================
+Time: Mon Jan 19 19:22:51 CST 2026
+
+Checking Stripe CLI...
+✅ Stripe CLI found (version: stripe version 1.29.0)
+Checking Stripe login...
+✅ Stripe CLI authenticated
+
+📦 Creating Products...
+
+1️⃣  Creating Pro Plan ($39/month)...
+   Product ID: prod_Tp7u1h6YhDsz84
+Error output:
+unknown flag: --recurring
+❌ ERROR: Failed to create Pro price

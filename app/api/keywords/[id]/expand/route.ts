@@ -1,86 +1,111 @@
 import { NextResponse } from 'next/server';
-import { db } from '@/db';
-import { keywords, keywordExpansions } from '@/db/schema';
+import { db } from '../../../../../db';
+import { keywords, keywordExpansions, userQuotas } from '../../../../../db/schema';
 import { eq } from 'drizzle-orm';
 import Anthropic from '@anthropic-ai/sdk';
 
 const anthropic = new Anthropic({
-  apiKey: process.env.ANTHROPIC_API_KEY,
+  apiKey: process.env.ANTHROPIC_API_KEY!,
 });
 
 export async function POST(
-  request: Request,
-  { params }: { params: Promise<{ id: string }> }
+  req: Request,
+  context: { params: Promise<{ id: string }> }
 ) {
   try {
-    // In Next.js 15, params is now a Promise that must be awaited
-    const { id: keywordId } = await params;
-
-    // Get keyword
+    const { id } = await context.params;
+    const { userId } = await req.json();
+    
+    const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+    if (!uuidRegex.test(id)) {
+      return NextResponse.json(
+        { error: 'Invalid keyword ID format' },
+        { status: 400 }
+      );
+    }
+    
+    if (!userId) {
+      return NextResponse.json(
+        { error: 'Missing userId' },
+        { status: 400 }
+      );
+    }
+    
+    const [quota] = await db
+      .select()
+      .from(userQuotas)
+      .where(eq(userQuotas.userId, userId))
+      .limit(1);
+    
+    if (!quota) {
+      return NextResponse.json(
+        { error: 'User quota not found' },
+        { status: 404 }
+      );
+    }
+    
+    const expansionsUsed = quota.expansionsUsed ?? 0;
+    const expansionsQuota = quota.expansionsQuota ?? 0;
+    
+    if (expansionsUsed >= expansionsQuota) {
+      return NextResponse.json(
+        { error: 'Expansion quota exceeded', quotaExceeded: true },
+        { status: 429 }
+      );
+    }
+    
     const [keyword] = await db
       .select()
       .from(keywords)
-      .where(eq(keywords.id, keywordId))
+      .where(eq(keywords.id, id))
       .limit(1);
-
+    
     if (!keyword) {
       return NextResponse.json(
         { error: 'Keyword not found' },
         { status: 404 }
       );
     }
-
-    // Call Claude to expand keyword
+    
     const message = await anthropic.messages.create({
-      model: 'claude-3-5-sonnet-20241022',
+      model: 'claude-sonnet-4-20250514',
       max_tokens: 2048,
       messages: [
         {
           role: 'user',
-          content: `Generate 10-15 long-tail keyword variations for: "${keyword.keyword}"
-
-These should be:
-- Longer, more specific versions
-- Natural language questions
-- Related search queries
-- Different angles/intent variations
-
-Respond in JSON format:
-{
-  "expansions": [
-    "long tail keyword 1",
-    "long tail keyword 2",
-    ...
-  ]
-}`,
-        },
+          content: `Generate 20 long-tail keyword variations for: "${keyword.keyword}". Return ONLY a JSON array of strings: ["keyword1", "keyword2", ...]`
+        }
       ],
     });
-
-    const content = message.content[0];
-    if (content.type !== 'text') {
-      throw new Error('Unexpected response type from Claude');
-    }
-
-    const result = JSON.parse(content.text);
-
-    // Save all expansions to DB
-    const saved = await db.insert(keywordExpansions).values(
-      result.expansions.map((expansion: string) => ({
+    
+    const responseText = message.content[0].type === 'text' ? message.content[0].text : '';
+    const expansions = JSON.parse(responseText);
+    
+    const insertPromises = expansions.map((expansion: string) =>
+      db.insert(keywordExpansions).values({
         keywordId: keyword.id,
         expansion,
-        method: 'claude-ai',
-      }))
-    ).returning();
-
+        method: 'ai',
+      })
+    );
+    
+    await Promise.all(insertPromises);
+    
+    await db
+      .update(userQuotas)
+      .set({
+        expansionsUsed: expansionsUsed + 1,
+        updatedAt: new Date(),
+      })
+      .where(eq(userQuotas.userId, userId));
+    
     return NextResponse.json({
-      success: true,
-      count: saved.length,
-      data: saved,
+      expansions,
+      quotaRemaining: expansionsQuota - expansionsUsed - 1,
     });
-
+    
   } catch (error) {
-    console.error('Error expanding keyword:', error);
+    console.error('Expansion error:', error);
     return NextResponse.json(
       { error: 'Failed to expand keyword' },
       { status: 500 }
