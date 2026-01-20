@@ -1,7 +1,6 @@
-// app/api/keywords/route.ts
 import { NextRequest, NextResponse } from 'next/server';
 import { getSession } from '@/lib/auth';
-import { db } from '@/db/client';
+import { db } from '@/db';
 import { keywords } from '@/db/schema';
 import { eq, desc } from 'drizzle-orm';
 
