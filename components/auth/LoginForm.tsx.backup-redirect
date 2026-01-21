@@ -24,17 +24,13 @@ export default function LoginForm() {
     setIsLoading(true);
 
     try {
-      const result = await login(email, password);
+      await login(email, password);
       
-      if (result) {
-        // Get redirect URL from query params or default to dashboard
-        const redirect = searchParams.get('redirect') || '/dashboard';
-        
-        // Use window.location.href for proper redirect with auth state refresh
-        window.location.href = redirect;
-      }
+      const redirect = searchParams.get('redirect') || '/dashboard';
+      router.push(redirect);
     } catch (err: any) {
       setError(err.message || 'Invalid email or password');
+    } finally {
       setIsLoading(false);
     }
   };
