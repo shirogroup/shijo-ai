@@ -27,10 +27,7 @@ export default function LoginForm() {
       const result = await login(email, password);
       
       if (result) {
-        // Get redirect URL from query params or default to dashboard
         const redirect = searchParams.get('redirect') || '/dashboard';
-        
-        // Use window.location.href for proper redirect with auth state refresh
         window.location.href = redirect;
       }
     } catch (err: any) {
@@ -107,7 +104,7 @@ export default function LoginForm() {
       </form>
 
       <p className="text-center text-sm text-gray-600">
-        Don&apos;t have an account?{' '}
+        Don't have an account?{' '}
         <Link
           href="/register"
           className="font-semibold text-[#CC0000] hover:text-[#990000] transition-colors"
