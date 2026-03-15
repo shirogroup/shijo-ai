@@ -7,15 +7,25 @@ import { Button } from '@/components/ui/button';
 import {
   LayoutDashboard,
   Wand2,
+  Search,
+  FileText,
+  BarChart3,
+  Settings,
   CreditCard,
   LogOut,
   User,
   Crown,
+  ExternalLink,
 } from 'lucide-react';
 
 const navigation = [
   { name: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
   { name: 'AI Tools', href: '/dashboard/tools', icon: Wand2 },
+  { name: 'Keywords', href: '/dashboard/keywords', icon: Search },
+  { name: 'Content', href: '/dashboard/content', icon: FileText },
+  { name: 'Analytics', href: '/dashboard/analytics', icon: BarChart3 },
+  { name: 'Billing', href: '/dashboard/billing', icon: CreditCard },
+  { name: 'Settings', href: '/dashboard/settings', icon: Settings },
 ];
 
 export function Sidebar() {
@@ -46,12 +56,37 @@ export function Sidebar() {
 
   return (
     <div className="flex h-full w-64 flex-col border-r border-gray-800 bg-gray-950">
-      {/* Logo */}
+      {/* Logo — matches landing page header */}
       <div className="flex h-16 items-center gap-2 border-b border-gray-800 px-6">
-        <div className="w-8 h-8 bg-gradient-to-br from-[#CC0000] to-[#990000] rounded-lg flex items-center justify-center">
-          <span className="text-white font-bold text-sm">S</span>
-        </div>
-        <span className="text-xl font-bold text-white">SHIJO.AI</span>
+        <svg
+          className="w-8 h-8"
+          viewBox="0 0 24 24"
+          fill="none"
+          xmlns="http://www.w3.org/2000/svg"
+        >
+          <path
+            d="M12 2L2 7L12 12L22 7L12 2Z"
+            stroke="hsl(356, 100%, 43%)"
+            strokeWidth="2"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          />
+          <path
+            d="M2 17L12 22L22 17"
+            stroke="hsl(356, 100%, 43%)"
+            strokeWidth="2"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          />
+          <path
+            d="M2 12L12 17L22 12"
+            stroke="hsl(356, 100%, 43%)"
+            strokeWidth="2"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          />
+        </svg>
+        <span className="text-xl font-bold text-[hsl(356,100%,43%)]">SHIJO.AI</span>
       </div>
 
       {/* Navigation */}
@@ -78,7 +113,7 @@ export function Sidebar() {
         {userPlan === 'free' && (
           <div className="mt-6 mx-1">
             <Link
-              href="/#pricing"
+              href="/dashboard/billing"
               className="block bg-gradient-to-r from-blue-900/40 to-purple-900/40 border border-blue-800/50 rounded-lg p-4 hover:border-blue-600/50 transition-all"
             >
               <div className="flex items-center gap-2 mb-2">
@@ -91,12 +126,35 @@ export function Sidebar() {
             </Link>
           </div>
         )}
+
+        {/* Help & Resources */}
+        <div className="mt-6 mx-1 pt-4 border-t border-gray-800">
+          <p className="text-[10px] uppercase tracking-wider text-gray-600 font-semibold mb-3 px-2">Resources</p>
+          <a
+            href="https://www.shijo.ai/#features"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="flex items-center gap-2 text-xs text-gray-500 hover:text-gray-300 px-2 py-1.5 rounded transition-colors"
+          >
+            <ExternalLink className="w-3 h-3" />
+            All 24 Tools Overview
+          </a>
+          <a
+            href="https://www.shijo.ai/#pricing"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="flex items-center gap-2 text-xs text-gray-500 hover:text-gray-300 px-2 py-1.5 rounded transition-colors"
+          >
+            <ExternalLink className="w-3 h-3" />
+            Pricing &amp; Plans
+          </a>
+        </div>
       </nav>
 
       {/* User Profile */}
       <div className="border-t border-gray-800 p-4">
         <div className="flex items-start gap-3">
-          <div className="flex h-10 w-10 items-center justify-center rounded-full bg-gradient-to-br from-[#CC0000] to-[#990000]">
+          <div className="flex h-10 w-10 items-center justify-center rounded-full bg-gradient-to-br from-[hsl(356,100%,43%)] to-[hsl(356,100%,33%)]">
             {user?.avatarUrl ? (
               <img src={user.avatarUrl} alt={user.name || 'User'} className="h-10 w-10 rounded-full" />
             ) : (
