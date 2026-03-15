@@ -6,29 +6,21 @@ import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
 import {
   LayoutDashboard,
-  Search,
   Wand2,
-  FileText,
-  BarChart3,
-  Settings,
   CreditCard,
   LogOut,
   User,
+  Crown,
 } from 'lucide-react';
 
 const navigation = [
   { name: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
   { name: 'AI Tools', href: '/dashboard/tools', icon: Wand2 },
-  { name: 'Keywords', href: '/dashboard/keywords', icon: Search },
-  { name: 'Content', href: '/dashboard/content', icon: FileText },
-  { name: 'Analytics', href: '/dashboard/analytics', icon: BarChart3 },
-  { name: 'Settings', href: '/dashboard/settings', icon: Settings },
-  { name: 'Billing', href: '/dashboard/billing', icon: CreditCard },
 ];
 
 export function Sidebar() {
   const pathname = usePathname();
-  const { user, quota, loading, logout } = useAuth();
+  const { user, loading, logout } = useAuth();
 
   const handleLogout = async () => {
     await logout();
@@ -44,57 +36,22 @@ export function Sidebar() {
     );
   }
 
-  // Get plan display name
-  const planDisplay = user?.planTier === 'free' ? 'Free Plan' : 
-                       user?.planTier === 'pro' ? 'Pro Plan' : 
-                       user?.planTier === 'enterprise' ? 'Enterprise' : 'Free Plan';
-
-  // Get plan color
-  const planColor = user?.planTier === 'free' ? 'text-gray-400' :
-                    user?.planTier === 'pro' ? 'text-blue-400' :
-                    user?.planTier === 'enterprise' ? 'text-purple-400' : 'text-gray-400';
+  const userPlan = user?.planTier || 'free';
+  const planDisplay = userPlan === 'free' ? 'Free Plan' :
+                      userPlan === 'pro' ? 'Pro Plan' :
+                      userPlan === 'enterprise' ? 'Enterprise' : 'Free Plan';
+  const planColor = userPlan === 'free' ? 'text-gray-400' :
+                    userPlan === 'pro' ? 'text-blue-400' :
+                    userPlan === 'enterprise' ? 'text-purple-400' : 'text-gray-400';
 
   return (
     <div className="flex h-full w-64 flex-col border-r border-gray-800 bg-gray-950">
       {/* Logo */}
       <div className="flex h-16 items-center gap-2 border-b border-gray-800 px-6">
-        <svg
-          className="w-8 h-8"
-          viewBox="0 0 24 24"
-          fill="none"
-          xmlns="http://www.w3.org/2000/svg"
-        >
-          <path
-            d="M12 2L2 7L12 12L22 7L12 2Z"
-            stroke="url(#logo-gradient)"
-            strokeWidth="2"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-          />
-          <path
-            d="M2 17L12 22L22 17"
-            stroke="url(#logo-gradient)"
-            strokeWidth="2"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-          />
-          <path
-            d="M2 12L12 17L22 12"
-            stroke="url(#logo-gradient)"
-            strokeWidth="2"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-          />
-          <defs>
-            <linearGradient id="logo-gradient" x1="2" y1="2" x2="22" y2="22">
-              <stop offset="0%" stopColor="#3b82f6" />
-              <stop offset="100%" stopColor="#8b5cf6" />
-            </linearGradient>
-          </defs>
-        </svg>
-        <span className="text-xl font-bold bg-gradient-to-r from-blue-500 to-purple-500 bg-clip-text text-transparent">
-          SHIJO.AI
-        </span>
+        <div className="w-8 h-8 bg-gradient-to-br from-[#CC0000] to-[#990000] rounded-lg flex items-center justify-center">
+          <span className="text-white font-bold text-sm">S</span>
+        </div>
+        <span className="text-xl font-bold text-white">SHIJO.AI</span>
       </div>
 
       {/* Navigation */}
@@ -116,12 +73,30 @@ export function Sidebar() {
             </Link>
           );
         })}
+
+        {/* Upgrade CTA for free users */}
+        {userPlan === 'free' && (
+          <div className="mt-6 mx-1">
+            <Link
+              href="/#pricing"
+              className="block bg-gradient-to-r from-blue-900/40 to-purple-900/40 border border-blue-800/50 rounded-lg p-4 hover:border-blue-600/50 transition-all"
+            >
+              <div className="flex items-center gap-2 mb-2">
+                <Crown className="w-4 h-4 text-yellow-400" />
+                <span className="text-sm font-semibold text-white">Upgrade to Pro</span>
+              </div>
+              <p className="text-xs text-gray-400">
+                Unlock all 24 tools &amp; 200 gens/month for $29/mo
+              </p>
+            </Link>
+          </div>
+        )}
       </nav>
 
       {/* User Profile */}
       <div className="border-t border-gray-800 p-4">
         <div className="flex items-start gap-3">
-          <div className="flex h-10 w-10 items-center justify-center rounded-full bg-gradient-to-br from-blue-500 to-purple-500">
+          <div className="flex h-10 w-10 items-center justify-center rounded-full bg-gradient-to-br from-[#CC0000] to-[#990000]">
             {user?.avatarUrl ? (
               <img src={user.avatarUrl} alt={user.name || 'User'} className="h-10 w-10 rounded-full" />
             ) : (
@@ -135,11 +110,6 @@ export function Sidebar() {
             <p className={`text-xs ${planColor}`}>
               {planDisplay}
             </p>
-            {quota && (
-              <p className="text-xs text-gray-500 mt-1">
-                {quota.creditsBalance} credits
-              </p>
-            )}
           </div>
         </div>
         <Button
