@@ -142,7 +142,7 @@ export function Sidebar() {
           >
             <CreditCard className="w-3 h-3" />
             Pricing &amp; Plans
-          </a>
+          </Link>
         </div>
       </nav>
 
