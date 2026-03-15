@@ -1,5 +1,4 @@
 import Link from 'next/link';
-import { Logo } from '@/components/landing/Logo';
 import { RegisterForm } from '@/components/auth/RegisterForm';
 
 export default function RegisterPage() {
@@ -7,13 +6,13 @@ export default function RegisterPage() {
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-gray-50 to-gray-100 px-4">
       <div className="w-full max-w-md">
         <div className="bg-white rounded-2xl shadow-xl p-8">
-          {/* Logo */}
+          {/* Logo — same style as login page */}
           <div className="flex justify-center mb-8">
             <Link href="/" className="flex items-center gap-2">
-              <Logo className="w-10 h-10 text-primary" />
-              <span className="text-2xl font-bold">
-                SHIJO<span className="text-primary">.ai</span>
-              </span>
+              <div className="w-10 h-10 bg-gradient-to-br from-[#CC0000] to-[#990000] rounded-lg flex items-center justify-center">
+                <span className="text-white font-bold text-xl">S</span>
+              </div>
+              <span className="text-2xl font-bold text-[#1a1a1a]">SHIJO.AI</span>
             </Link>
           </div>
 
@@ -30,7 +29,7 @@ export default function RegisterPage() {
           <div className="mt-6 text-center">
             <p className="text-sm text-gray-600">
               Already have an account?{' '}
-              <Link href="/login" className="text-primary font-medium hover:underline">
+              <Link href="/login" className="text-[#CC0000] font-semibold hover:text-[#990000] transition-colors">
                 Sign in
               </Link>
             </p>
@@ -40,7 +39,7 @@ export default function RegisterPage() {
         {/* Back to Home */}
         <div className="mt-6 text-center">
           <Link href="/" className="text-sm text-gray-600 hover:text-gray-900">
-            ← Back to home
+            &larr; Back to home
           </Link>
         </div>
       </div>

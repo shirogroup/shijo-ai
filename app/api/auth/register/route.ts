@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/db';
 import { users, userQuotas } from '@/db/schema';
-import { hashPassword, setSession } from '@/lib/auth';
+import { hashPassword, signToken } from '@/lib/auth';
 import { eq } from 'drizzle-orm';
 import { sendEmail, buildWelcomeEmail } from '@/lib/email';
 
@@ -69,10 +69,29 @@ export async function POST(req: NextRequest) {
       predictiveSeoQuota: 0,
     });
 
-    // Set session
-    await setSession({
+    // Create JWT token
+    const token = signToken({
       userId: newUser.id,
       email: newUser.email,
+    });
+
+    // Build response and set cookie DIRECTLY on it
+    const response = NextResponse.json({
+      success: true,
+      user: {
+        id: newUser.id,
+        email: newUser.email,
+        name: newUser.name,
+        planTier: newUser.planTier,
+      },
+    });
+
+    response.cookies.set('session', token, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'lax',
+      maxAge: 60 * 60 * 24 * 7, // 7 days
+      path: '/',
     });
 
     // Send welcome email (fire and forget — don't block registration)
@@ -85,15 +104,7 @@ export async function POST(req: NextRequest) {
       console.error(`[REGISTER] Failed to send welcome email:`, err);
     });
 
-    return NextResponse.json({
-      success: true,
-      user: {
-        id: newUser.id,
-        email: newUser.email,
-        name: newUser.name,
-        planTier: newUser.planTier,
-      },
-    });
+    return response;
   } catch (error) {
     console.error('Registration error:', error);
     return NextResponse.json(
