@@ -3,6 +3,7 @@ import { db } from '@/db';
 import { users, userQuotas } from '@/db/schema';
 import { hashPassword, setSession } from '@/lib/auth';
 import { eq } from 'drizzle-orm';
+import { sendEmail, buildWelcomeEmail } from '@/lib/email';
 
 export const runtime = 'nodejs';
 
@@ -72,6 +73,16 @@ export async function POST(req: NextRequest) {
     await setSession({
       userId: newUser.id,
       email: newUser.email,
+    });
+
+    // Send welcome email (fire and forget — don't block registration)
+    const welcomeEmail = buildWelcomeEmail(name || email.split('@')[0]);
+    sendEmail({ to: email.toLowerCase(), ...welcomeEmail }).then((sent) => {
+      if (sent) {
+        console.log(`[REGISTER] Welcome email sent to ${email}`);
+      }
+    }).catch((err) => {
+      console.error(`[REGISTER] Failed to send welcome email:`, err);
     });
 
     return NextResponse.json({

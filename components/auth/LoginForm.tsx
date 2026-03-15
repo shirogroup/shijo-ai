@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { useRouter, useSearchParams } from 'next/navigation';
+import { useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { useAuth } from '@/contexts/AuthContext';
 import { Input } from '@/components/ui/input';
@@ -10,7 +10,6 @@ import { Button } from '@/components/ui/button';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 
 export default function LoginForm() {
-  const router = useRouter();
   const searchParams = useSearchParams();
   const { login } = useAuth();
   const [email, setEmail] = useState('');
@@ -25,13 +24,17 @@ export default function LoginForm() {
 
     try {
       const result = await login(email, password);
-      
-      if (result) {
+
+      if (result.success) {
         const redirect = searchParams.get('redirect') || '/dashboard';
         window.location.href = redirect;
+      } else {
+        setError(result.error || 'Invalid email or password');
+        setIsLoading(false);
       }
-    } catch (err: any) {
-      setError(err.message || 'Invalid email or password');
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : 'Invalid email or password';
+      setError(message);
       setIsLoading(false);
     }
   };
@@ -104,7 +107,7 @@ export default function LoginForm() {
       </form>
 
       <p className="text-center text-sm text-gray-600">
-        Don't have an account?{' '}
+        Don&apos;t have an account?{' '}
         <Link
           href="/register"
           className="font-semibold text-[#CC0000] hover:text-[#990000] transition-colors"
@@ -118,7 +121,7 @@ export default function LoginForm() {
           href="/"
           className="text-sm text-gray-600 hover:text-[#CC0000] transition-colors inline-flex items-center"
         >
-          ← Back to home
+          &larr; Back to home
         </Link>
       </div>
     </div>

@@ -1,8 +1,6 @@
 'use client';
 
 import { useState } from 'react';
-import { useRouter } from 'next/navigation';
-import Link from 'next/link';
 import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -10,7 +8,6 @@ import { Label } from '@/components/ui/label';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 
 export function RegisterForm() {
-  const router = useRouter();
   const { register } = useAuth();
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
@@ -23,7 +20,6 @@ export function RegisterForm() {
     e.preventDefault();
     setError('');
 
-    // Validation
     if (password !== confirmPassword) {
       setError('Passwords do not match');
       return;
@@ -35,21 +31,17 @@ export function RegisterForm() {
     }
 
     setLoading(true);
-    console.log('📝 REGISTER ATTEMPT:', { email, name });
 
     try {
       const result = await register(email, password, name);
 
       if (result.success) {
-        console.log('✅ REGISTRATION SUCCESS - Redirecting to dashboard');
-        // Use window.location for reliable redirect after registration
         window.location.href = '/dashboard';
       } else {
-        console.log('❌ REGISTRATION FAILED:', result.error);
         setError(result.error || 'Registration failed');
       }
     } catch (err) {
-      console.error('❌ REGISTRATION ERROR:', err);
+      console.error('Registration error:', err);
       setError('An unexpected error occurred. Please try again.');
     } finally {
       setLoading(false);
@@ -57,14 +49,9 @@ export function RegisterForm() {
   };
 
   return (
-    <div className="w-full max-w-md space-y-6">
-      <div className="space-y-2 text-center">
-        <h1 className="text-3xl font-bold">Create your account</h1>
-        <p className="text-gray-400">Start your free trial of SHIJO.AI today</p>
-      </div>
-
+    <>
       {error && (
-        <Alert variant="destructive">
+        <Alert variant="destructive" className="mb-4">
           <AlertDescription>{error}</AlertDescription>
         </Alert>
       )}
@@ -133,13 +120,6 @@ export function RegisterForm() {
           {loading ? 'Creating account...' : 'Create Account'}
         </Button>
       </form>
-
-      <div className="text-center text-sm text-gray-400">
-        Already have an account?{' '}
-        <Link href="/login" className="text-blue-500 hover:text-blue-400">
-          Sign in
-        </Link>
-      </div>
-    </div>
+    </>
   );
 }
