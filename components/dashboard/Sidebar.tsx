@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button';
 import {
   LayoutDashboard,
   Search,
+  Wand2,
   FileText,
   BarChart3,
   Settings,
@@ -17,6 +18,7 @@ import {
 
 const navigation = [
   { name: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
+  { name: 'AI Tools', href: '/dashboard/tools', icon: Wand2 },
   { name: 'Keywords', href: '/dashboard/keywords', icon: Search },
   { name: 'Content', href: '/dashboard/content', icon: FileText },
   { name: 'Analytics', href: '/dashboard/analytics', icon: BarChart3 },
@@ -98,7 +100,7 @@ export function Sidebar() {
       {/* Navigation */}
       <nav className="flex-1 space-y-1 px-3 py-4">
         {navigation.map((item) => {
-          const isActive = pathname === item.href;
+          const isActive = pathname === item.href || (item.href !== '/dashboard' && pathname.startsWith(item.href));
           return (
             <Link
               key={item.name}
