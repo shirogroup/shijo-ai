@@ -19,7 +19,7 @@ const jsonLd = {
   operatingSystem: 'Web',
   offers: {
     '@type': 'AggregateOffer',
-    lowPrice: '39',
+    lowPrice: '0',
     highPrice: '99',
     priceCurrency: 'USD',
   },
@@ -28,12 +28,13 @@ const jsonLd = {
     ratingValue: '4.8',
     ratingCount: '500',
   },
-  description: 'AI-powered SEO platform for keyword research, AI search visibility tracking, and SEO automation',
+  description: 'AI-powered SEO and marketing toolkit with 24 tools for social media, content, ads, email, and search optimization.',
   featureList: [
-    'AI keyword research and clustering',
-    'ChatGPT, Claude, and Perplexity visibility tracking',
-    'Automated keyword expansion',
-    'Search volume and difficulty analysis',
+    'AI-powered caption and content generation',
+    'SEO keyword research and meta tag optimization',
+    'Ad copy and landing page generation',
+    'Email sequence and subject line creation',
+    'Content repurposing and video scripts',
   ],
 };
 
