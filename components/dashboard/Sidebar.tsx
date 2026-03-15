@@ -15,7 +15,6 @@ import {
   LogOut,
   User,
   Crown,
-  ExternalLink,
 } from 'lucide-react';
 
 const navigation = [
@@ -127,25 +126,21 @@ export function Sidebar() {
           </div>
         )}
 
-        {/* Help & Resources */}
+        {/* Quick Links */}
         <div className="mt-6 mx-1 pt-4 border-t border-gray-800">
-          <p className="text-[10px] uppercase tracking-wider text-gray-600 font-semibold mb-3 px-2">Resources</p>
-          <a
-            href="https://www.shijo.ai/#features"
-            target="_blank"
-            rel="noopener noreferrer"
+          <p className="text-[10px] uppercase tracking-wider text-gray-600 font-semibold mb-3 px-2">Quick Links</p>
+          <Link
+            href="/dashboard/tools"
             className="flex items-center gap-2 text-xs text-gray-500 hover:text-gray-300 px-2 py-1.5 rounded transition-colors"
           >
-            <ExternalLink className="w-3 h-3" />
+            <Wand2 className="w-3 h-3" />
             All 24 Tools Overview
-          </a>
-          <a
-            href="https://www.shijo.ai/#pricing"
-            target="_blank"
-            rel="noopener noreferrer"
+          </Link>
+          <Link
+            href="/dashboard/billing"
             className="flex items-center gap-2 text-xs text-gray-500 hover:text-gray-300 px-2 py-1.5 rounded transition-colors"
           >
-            <ExternalLink className="w-3 h-3" />
+            <CreditCard className="w-3 h-3" />
             Pricing &amp; Plans
           </a>
         </div>
