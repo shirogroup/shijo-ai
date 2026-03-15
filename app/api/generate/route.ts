@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import Anthropic from '@anthropic-ai/sdk';
 import { getToolById } from '@/lib/tools/registry';
 import { PROMPTS } from '@/lib/tools/prompts';
+import { getSession } from '@/lib/auth';
+import { checkToolAccess, recordToolUsage } from '@/lib/tools/usage';
 
 const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
 
@@ -19,9 +21,18 @@ const MAX_TOKENS_MAP = {
 
 export async function POST(req: NextRequest) {
   try {
+    // ── Auth check ──────────────────────────────────────────────────
+    const session = await getSession();
+    if (!session) {
+      return NextResponse.json(
+        { success: false, error: 'Please sign in to use AI tools' },
+        { status: 401 }
+      );
+    }
+
     const { toolId, inputs } = await req.json();
 
-    // Validate tool exists
+    // ── Validate tool exists ────────────────────────────────────────
     const tool = getToolById(toolId);
     if (!tool) {
       return NextResponse.json(
@@ -30,7 +41,7 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // Validate prompt builder exists
+    // ── Validate prompt builder exists ──────────────────────────────
     const promptBuilder = PROMPTS[toolId];
     if (!promptBuilder) {
       return NextResponse.json(
@@ -39,7 +50,7 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // Check API key
+    // ── Check API key ───────────────────────────────────────────────
     if (!process.env.ANTHROPIC_API_KEY) {
       return NextResponse.json(
         { success: false, error: 'API key not configured' },
@@ -47,33 +58,64 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // Build prompt
+    // ── Plan & usage check ──────────────────────────────────────────
+    const access = await checkToolAccess(session.userId, toolId);
+
+    if (!access.allowed) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: access.reason,
+          upgradePrompt: access.upgradePrompt,
+          remaining: access.remaining,
+          limit: access.limit,
+          period: access.period,
+        },
+        { status: 403 }
+      );
+    }
+
+    // ── Determine effective model ───────────────────────────────────
+    // Free tier is always forced to Haiku regardless of tool config
+    const effectiveModelTier = access.effectiveModel || tool.modelTier;
+    const model = MODEL_MAP[effectiveModelTier];
+    const maxTokens = MAX_TOKENS_MAP[effectiveModelTier];
+
+    // ── Build prompt ────────────────────────────────────────────────
     const userPrompt = promptBuilder(inputs || {});
 
-    // Select model based on tool tier
-    const model = MODEL_MAP[tool.modelTier];
-    const maxTokens = MAX_TOKENS_MAP[tool.modelTier];
-
-    // Call Claude API
+    // ── Call Claude API ─────────────────────────────────────────────
     const message = await client.messages.create({
       model,
       max_tokens: maxTokens,
       messages: [{ role: 'user', content: userPrompt }],
     });
 
-    // Extract text from response
+    // ── Extract text from response ──────────────────────────────────
     const result = message.content
       .filter((b) => b.type === 'text')
       .map((b) => (b as { type: 'text'; text: string }).text)
       .join('\n');
 
+    // ── Record usage (after successful generation) ──────────────────
+    await recordToolUsage(
+      session.userId,
+      toolId,
+      model,
+      message.usage?.output_tokens || 0
+    );
+
     return NextResponse.json({
       success: true,
       result,
       meta: {
-        model: tool.modelTier,
+        model: effectiveModelTier,
         toolId: tool.id,
         tokensUsed: message.usage?.output_tokens || 0,
+        remaining: access.remaining !== undefined
+          ? (access.remaining === -1 ? -1 : access.remaining - 1)
+          : undefined,
+        period: access.period,
       },
     });
   } catch (error) {

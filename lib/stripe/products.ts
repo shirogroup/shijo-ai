@@ -1,6 +1,6 @@
 /**
  * Stripe Products and Prices Configuration
- * Generated from Stripe setup on January 19, 2026
+ * Updated March 2026 — corrected pricing to $29/$99
  */
 
 export const STRIPE_PRICE_IDS = {
@@ -25,11 +25,15 @@ export const PLAN_FEATURES = {
     price: 0,
     interval: null,
     features: {
+      aiToolsDaily: 3,         // 3 generations/day
+      aiToolsAccess: 5,        // 5 free tools
+      aiModel: 'haiku',        // Haiku only
+      // Legacy keyword features (kept for compatibility)
       seedKeywords: 10000,
-      expansions: 0, // 3/day
-      clustering: 0, // 1/day
+      expansions: 0,
+      clustering: 0,
       briefs: 0,
-      audits: 0, // 1/day
+      audits: 0,
       metaGen: 1000,
       aeo: 0,
       searchVolume: 0,
@@ -43,14 +47,19 @@ export const PLAN_FEATURES = {
       expansions: 3,
       clustering: 1,
       audits: 1,
+      aiTools: 3,
     },
   },
   pro: {
     name: 'Pro',
-    price: 39,
+    price: 29,
+    annualPrice: 278,     // 29 * 12 * 0.8
     interval: 'month',
     priceId: STRIPE_PRICE_IDS.PRO_MONTHLY,
     features: {
+      aiToolsMonthly: 200,     // 200 generations/month
+      aiToolsAccess: 24,       // All 24 tools
+      aiModel: 'auto',         // Haiku or Sonnet per tool config
       seedKeywords: 10000,
       expansions: 100,
       clustering: 50,
@@ -75,10 +84,14 @@ export const PLAN_FEATURES = {
   },
   enterprise: {
     name: 'Enterprise',
-    price: 129,
+    price: 99,
+    annualPrice: 950,     // 99 * 12 * 0.8 ≈ 950
     interval: 'month',
     priceId: STRIPE_PRICE_IDS.ENTERPRISE_MONTHLY,
     features: {
+      aiToolsMonthly: -1,      // Unlimited
+      aiToolsAccess: 24,       // All 24 tools
+      aiModel: 'auto',         // Haiku or Sonnet per tool config
       seedKeywords: 10000,
       expansions: 5000,
       clustering: 500,

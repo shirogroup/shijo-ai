@@ -29,6 +29,7 @@ export default async function ToolPageRoute({ params }: PageProps) {
       icon={tool.icon}
       category={tool.category}
       modelTier={tool.modelTier}
+      minPlan={tool.minPlan}
       fields={tool.fields}
       outputLabel={tool.outputLabel}
     />
