@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
 import { Check, Crown, Zap, Sparkles, Loader2, CheckCircle, XCircle } from 'lucide-react';
@@ -59,7 +59,7 @@ const plans = [
   },
 ];
 
-export default function BillingPage() {
+function BillingContent() {
   const { user } = useAuth();
   const searchParams = useSearchParams();
   const userPlan = user?.planTier || 'free';
@@ -270,5 +270,13 @@ export default function BillingPage() {
         </div>
       </div>
     </div>
+  );
+}
+
+export default function BillingPage() {
+  return (
+    <Suspense fallback={<div className="animate-pulse text-gray-500">Loading billing...</div>}>
+      <BillingContent />
+    </Suspense>
   );
 }
