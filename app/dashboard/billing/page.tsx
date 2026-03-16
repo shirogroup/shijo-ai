@@ -1,8 +1,9 @@
 'use client';
 
+import { useState } from 'react';
+import { useSearchParams } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
-import { Check, Crown, Zap, Sparkles } from 'lucide-react';
-import Link from 'next/link';
+import { Check, Crown, Zap, Sparkles, Loader2, CheckCircle, XCircle } from 'lucide-react';
 
 const plans = [
   {
@@ -17,8 +18,6 @@ const plans = [
       'Claude Haiku (Fast AI)',
       'Basic support',
     ],
-    cta: 'Current Plan',
-    ctaStyle: 'bg-gray-700 text-gray-300 cursor-default',
     highlight: false,
     tier: 'free',
   },
@@ -37,8 +36,6 @@ const plans = [
       'Content calendar planner',
       'Email sequence generator',
     ],
-    cta: 'Upgrade to Pro',
-    ctaStyle: 'bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white',
     highlight: true,
     tier: 'pro',
   },
@@ -57,8 +54,6 @@ const plans = [
       'Team collaboration (coming soon)',
       'Custom integrations (coming soon)',
     ],
-    cta: 'Upgrade to Enterprise',
-    ctaStyle: 'bg-gray-800 hover:bg-gray-700 text-white border border-gray-600',
     highlight: false,
     tier: 'enterprise',
   },
@@ -66,7 +61,40 @@ const plans = [
 
 export default function BillingPage() {
   const { user } = useAuth();
+  const searchParams = useSearchParams();
   const userPlan = user?.planTier || 'free';
+  const [loadingPlan, setLoadingPlan] = useState<string | null>(null);
+  const [error, setError] = useState('');
+
+  const isSuccess = searchParams.get('success') === 'true';
+  const isCanceled = searchParams.get('canceled') === 'true';
+  const upgradedPlan = searchParams.get('plan');
+
+  const handleUpgrade = async (tier: string) => {
+    setError('');
+    setLoadingPlan(tier);
+
+    try {
+      const res = await fetch('/api/stripe/create-checkout', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ plan: tier }),
+      });
+
+      const data = await res.json();
+
+      if (data.success && data.url) {
+        window.location.href = data.url;
+      } else {
+        setError(data.error || 'Failed to start checkout');
+        setLoadingPlan(null);
+      }
+    } catch {
+      setError('Network error. Please try again.');
+      setLoadingPlan(null);
+    }
+  };
 
   return (
     <div>
@@ -78,6 +106,38 @@ export default function BillingPage() {
             : `You're on the ${userPlan.charAt(0).toUpperCase() + userPlan.slice(1)} plan.`}
         </p>
       </div>
+
+      {/* Success banner */}
+      {isSuccess && (
+        <div className="bg-green-900/30 border border-green-700 rounded-xl p-4 mb-6 flex items-center gap-3">
+          <CheckCircle className="w-5 h-5 text-green-400 flex-shrink-0" />
+          <div>
+            <p className="text-green-300 font-medium">
+              Welcome to {upgradedPlan === 'enterprise' ? 'Enterprise' : 'Pro'}!
+            </p>
+            <p className="text-green-400/70 text-sm">
+              Your subscription is active. All tools are now unlocked. It may take a moment to reflect.
+            </p>
+          </div>
+        </div>
+      )}
+
+      {/* Canceled banner */}
+      {isCanceled && (
+        <div className="bg-yellow-900/30 border border-yellow-700 rounded-xl p-4 mb-6 flex items-center gap-3">
+          <XCircle className="w-5 h-5 text-yellow-400 flex-shrink-0" />
+          <p className="text-yellow-300 text-sm">
+            Checkout was canceled. No charges were made. You can try again anytime.
+          </p>
+        </div>
+      )}
+
+      {/* Error */}
+      {error && (
+        <div className="bg-red-900/30 border border-red-700 rounded-xl p-4 mb-6">
+          <p className="text-red-300 text-sm">{error}</p>
+        </div>
+      )}
 
       {/* Current plan badge */}
       <div className="bg-gray-900 rounded-xl border border-gray-800 p-5 mb-8 flex items-center justify-between">
@@ -100,17 +160,15 @@ export default function BillingPage() {
             </p>
           </div>
         </div>
-        {userPlan !== 'free' && (
-          <span className="text-xs text-gray-500">
-            Manage subscription in Stripe portal
-          </span>
-        )}
       </div>
 
       {/* Pricing cards */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         {plans.map((plan) => {
           const isCurrent = plan.tier === userPlan;
+          const isDowngrade = plan.tier === 'free' && userPlan !== 'free';
+          const isUpgrade = !isCurrent && !isDowngrade && plan.tier !== 'free';
+
           return (
             <div
               key={plan.name}
@@ -160,20 +218,29 @@ export default function BillingPage() {
                 <div className="w-full py-3 px-4 rounded-xl text-center bg-gray-700 text-gray-300 text-sm font-semibold">
                   Current Plan
                 </div>
-              ) : plan.tier === 'free' ? (
+              ) : isUpgrade ? (
+                <button
+                  onClick={() => handleUpgrade(plan.tier)}
+                  disabled={loadingPlan !== null}
+                  className={`w-full py-3 px-4 rounded-xl text-sm font-semibold transition-all flex items-center justify-center gap-2 ${
+                    plan.highlight
+                      ? 'bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white'
+                      : 'bg-gray-800 hover:bg-gray-700 text-white border border-gray-600'
+                  } disabled:opacity-50 disabled:cursor-not-allowed`}
+                >
+                  {loadingPlan === plan.tier ? (
+                    <>
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                      Redirecting to checkout...
+                    </>
+                  ) : (
+                    `Upgrade to ${plan.name}`
+                  )}
+                </button>
+              ) : (
                 <div className="w-full py-3 px-4 rounded-xl text-center bg-gray-800 text-gray-500 text-sm">
                   —
                 </div>
-              ) : (
-                <button
-                  className={`w-full py-3 px-4 rounded-xl text-sm font-semibold transition-all ${plan.ctaStyle}`}
-                  onClick={() => {
-                    // TODO: Integrate Stripe Checkout
-                    alert(`Stripe checkout for ${plan.name} plan coming soon! We're finishing the payment integration.`);
-                  }}
-                >
-                  {plan.cta}
-                </button>
               )}
             </div>
           );
@@ -195,6 +262,10 @@ export default function BillingPage() {
           <div>
             <p className="font-medium text-gray-200 mb-1">Do you offer refunds?</p>
             <p className="text-gray-400">We offer a 7-day money-back guarantee for all paid plans, no questions asked.</p>
+          </div>
+          <div>
+            <p className="font-medium text-gray-200 mb-1">Is my payment secure?</p>
+            <p className="text-gray-400">All payments are processed securely through Stripe. We never store your card details.</p>
           </div>
         </div>
       </div>
