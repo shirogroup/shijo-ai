@@ -4,16 +4,16 @@
  */
 
 export const STRIPE_PRICE_IDS = {
-  PRO_MONTHLY: 'price_1SrTjeHF4DsT3nuc4CoCdQNz',
-  ENTERPRISE_MONTHLY: 'price_1SrTjfHF4DsT3nucTM6xX6eu',
+  PRO_MONTHLY: 'price_1TCQLpHTpiuftGGEZWt9UJ2Y',
+  ENTERPRISE_MONTHLY: 'price_1TCQNAHTpiuftGGEtIcqclbd',
   CREDITS_10: 'price_1SrTjgHF4DsT3nuc1a646JL5',
   CREDITS_50: 'price_1SrTjiHF4DsT3nucBXGXeP7s',
   CREDITS_100: 'price_1SrTjkHF4DsT3nucxXEFQXHz',
 } as const;
 
 export const STRIPE_PRODUCT_IDS = {
-  PRO: 'prod_Tp7u1h6YhDsz84',
-  ENTERPRISE: 'prod_Tp7zOpUPcG6i5k',
+  PRO: 'prod_UAltLAeJGLVSqI',
+  ENTERPRISE: 'prod_UAluQCvL32SQ3k',
   CREDITS_10: 'prod_Tp7zE0HT9iE7se',
   CREDITS_50: 'prod_Tp7zbxIWh3cjnu',
   CREDITS_100: 'prod_Tp7zKmv7yYysX5',

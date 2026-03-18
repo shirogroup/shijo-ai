@@ -2,7 +2,7 @@ import Stripe from 'stripe';
 import { db } from '../../db';
 import { users, userQuotas, credits, subscriptions } from '../../db/schema';
 import { eq, sql } from 'drizzle-orm';
-import { PLAN_FEATURES } from './products';
+import { PLAN_FEATURES, STRIPE_PRICE_IDS } from './products';
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
   apiVersion: '2025-02-24.acacia',
@@ -25,7 +25,7 @@ async function handleSubscriptionCreated(subscription: Stripe.Subscription) {
   const priceId = subscription.items.data[0]?.price.id;
   let planTier: 'pro' | 'enterprise' = 'pro';
   
-  if (priceId === 'price_1SrTjfHF4DsT3nucTM6xX6eu') {
+  if (priceId === STRIPE_PRICE_IDS.ENTERPRISE_MONTHLY) {
     planTier = 'enterprise';
   }
   
