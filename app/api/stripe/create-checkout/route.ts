@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { stripe } from '@/lib/stripe';
+import { getStripeClient } from '@/lib/stripe';
 import { db } from '@/db';
 import { users } from '@/db/schema';
 import { getSession } from '@/lib/auth';
@@ -59,7 +59,7 @@ export async function POST(req: NextRequest) {
     let customerId = user.stripeCustomerId;
 
     if (!customerId) {
-      const customer = await stripe.customers.create({
+      const customer = await getStripeClient().customers.create({
         email: user.email,
         name: user.name || undefined,
         metadata: {
@@ -79,7 +79,7 @@ export async function POST(req: NextRequest) {
     const priceId = VALID_PLANS[plan];
     const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://www.shijo.ai';
 
-    const checkoutSession = await stripe.checkout.sessions.create({
+    const checkoutSession = await getStripeClient().checkout.sessions.create({
       customer: customerId,
       mode: 'subscription',
       line_items: [
@@ -107,10 +107,11 @@ export async function POST(req: NextRequest) {
       success: true,
       url: checkoutSession.url,
     });
-  } catch (error) {
-    console.error('[STRIPE CHECKOUT] Error:', error);
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : 'Unknown error';
+    console.error('[STRIPE CHECKOUT] Error:', message, error);
     return NextResponse.json(
-      { error: 'Failed to create checkout session' },
+      { error: `Checkout failed: ${message}` },
       { status: 500 }
     );
   }

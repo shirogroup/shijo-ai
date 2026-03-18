@@ -1,31 +1,30 @@
 import Stripe from 'stripe';
 
-if (!process.env.STRIPE_SECRET_KEY) {
-  throw new Error('STRIPE_SECRET_KEY is not defined in environment variables');
+// Lazy-initialize Stripe client to avoid crashing at import time
+let _stripe: Stripe | null = null;
+
+export function getStripeClient(): Stripe {
+  if (!_stripe) {
+    const key = process.env.STRIPE_SECRET_KEY;
+    if (!key) {
+      throw new Error('STRIPE_SECRET_KEY is not defined in environment variables');
+    }
+    _stripe = new Stripe(key, {
+      typescript: true,
+    });
+  }
+  return _stripe;
 }
 
-export const stripe = new Stripe(process.env.STRIPE_SECRET_KEY, {
-  apiVersion: '2025-02-24.acacia',
-  typescript: true,
+// Keep backward-compatible export (used by webhook route and other files)
+// This will throw at first use if STRIPE_SECRET_KEY is missing, not at import
+export const stripe = new Proxy({} as Stripe, {
+  get(_, prop) {
+    return (getStripeClient() as Record<string | symbol, unknown>)[prop];
+  },
 });
 
 export const STRIPE_CONFIG = {
-  publishableKey: process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY!,
-  webhookSecret: process.env.STRIPE_WEBHOOK_SECRET!,
-  apiVersion: '2025-02-24.acacia' as const,
+  publishableKey: process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY || '',
+  webhookSecret: process.env.STRIPE_WEBHOOK_SECRET || '',
 };
-
-// Verify environment variables
-export function verifyStripeConfig() {
-  const missing = [];
-  
-  if (!process.env.STRIPE_SECRET_KEY) missing.push('STRIPE_SECRET_KEY');
-  if (!process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY) missing.push('NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY');
-  if (!process.env.STRIPE_WEBHOOK_SECRET) missing.push('STRIPE_WEBHOOK_SECRET');
-  
-  if (missing.length > 0) {
-    throw new Error(`Missing Stripe environment variables: ${missing.join(', ')}`);
-  }
-  
-  return true;
-}
