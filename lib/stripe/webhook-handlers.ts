@@ -3,10 +3,9 @@ import { db } from '../../db';
 import { users, userQuotas, credits, subscriptions } from '../../db/schema';
 import { eq, sql } from 'drizzle-orm';
 import { PLAN_FEATURES, STRIPE_PRICE_IDS } from './products';
+import { getStripeClient } from '../stripe';
 
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
-  apiVersion: '2025-02-24.acacia',
-});
+const stripe = getStripeClient();
 
 async function handleSubscriptionCreated(subscription: Stripe.Subscription) {
   const customerId = subscription.customer as string;

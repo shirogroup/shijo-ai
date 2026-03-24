@@ -1,16 +1,24 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { clearSession } from '@/lib/auth';
 
 export const runtime = 'nodejs';
 
 export async function POST(req: NextRequest) {
   try {
-    await clearSession();
-
-    return NextResponse.json({
+    // Set cookie deletion directly on NextResponse (consistent with login route)
+    const response = NextResponse.json({
       success: true,
       message: 'Logged out successfully',
     });
+
+    response.cookies.set('session', '', {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'lax',
+      maxAge: 0,
+      path: '/',
+    });
+
+    return response;
   } catch (error) {
     console.error('Logout error:', error);
     return NextResponse.json(

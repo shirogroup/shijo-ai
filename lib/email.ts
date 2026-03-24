@@ -171,3 +171,57 @@ export function buildWelcomeEmail(name: string): { subject: string; html: string
     html,
   };
 }
+
+// ─── Password reset email ──────────────────────────────────────────────
+
+export function buildPasswordResetEmail(name: string, resetUrl: string): { subject: string; html: string } {
+  const firstName = name?.split(' ')[0] || 'there';
+
+  const html = `
+<!DOCTYPE html>
+<html>
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"></head>
+<body style="margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background-color: #f3f4f6;">
+  <div style="max-width: 600px; margin: 0 auto; padding: 40px 20px;">
+
+    <!-- Header -->
+    <div style="text-align: center; margin-bottom: 32px;">
+      <div style="display: inline-block; background: linear-gradient(135deg, #CC0000, #990000); color: white; width: 48px; height: 48px; line-height: 48px; border-radius: 12px; font-size: 24px; font-weight: bold;">S</div>
+      <h1 style="margin: 12px 0 0 0; font-size: 24px; color: #111827;">SHIJO.AI</h1>
+    </div>
+
+    <!-- Card -->
+    <div style="background: white; border-radius: 16px; padding: 40px 32px; box-shadow: 0 1px 3px rgba(0,0,0,0.1);">
+
+      <h2 style="font-size: 24px; font-weight: 700; color: #111827; margin: 0 0 16px 0;">Reset Your Password</h2>
+      <p style="font-size: 16px; color: #6b7280; margin: 0 0 8px 0;">Hi ${firstName},</p>
+      <p style="font-size: 16px; color: #6b7280; margin: 0 0 24px 0;">We received a request to reset your password. Click the button below to create a new password. This link expires in 1 hour.</p>
+
+      <!-- CTA -->
+      <div style="text-align: center; margin: 32px 0;">
+        <a href="${resetUrl}" style="display: inline-block; background: linear-gradient(135deg, #CC0000, #990000); color: white; text-decoration: none; padding: 14px 32px; border-radius: 12px; font-size: 16px; font-weight: 600;">Reset Password</a>
+      </div>
+
+      <p style="font-size: 14px; color: #9ca3af; margin: 0 0 8px 0;">If the button doesn't work, copy and paste this link into your browser:</p>
+      <p style="font-size: 13px; color: #6b7280; word-break: break-all; margin: 0 0 24px 0;">${resetUrl}</p>
+
+      <!-- Security note -->
+      <div style="background: #f9fafb; border-radius: 8px; padding: 16px; margin-top: 24px;">
+        <p style="font-size: 13px; color: #6b7280; margin: 0;">If you did not request a password reset, you can safely ignore this email. Your password will remain unchanged.</p>
+      </div>
+    </div>
+
+    <!-- Footer -->
+    <div style="text-align: center; margin-top: 32px; color: #9ca3af; font-size: 12px;">
+      <p>&copy; 2026 SHIJO.ai — AI-Powered Marketing Tools</p>
+    </div>
+  </div>
+</body>
+</html>
+  `.trim();
+
+  return {
+    subject: 'Reset your SHIJO.AI password',
+    html,
+  };
+}

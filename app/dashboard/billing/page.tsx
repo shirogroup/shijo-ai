@@ -3,7 +3,7 @@
 import { useState, Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
-import { Check, Crown, Zap, Sparkles, Loader2, CheckCircle, XCircle } from 'lucide-react';
+import { Check, Crown, Zap, Sparkles, Loader2, CheckCircle, XCircle, ExternalLink } from 'lucide-react';
 
 const plans = [
   {
@@ -64,6 +64,7 @@ function BillingContent() {
   const searchParams = useSearchParams();
   const userPlan = user?.planTier || 'free';
   const [loadingPlan, setLoadingPlan] = useState<string | null>(null);
+  const [loadingPortal, setLoadingPortal] = useState(false);
   const [error, setError] = useState('');
 
   const isSuccess = searchParams.get('success') === 'true';
@@ -93,6 +94,31 @@ function BillingContent() {
     } catch {
       setError('Network error. Please try again.');
       setLoadingPlan(null);
+    }
+  };
+
+  const handleManageSubscription = async () => {
+    setError('');
+    setLoadingPortal(true);
+
+    try {
+      const res = await fetch('/api/billing/portal', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+      });
+
+      const data = await res.json();
+
+      if (data.url) {
+        window.location.href = data.url;
+      } else {
+        setError(data.error || 'Failed to open billing portal');
+        setLoadingPortal(false);
+      }
+    } catch {
+      setError('Network error. Please try again.');
+      setLoadingPortal(false);
     }
   };
 
@@ -160,6 +186,20 @@ function BillingContent() {
             </p>
           </div>
         </div>
+        {userPlan !== 'free' && (
+          <button
+            onClick={handleManageSubscription}
+            disabled={loadingPortal}
+            className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium bg-gray-800 hover:bg-gray-700 text-gray-300 border border-gray-700 transition-all disabled:opacity-50"
+          >
+            {loadingPortal ? (
+              <Loader2 className="w-4 h-4 animate-spin" />
+            ) : (
+              <ExternalLink className="w-4 h-4" />
+            )}
+            Manage Subscription
+          </button>
+        )}
       </div>
 
       {/* Pricing cards */}

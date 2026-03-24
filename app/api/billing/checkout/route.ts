@@ -1,59 +1,72 @@
 import { NextRequest, NextResponse } from 'next/server';
-import Stripe from 'stripe';
+import { getStripeClient } from '@/lib/stripe';
+import { getSession } from '@/lib/auth';
 import { db } from '../../../../db';
 import { users } from '../../../../db/schema';
 import { eq } from 'drizzle-orm';
 
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
-  apiVersion: '2025-02-24.acacia',
-});
+export const runtime = 'nodejs';
+
+const stripe = getStripeClient();
 
 export async function POST(req: NextRequest) {
   try {
-    const { priceId, userId, mode = 'subscription' } = await req.json();
-    
-    if (!priceId || !userId) {
+    // Auth check — use session userId, never trust body
+    const session = await getSession();
+    if (!session) {
       return NextResponse.json(
-        { error: 'Missing required fields: priceId, userId' },
+        { error: 'Please sign in first' },
+        { status: 401 }
+      );
+    }
+
+    const { priceId, mode = 'subscription' } = await req.json();
+
+    if (!priceId) {
+      return NextResponse.json(
+        { error: 'Missing required field: priceId' },
         { status: 400 }
       );
     }
-    
+
     const [user] = await db
       .select()
       .from(users)
-      .where(eq(users.id, userId))
+      .where(eq(users.id, session.userId))
       .limit(1);
-    
+
     if (!user) {
       return NextResponse.json(
         { error: 'User not found' },
         { status: 404 }
       );
     }
-    
+
     let customerId = user.stripeCustomerId;
-    
+
     if (!customerId) {
       const customer = await stripe.customers.create({
         email: user.email,
+        name: user.name || undefined,
         metadata: {
           userId: user.id,
         },
       });
-      
+
       customerId = customer.id;
-      
+
       await db
         .update(users)
         .set({
           stripeCustomerId: customerId,
           updatedAt: new Date(),
         })
-        .where(eq(users.id, userId));
+        .where(eq(users.id, user.id));
     }
-    
-    const session = await stripe.checkout.sessions.create({
+
+    const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://www.shijo.ai';
+
+    const checkoutSession = await stripe.checkout.sessions.create({
       customer: customerId,
       mode: mode as 'subscription' | 'payment',
       line_items: [
@@ -62,21 +75,24 @@ export async function POST(req: NextRequest) {
           quantity: 1,
         },
       ],
-      success_url: `${process.env.NEXT_PUBLIC_APP_URL || 'https://shijo.ai'}/dashboard?session_id={CHECKOUT_SESSION_ID}`,
-      cancel_url: `${process.env.NEXT_PUBLIC_APP_URL || 'https://shijo.ai'}/pricing`,
+      success_url: `${baseUrl}/dashboard/billing?success=true`,
+      cancel_url: `${baseUrl}/dashboard/billing?canceled=true`,
       allow_promotion_codes: true,
       billing_address_collection: 'auto',
       customer_update: {
         address: 'auto',
         name: 'auto',
       },
+      metadata: {
+        userId: user.id,
+      },
     });
-    
+
     return NextResponse.json({
-      sessionId: session.id,
-      url: session.url,
+      sessionId: checkoutSession.id,
+      url: checkoutSession.url,
     });
-    
+
   } catch (error) {
     console.error('Checkout session creation error:', error);
     return NextResponse.json(

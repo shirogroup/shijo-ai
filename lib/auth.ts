@@ -3,7 +3,19 @@ import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import { cookies } from 'next/headers';
 
-const JWT_SECRET = process.env.JWT_SECRET || 'change-this-secret-key';
+function getJWTSecret(): string {
+  const secret = process.env.JWT_SECRET;
+  if (!secret) {
+    if (process.env.NODE_ENV === 'production') {
+      throw new Error('JWT_SECRET environment variable is not set. This is required in production.');
+    }
+    // Only allow fallback in development
+    return 'dev-only-secret-change-in-production';
+  }
+  return secret;
+}
+
+const JWT_SECRET = getJWTSecret();
 
 export interface JWTPayload {
   userId: string;

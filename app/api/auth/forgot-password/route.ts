@@ -3,6 +3,7 @@ import { db } from '@/db';
 import { users, passwordResets } from '@/db/schema';
 import { eq } from 'drizzle-orm';
 import crypto from 'crypto';
+import { sendEmail, buildPasswordResetEmail } from '@/lib/email';
 
 export const runtime = 'nodejs';
 
@@ -17,8 +18,6 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    console.log('🔑 FORGOT PASSWORD REQUEST:', { email });
-
     // Check if user exists
     const [user] = await db
       .select()
@@ -28,7 +27,6 @@ export async function POST(req: NextRequest) {
 
     // Always return success to prevent email enumeration
     if (!user) {
-      console.log('❌ User not found, but returning success');
       return NextResponse.json({
         message: 'If an account exists, a reset link has been sent',
       });
@@ -38,8 +36,6 @@ export async function POST(req: NextRequest) {
     const token = crypto.randomBytes(32).toString('hex');
     const expiresAt = new Date(Date.now() + 3600000); // 1 hour from now
 
-    console.log('🔐 Generated reset token:', { userId: user.id, expiresAt });
-
     // Store reset token in database
     await db.insert(passwordResets).values({
       userId: user.id,
@@ -48,19 +44,26 @@ export async function POST(req: NextRequest) {
       createdAt: new Date(),
     });
 
-    // TODO: Send email with reset link
-    // For now, we'll just log the reset URL
-    const resetUrl = `${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/reset-password?token=${token}`;
-    console.log('📧 PASSWORD RESET URL:', resetUrl);
-    console.log('⚠️  EMAIL SENDING NOT IMPLEMENTED - Use this URL to reset password');
+    // Build and send reset email
+    const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://www.shijo.ai';
+    const resetUrl = `${baseUrl}/reset-password?token=${token}`;
+    const resetEmail = buildPasswordResetEmail(user.name || email.split('@')[0], resetUrl);
+
+    sendEmail({ to: email.toLowerCase(), ...resetEmail }).then((sent) => {
+      if (sent) {
+        console.log(`[FORGOT-PASSWORD] Reset email sent to ${email}`);
+      } else {
+        console.error(`[FORGOT-PASSWORD] Failed to send reset email to ${email}`);
+      }
+    }).catch((err) => {
+      console.error(`[FORGOT-PASSWORD] Email send error:`, err);
+    });
 
     return NextResponse.json({
       message: 'If an account exists, a reset link has been sent',
-      // In development, include the reset URL
-      ...(process.env.NODE_ENV === 'development' && { resetUrl }),
     });
   } catch (error) {
-    console.error('❌ FORGOT PASSWORD ERROR:', error);
+    console.error('[FORGOT-PASSWORD] Error:', error);
     return NextResponse.json(
       { error: 'Failed to process request' },
       { status: 500 }

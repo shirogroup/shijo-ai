@@ -1,11 +1,16 @@
 /**
  * Stripe Products and Prices Configuration
- * Updated March 2026 — corrected pricing to $29/$99
+ * Updated March 2026 — LIVE pricing for Pro/Enterprise
+ *
+ * NOTE: Credit pack IDs below are SANDBOX values and will NOT work in production.
+ * To enable credit packs, create LIVE products in the Stripe dashboard and
+ * replace the CREDITS_* IDs with the new LIVE price/product IDs.
  */
 
 export const STRIPE_PRICE_IDS = {
   PRO_MONTHLY: 'price_1TCQLpHTpiuftGGEZWt9UJ2Y',
   ENTERPRISE_MONTHLY: 'price_1TCQNAHTpiuftGGEtIcqclbd',
+  // ⚠️ SANDBOX IDs — replace with LIVE IDs when created
   CREDITS_10: 'price_1SrTjgHF4DsT3nuc1a646JL5',
   CREDITS_50: 'price_1SrTjiHF4DsT3nucBXGXeP7s',
   CREDITS_100: 'price_1SrTjkHF4DsT3nucxXEFQXHz',
@@ -14,10 +19,14 @@ export const STRIPE_PRICE_IDS = {
 export const STRIPE_PRODUCT_IDS = {
   PRO: 'prod_UAltLAeJGLVSqI',
   ENTERPRISE: 'prod_UAluQCvL32SQ3k',
+  // ⚠️ SANDBOX IDs — replace with LIVE IDs when created
   CREDITS_10: 'prod_Tp7zE0HT9iE7se',
   CREDITS_50: 'prod_Tp7zbxIWh3cjnu',
   CREDITS_100: 'prod_Tp7zKmv7yYysX5',
 } as const;
+
+// Whether credit pack purchases are enabled (set to true after LIVE IDs are configured)
+export const CREDIT_PACKS_ENABLED = false;
 
 export const PLAN_FEATURES = {
   free: {
