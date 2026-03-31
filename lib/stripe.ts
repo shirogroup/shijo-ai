@@ -20,7 +20,7 @@ export function getStripeClient(): Stripe {
 // This will throw at first use if STRIPE_SECRET_KEY is missing, not at import
 export const stripe = new Proxy({} as Stripe, {
   get(_, prop) {
-    return (getStripeClient() as Record<string | symbol, unknown>)[prop];
+    return (getStripeClient() as unknown as Record<string | symbol, unknown>)[prop];
   },
 });
 
