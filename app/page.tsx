@@ -2,7 +2,6 @@ import { Header } from '@/components/landing/Header';
 import { Hero } from '@/components/landing/Hero';
 import { Features } from '@/components/landing/Features';
 import { Pricing } from '@/components/landing/Pricing';
-import { TrustBadges } from '@/components/landing/TrustBadges';
 import { UseCases } from '@/components/landing/UseCases';
 import { CTASection } from '@/components/landing/CTASection';
 import { Footer } from '@/components/landing/Footer';
@@ -23,11 +22,6 @@ const jsonLd = {
     highPrice: '99',
     priceCurrency: 'USD',
   },
-  aggregateRating: {
-    '@type': 'AggregateRating',
-    ratingValue: '4.8',
-    ratingCount: '500',
-  },
   description: 'AI-powered SEO and marketing toolkit with 24 tools for social media, content, ads, email, and search optimization.',
   featureList: [
     'AI-powered caption and content generation',
@@ -36,6 +30,11 @@ const jsonLd = {
     'Email sequence and subject line creation',
     'Content repurposing and video scripts',
   ],
+  // aggregateRating intentionally removed — no review system exists in the
+  // product (no reviews table in db/schema.ts). The prior 4.8/500 value was
+  // fabricated; Google can issue a manual action for review-snippet abuse
+  // if structured-data ratings aren't backed by real reviews. Re-add only
+  // once a real review/rating system is built and populated with data.
 };
 
 export default function Home() {
@@ -49,7 +48,6 @@ export default function Home() {
         <Header />
         <article>
           <Hero />
-          <TrustBadges />
           <Features />
           <UseCases />
           <Pricing />
