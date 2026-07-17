@@ -10,7 +10,7 @@ const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
 // Model mapping based on tool's modelTier
 const MODEL_MAP = {
   haiku: 'claude-haiku-4-5-20251001',
-  sonnet: 'claude-sonnet-4-5-20241022',
+  sonnet: 'claude-sonnet-4-5-20250929',
 } as const;
 
 // Max tokens by model tier (haiku tasks are shorter)
