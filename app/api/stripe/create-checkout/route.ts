@@ -8,9 +8,15 @@ import { STRIPE_PRICE_IDS } from '@/lib/stripe/products';
 
 export const runtime = 'nodejs';
 
-const VALID_PLANS: Record<string, string> = {
-  pro: STRIPE_PRICE_IDS.PRO_MONTHLY,
-  enterprise: STRIPE_PRICE_IDS.ENTERPRISE_MONTHLY,
+const VALID_PLANS: Record<string, Record<'monthly' | 'annual', string>> = {
+  pro: {
+    monthly: STRIPE_PRICE_IDS.PRO_MONTHLY,
+    annual: STRIPE_PRICE_IDS.PRO_ANNUAL,
+  },
+  enterprise: {
+    monthly: STRIPE_PRICE_IDS.ENTERPRISE_MONTHLY,
+    annual: STRIPE_PRICE_IDS.ENTERPRISE_ANNUAL,
+  },
 };
 
 export async function POST(req: NextRequest) {
@@ -24,7 +30,14 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const { plan } = await req.json();
+    const { plan, interval = 'monthly' } = await req.json();
+
+    if (interval !== 'monthly' && interval !== 'annual') {
+      return NextResponse.json(
+        { error: 'Invalid billing interval' },
+        { status: 400 }
+      );
+    }
 
     if (!plan || !VALID_PLANS[plan]) {
       return NextResponse.json(
@@ -76,7 +89,7 @@ export async function POST(req: NextRequest) {
     }
 
     // Create Checkout Session
-    const priceId = VALID_PLANS[plan];
+    const priceId = VALID_PLANS[plan][interval as 'monthly' | 'annual'];
     const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://www.shijo.ai';
 
     const checkoutSession = await getStripeClient().checkout.sessions.create({
@@ -93,11 +106,13 @@ export async function POST(req: NextRequest) {
       metadata: {
         userId: user.id,
         plan,
+        interval,
       },
       subscription_data: {
         metadata: {
           userId: user.id,
           plan,
+          interval,
         },
       },
       allow_promotion_codes: true,

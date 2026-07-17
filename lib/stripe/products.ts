@@ -9,7 +9,9 @@
 
 export const STRIPE_PRICE_IDS = {
   PRO_MONTHLY: 'price_1TCQLpHTpiuftGGEZWt9UJ2Y',
+  PRO_ANNUAL: 'price_1TuEaIHTpiuftGGEslehCB4Y',
   ENTERPRISE_MONTHLY: 'price_1TCQNAHTpiuftGGEtIcqclbd',
+  ENTERPRISE_ANNUAL: 'price_1TuEaNHTpiuftGGE9r0fRkWI',
   // ⚠️ SANDBOX IDs — replace with LIVE IDs when created
   CREDITS_10: 'price_1SrTjgHF4DsT3nuc1a646JL5',
   CREDITS_50: 'price_1SrTjiHF4DsT3nucBXGXeP7s',
@@ -65,6 +67,7 @@ export const PLAN_FEATURES = {
     annualPrice: 278,     // 29 * 12 * 0.8
     interval: 'month',
     priceId: STRIPE_PRICE_IDS.PRO_MONTHLY,
+    annualPriceId: STRIPE_PRICE_IDS.PRO_ANNUAL,
     features: {
       aiToolsMonthly: 200,     // 200 generations/month
       aiToolsAccess: 24,       // All 24 tools
@@ -97,6 +100,7 @@ export const PLAN_FEATURES = {
     annualPrice: 950,     // 99 * 12 * 0.8 ≈ 950
     interval: 'month',
     priceId: STRIPE_PRICE_IDS.ENTERPRISE_MONTHLY,
+    annualPriceId: STRIPE_PRICE_IDS.ENTERPRISE_ANNUAL,
     features: {
       aiToolsMonthly: -1,      // Unlimited
       aiToolsAccess: 24,       // All 24 tools

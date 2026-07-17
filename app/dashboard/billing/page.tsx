@@ -66,6 +66,7 @@ function BillingContent() {
   const [loadingPlan, setLoadingPlan] = useState<string | null>(null);
   const [loadingPortal, setLoadingPortal] = useState(false);
   const [error, setError] = useState('');
+  const [billingInterval, setBillingInterval] = useState<'monthly' | 'annual'>('monthly');
 
   const isSuccess = searchParams.get('success') === 'true';
   const isCanceled = searchParams.get('canceled') === 'true';
@@ -80,7 +81,7 @@ function BillingContent() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
-        body: JSON.stringify({ plan: tier }),
+        body: JSON.stringify({ plan: tier, interval: billingInterval }),
       });
 
       const data = await res.json();
@@ -202,6 +203,32 @@ function BillingContent() {
         )}
       </div>
 
+      {/* Monthly / Annual toggle */}
+      <div className="flex items-center justify-center gap-3 mb-8">
+        <span className={`text-sm font-medium ${billingInterval === 'monthly' ? 'text-white' : 'text-gray-500'}`}>
+          Monthly
+        </span>
+        <button
+          type="button"
+          role="switch"
+          aria-checked={billingInterval === 'annual'}
+          onClick={() => setBillingInterval((prev) => (prev === 'monthly' ? 'annual' : 'monthly'))}
+          className="relative w-11 h-6 rounded-full bg-gray-700 transition-colors flex-shrink-0"
+        >
+          <span
+            className={`absolute top-0.5 left-0.5 w-5 h-5 rounded-full bg-white transition-transform ${
+              billingInterval === 'annual' ? 'translate-x-5' : ''
+            }`}
+          />
+        </button>
+        <span className={`text-sm font-medium ${billingInterval === 'annual' ? 'text-white' : 'text-gray-500'}`}>
+          Annual
+        </span>
+        <span className="text-xs font-semibold text-green-400 bg-green-900/30 px-2 py-0.5 rounded-full">
+          Save 20%
+        </span>
+      </div>
+
       {/* Pricing cards */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         {plans.map((plan) => {
@@ -230,17 +257,26 @@ function BillingContent() {
                 <h3 className="text-lg font-bold text-white mb-1">{plan.name}</h3>
                 <p className="text-sm text-gray-400 mb-4">{plan.description}</p>
                 <div className="flex items-baseline gap-1">
-                  <span className="text-4xl font-bold text-white">${plan.price}</span>
+                  <span className="text-4xl font-bold text-white">
+                    ${billingInterval === 'annual' && plan.annualPrice ? plan.annualPrice : plan.price}
+                  </span>
                   {plan.interval && (
-                    <span className="text-gray-500 text-sm">/{plan.interval}</span>
+                    <span className="text-gray-500 text-sm">
+                      /{billingInterval === 'annual' && plan.annualPrice ? 'year' : plan.interval}
+                    </span>
                   )}
                   {!plan.interval && (
                     <span className="text-gray-500 text-sm">forever</span>
                   )}
                 </div>
-                {plan.annualPrice && (
+                {plan.annualPrice && billingInterval === 'monthly' && (
                   <p className="text-xs text-green-400 mt-1">
                     or ${plan.annualPrice}/year (save 20%)
+                  </p>
+                )}
+                {plan.annualPrice && billingInterval === 'annual' && (
+                  <p className="text-xs text-gray-500 mt-1">
+                    (${(plan.annualPrice / 12).toFixed(2)}/mo billed annually)
                   </p>
                 )}
               </div>
