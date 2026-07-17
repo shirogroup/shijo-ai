@@ -6,7 +6,7 @@ import { Lock, Sparkles } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import UsageMeter from '@/components/dashboard/UsageMeter';
 
-const categoryOrder: ToolCategory[] = ['social', 'seo', 'ads', 'email', 'content'];
+const categoryOrder: ToolCategory[] = ['social', 'seo', 'ads', 'email'];
 
 export default function ToolsDirectory() {
   const { user } = useAuth();

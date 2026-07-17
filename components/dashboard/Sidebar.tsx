@@ -120,7 +120,7 @@ export function Sidebar() {
                 <span className="text-sm font-semibold text-white">Upgrade to Pro</span>
               </div>
               <p className="text-xs text-gray-400">
-                Unlock all 24 tools &amp; 200 gens/month for $29/mo
+                Unlock all 12 tools &amp; 200 gens/month for $29/mo
               </p>
             </Link>
           </div>
@@ -134,7 +134,7 @@ export function Sidebar() {
             className="flex items-center gap-2 text-xs text-gray-500 hover:text-gray-300 px-2 py-1.5 rounded transition-colors"
           >
             <Wand2 className="w-3 h-3" />
-            All 24 Tools Overview
+            All 12 Tools Overview
           </Link>
           <Link
             href="/dashboard/billing"

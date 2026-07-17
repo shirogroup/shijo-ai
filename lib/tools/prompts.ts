@@ -1,6 +1,10 @@
 /**
  * Prompt builders for each tool.
  * Each function takes user inputs and returns a system message + user prompt.
+ *
+ * Consolidated to the 12 tools kept per Product Handoff Rev2 — prompt
+ * builders for the 11 cut tools were removed alongside their registry
+ * entries in lib/tools/registry.ts.
  */
 
 type PromptBuilder = (inputs: Record<string, string>) => string;
@@ -14,79 +18,6 @@ Goal: ${i.goal || 'engagement'}
 Include: relevant hashtag suggestions at the end.
 
 Each caption should have a strong hook, body, and CTA. Number them clearly.`,
-
-  'social-content-planner': (i) => `You are a social media strategist. Create a ${i.days || '7'}-day content calendar for a ${i.niche || 'business'} brand on ${i.platforms || 'Instagram, LinkedIn'}.
-
-For each day provide: Day #, Platform, Content Type, Topic/Hook, Caption Direction, Best Time to Post.
-
-Format as a clean structured calendar. Be specific and creative. Tailor tone to: ${i.tone || 'professional yet approachable'}.`,
-
-  'hashtag-optimizer': (i) => `You are a hashtag research expert. Generate an optimized hashtag strategy for ${i.platform || 'Instagram'}.
-
-Niche: ${i.niche}
-Post topic: ${i.topic || 'general content'}
-Account size: ${i.accountSize || 'small (under 10k followers)'}
-
-Provide:
-- 5 HIGH-volume hashtags (1M+ posts) with estimated reach
-- 10 MEDIUM-volume hashtags (100k-1M posts)
-- 10 NICHE hashtags (under 100k posts) — best for engagement
-- 3 BRANDED hashtag suggestions
-
-Total: 30 hashtags, ready to copy. Brief strategy note at the end.`,
-
-  'carousel-reels-generator': (i) => `You are a social media content strategist. Create a ${i.type || 'carousel'} script for ${i.platform || 'Instagram'}.
-
-Topic: ${i.topic}
-Goal: ${i.goal || 'educate and engage'}
-Slides/Segments: ${i.count || '7'}
-
-For each slide/segment provide: Slide #, Headline, Body text (2-3 lines max), Visual suggestion. Include a strong hook as Slide 1 and a CTA as the final slide.`,
-
-  'content-repurposing': (i) => `You are a content repurposing expert. Take the following content and transform it into multiple formats.
-
-Original content: "${i.content}"
-Original format: ${i.originalFormat || 'blog post'}
-Niche/Brand: ${i.niche || 'business'}
-${i.shortFormLength ? `Short-form target length: ${i.shortFormLength}` : ''}
-
-Repurpose into:
-1. Twitter/X thread (5-7 tweets)
-2. LinkedIn post
-3. Instagram caption
-4. Short email blast
-5. YouTube description
-6. TikTok/Reels hook + script (60 sec)
-7. Short-form rewrite (${i.shortFormLength || '150-200 words'}) — 3 variations with different angles
-
-Label each clearly and maintain the core message.`,
-
-  'social-bio-optimizer': (i) => `You are a social media copywriter. Write 3 optimized bios for ${i.platform || 'Instagram'}.
-
-Business/Person: ${i.business}
-What they do: ${i.description}
-Target audience: ${i.audience || 'general'}
-Tone: ${i.tone || 'professional'}
-
-For each variation: provide the bio text, character count, and a brief note on the angle used. Respect the character limit: Instagram 150, LinkedIn 220, Twitter 160, TikTok 80, Threads 150, Bluesky 256, YouTube 1000.`,
-
-  'linkedin-post-generator': (i) => `You are a LinkedIn content strategist who understands the LinkedIn algorithm and professional audience.
-
-Write 3 LinkedIn post variations about: ${i.topic}
-
-Post type: ${i.postType || 'Story-based'}
-Target audience: ${i.audience || 'professionals'}
-Tone: ${i.tone || 'authentic and professional'}
-CTA: ${i.cta || 'engage in comments'}
-
-For each post:
-- Start with a strong hook line (this determines if people click "see more")
-- Use short paragraphs (1-2 sentences max per line)
-- Include line breaks for readability
-- End with a clear CTA
-- Add 3-5 relevant hashtags
-
-Format each post ready to copy-paste directly into LinkedIn. Label clearly as Variation 1, 2, 3.`,
 
   'keyword-research': (i) => `You are an SEO strategist. Perform keyword research for the following.
 
@@ -215,34 +146,6 @@ Deliver 3 audience personas, each with:
 - Facebook/Instagram targeting interests
 - Message that resonates`,
 
-  'pain-to-hook': (i) => `You are a direct response copywriter. Transform pain points into compelling hooks.
-
-Product/Service: ${i.product}
-Main pain point: ${i.pain}
-Audience: ${i.audience || 'general'}
-
-Generate 10 scroll-stopping hooks/opening lines:
-- 3 story openers ("I used to...")
-- 3 pattern interrupts ("Stop doing X...")
-- 2 bold claims ("In 30 days...")
-- 2 questions that hurt ("Are you still...?")
-
-For each: the hook, which emotion it triggers, suggested continuation direction.`,
-
-  'offer-angle-matrix': (i) => `You are a direct response copywriter. Generate a sales angle matrix.
-
-Offer/Product: ${i.offer}
-Main benefit: ${i.benefit || 'saves time'}
-Target market: ${i.market || 'small business owners'}
-
-Create 12 unique angles across these categories:
-- Transformation angles (3): before/after, outcome-focused
-- Fear/Loss angles (3): what they lose by not acting
-- Speed/Ease angles (3): fast, simple, effortless
-- Authority/Proof angles (3): credibility, results, social proof
-
-For each angle: angle name, headline, 2-sentence body, CTA suggestion.`,
-
   'landing-page-copy': (i) => `You are a conversion copywriter specializing in landing pages.
 
 Product/Service: ${i.product}
@@ -279,22 +182,6 @@ For each email:
 
 Include a sequence overview at the top. Make each email feel personal, not corporate.`,
 
-  'subject-line-generator': (i) => `You are an email marketing specialist. Generate high-open-rate subject lines.
-
-Email topic: ${i.topic}
-Audience: ${i.audience || 'subscribers'}
-Email goal: ${i.goal || 'get opens and clicks'}
-Brand voice: ${i.tone || 'friendly'}
-
-Generate 20 subject lines grouped by strategy:
-- Curiosity (4) — tease without giving away
-- Value (4) — clear benefit in subject
-- Urgency (4) — FOMO, deadlines
-- Personalization (4) — feels written for them
-- Pattern interrupt (4) — unexpected, weird, bold
-
-For each: subject line + preview text pairing (40 chars). Note open rate psychology.`,
-
   'newsletter-generator': (i) => `You are a newsletter writer. Create an engaging newsletter issue.
 
 Brand/Publication: ${i.brand || 'the newsletter'}
@@ -313,77 +200,4 @@ Write a complete newsletter with:
 - P.S. line
 
 Make it feel written by a real person, not a brand robot.`,
-
-  'content-idea-generator': (i) => `You are a content strategist. Generate 20 unique content ideas.
-
-Niche/Industry: ${i.niche}
-Target audience: ${i.audience || 'general'}
-Platforms: ${i.platforms || 'blog, social media'}
-Content goal: ${i.goal || 'educate and grow audience'}
-
-For each idea provide:
-- Title/Hook
-- Format (video, blog, carousel, etc.)
-- Angle (what makes it unique)
-- CTA direction
-
-Group into: Educational (7), Inspirational (4), Promotional (4), Engagement (5).`,
-
-  'video-content-suite': (i) => {
-    const outputType = i.outputType || 'Extract short-form clips';
-
-    if (outputType === 'Convert to blog post') {
-      return `You are an SEO content writer. Convert this video script/transcript into a full blog post.
-
-Script/Transcript: "${i.content}"
-Target keyword: ${i.keyword || 'not specified'}
-Tone: ${i.tone || 'informative and conversational'}
-
-Write a complete blog post with:
-- SEO-optimized H1 title
-- Meta description (155 chars)
-- Introduction with hook
-- 4-6 H2 sections with body content
-- Bullet points where appropriate
-- Conclusion with CTA
-- Suggested internal linking opportunities
-- AI Overview optimization: include direct-answer paragraphs that AI search engines can cite`;
-    }
-
-    if (outputType === 'Both (clips + blog)') {
-      return `You are a video content strategist AND SEO writer. Do both tasks for this transcript.
-
-Transcript: "${i.content}"
-Platform target: ${i.platform || 'TikTok/Reels/Shorts'}
-Target keyword: ${i.keyword || 'not specified'}
-Tone: ${i.tone || 'informative and conversational'}
-
-PART 1 — CLIP EXTRACTION
-Identify 5-8 short-form clip moments:
-- Hook line (first sentence that grabs attention)
-- Full clip transcript excerpt
-- Why this works as a clip
-- Suggested caption
-
-PART 2 — BLOG CONVERSION
-Convert the full transcript into a blog post:
-- SEO-optimized H1 title
-- Meta description (155 chars)
-- Introduction with hook
-- 4-6 H2 sections
-- Conclusion with CTA`;
-    }
-
-    // Default: Extract clips
-    return `You are a video content strategist. Analyze this transcript and extract the best short-form clip moments.
-
-Transcript: "${i.content}"
-Platform target: ${i.platform || 'TikTok/Reels/Shorts'}
-
-For each clip (identify 5-8):
-- Hook line (the first sentence that grabs attention)
-- Full clip transcript excerpt
-- Why this works as a clip
-- Suggested caption`;
-  },
 };

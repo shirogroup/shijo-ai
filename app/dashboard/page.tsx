@@ -6,7 +6,7 @@ import { Wand2, Sparkles, ArrowRight, Crown, Zap } from 'lucide-react';
 import UsageMeter from '@/components/dashboard/UsageMeter';
 import { TOOLS, CATEGORIES, type PlanAccess, type ToolCategory } from '@/lib/tools/registry';
 
-const categoryOrder: ToolCategory[] = ['social', 'seo', 'ads', 'email', 'content'];
+const categoryOrder: ToolCategory[] = ['social', 'seo', 'ads', 'email'];
 
 export default function DashboardOverview() {
   const { user } = useAuth();
@@ -24,9 +24,9 @@ export default function DashboardOverview() {
           </h1>
           <p className="text-gray-400">
             {userPlan === 'free'
-              ? 'You have access to 5 free AI tools with 3 generations per day.'
+              ? 'You have access to 2 free AI tools with 3 generations per day.'
               : userPlan === 'pro'
-              ? 'Pro plan — 24 tools, 200 generations/month.'
+              ? 'Pro plan — 12 tools, 200 generations/month.'
               : 'Enterprise — unlimited access to all tools.'}
           </p>
         </div>
@@ -43,10 +43,10 @@ export default function DashboardOverview() {
             <span className="text-xs text-gray-500">Available Tools</span>
           </div>
           <p className="text-2xl font-bold text-white">
-            {userPlan === 'free' ? '5' : '24'}
+            {userPlan === 'free' ? '5' : '12'}
           </p>
           <p className="text-xs text-gray-500 mt-1">
-            {userPlan === 'free' ? 'of 24 total' : 'all unlocked'}
+            {userPlan === 'free' ? 'of 12 total' : 'all unlocked'}
           </p>
         </div>
 
@@ -79,8 +79,8 @@ export default function DashboardOverview() {
             <Sparkles className="w-4 h-4 text-purple-400" />
             <span className="text-xs text-gray-500">Categories</span>
           </div>
-          <p className="text-2xl font-bold text-white">5</p>
-          <p className="text-xs text-gray-500 mt-1">Social, SEO, Ads, Email, Content</p>
+          <p className="text-2xl font-bold text-white">4</p>
+          <p className="text-xs text-gray-500 mt-1">Social, SEO, Ads, Email</p>
         </div>
       </div>
 
@@ -129,7 +129,7 @@ export default function DashboardOverview() {
           <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
             <div>
               <h3 className="text-lg font-semibold text-white mb-1">
-                Unlock all 24 AI marketing tools
+                Unlock all 12 AI marketing tools
               </h3>
               <p className="text-sm text-gray-300">
                 Upgrade to Pro for $29/mo — get 200 generations/month with advanced AI models across all tools.
@@ -149,7 +149,7 @@ export default function DashboardOverview() {
       {/* Category overview */}
       <div className="mt-8">
         <h2 className="text-lg font-semibold text-white mb-4">Tool Categories</h2>
-        <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
           {categoryOrder.map((catKey) => {
             const cat = CATEGORIES[catKey];
             const toolCount = TOOLS.filter((t) => t.category === catKey).length;

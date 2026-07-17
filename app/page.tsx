@@ -22,13 +22,13 @@ const jsonLd = {
     highPrice: '99',
     priceCurrency: 'USD',
   },
-  description: 'AI-powered SEO and marketing toolkit with 24 tools for social media, content, ads, email, and search optimization.',
+  description: 'AI-powered SEO and marketing toolkit with 12 tools for social media, SEO, ads, and email.',
   featureList: [
-    'AI-powered caption and content generation',
-    'SEO keyword research and meta tag optimization',
+    'AI-powered caption generation',
+    'SEO keyword research and content briefs',
+    'AI Overview / AI search optimization',
     'Ad copy and landing page generation',
-    'Email sequence and subject line creation',
-    'Content repurposing and video scripts',
+    'Email sequence and newsletter creation',
   ],
   // aggregateRating intentionally removed — no review system exists in the
   // product (no reviews table in db/schema.ts). The prior 4.8/500 value was

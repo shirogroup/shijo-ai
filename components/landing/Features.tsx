@@ -4,13 +4,13 @@ import { motion } from 'framer-motion';
 import { Badge } from '@/components/ui/badge';
 import { Card } from '@/components/ui/card';
 import {
-  Pencil, CalendarDays, Hash, Film, Repeat2, UserCircle, Linkedin,
+  Pencil,
   Search, FileText, Tags, HelpCircle, Eye,
-  Megaphone, FlaskConical, Users, Lightbulb, LayoutDashboard, Globe,
-  Mail, Zap, Newspaper,
-  BrainCircuit, Video, BookOpen
+  Megaphone, FlaskConical, Users, Globe,
+  Mail, Newspaper,
 } from 'lucide-react';
 
+// Kept in sync with lib/tools/registry.ts (12 tools post-consolidation).
 const categories = [
   {
     label: 'Social Media',
@@ -19,12 +19,6 @@ const categories = [
     borderColor: 'border-pink-200',
     tools: [
       { icon: Pencil, name: 'Post Caption Generator', description: 'Scroll-stopping captions with hooks and CTAs for any platform', free: true },
-      { icon: CalendarDays, name: 'Social Content Planner', description: 'AI-generated content calendars — 7, 14, or 30 days' },
-      { icon: Hash, name: 'Hashtag Optimizer', description: 'Research-backed hashtag sets ranked by reach potential', free: true },
-      { icon: Film, name: 'Carousel & Reels Script', description: 'Slide copy and short-form video scripts' },
-      { icon: Repeat2, name: 'Content Repurposer', description: 'Turn one blog post into threads, tweets, and stories' },
-      { icon: UserCircle, name: 'Social Bio Optimizer', description: 'Keyword-rich bios that convert visitors to followers', free: true },
-      { icon: Linkedin, name: 'LinkedIn Post Generator', description: 'Professional thought-leadership posts that drive engagement', free: true },
     ],
   },
   {
@@ -33,11 +27,11 @@ const categories = [
     bgColor: 'bg-blue-50',
     borderColor: 'border-blue-200',
     tools: [
-      { icon: Search, name: 'Keyword Research', description: 'Semantic keyword clusters with intent and difficulty scoring' },
+      { icon: Search, name: 'Keyword Research', description: 'Primary, long-tail, and question keywords with intent analysis' },
       { icon: FileText, name: 'SEO Content Brief', description: 'Full outlines with headings, questions, and competitor gaps' },
       { icon: Tags, name: 'SEO Meta Generator', description: 'Title tags and meta descriptions optimized for click-through', free: true },
       { icon: HelpCircle, name: 'FAQ Generator', description: 'Schema-ready FAQ sections from any topic or page URL' },
-      { icon: Eye, name: 'AI Overview Optimizer', description: 'Optimize content for Google AI Overviews and featured snippets' },
+      { icon: Eye, name: 'AI Overview Optimizer', description: 'Optimize content for Google AI Overviews and AI search engines' },
     ],
   },
   {
@@ -49,8 +43,6 @@ const categories = [
       { icon: Megaphone, name: 'Ad Copy Generator', description: 'Google, Meta, and LinkedIn ad copy in every format' },
       { icon: FlaskConical, name: 'Ad Headline A/B Tester', description: 'Generate headline variants scored by clarity and click appeal' },
       { icon: Users, name: 'Audience Targeting Profiles', description: 'ICP personas with demographics, psychographics, and hooks' },
-      { icon: Lightbulb, name: 'Pain-to-Hook Converter', description: 'Turn customer pain points into compelling ad hooks' },
-      { icon: LayoutDashboard, name: 'Sales Angle Generator', description: 'Multiple positioning angles for any product or offer' },
       { icon: Globe, name: 'Landing Page Copy Generator', description: 'Full above-the-fold copy: headline, subhead, bullets, CTA' },
     ],
   },
@@ -61,19 +53,7 @@ const categories = [
     borderColor: 'border-green-200',
     tools: [
       { icon: Mail, name: 'Email Sequence Generator', description: 'Multi-step drip campaigns for any funnel stage' },
-      { icon: Zap, name: 'Subject Line Generator', description: '10+ subject line variants A/B-tested for open rates' },
       { icon: Newspaper, name: 'Newsletter Generator', description: 'Weekly newsletter drafts with sections and CTAs' },
-    ],
-  },
-  {
-    label: 'Content',
-    color: 'text-purple-600',
-    bgColor: 'bg-purple-50',
-    borderColor: 'border-purple-200',
-    tools: [
-      { icon: BrainCircuit, name: 'Content Idea Generator', description: 'Trending topic clusters based on your niche and goals' },
-      { icon: Video, name: 'Video Content Suite', description: 'Blog-to-video scripts, clip breakdowns, and repurposing' },
-      { icon: BookOpen, name: 'Blog Post Outline', description: 'SEO-optimized outlines with H2s, key points, and word counts' },
     ],
   },
 ];

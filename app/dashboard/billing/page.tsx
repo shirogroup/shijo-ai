@@ -10,10 +10,10 @@ const plans = [
     name: 'Free',
     price: 0,
     interval: null,
-    description: 'Get started with 5 AI tools',
+    description: 'Get started with 2 AI tools',
     badge: null,
     features: [
-      '5 AI marketing tools',
+      '2 AI marketing tools',
       '3 generations per day',
       'Claude Haiku (Fast AI)',
       'Basic support',
@@ -29,11 +29,10 @@ const plans = [
     description: 'Unlock all tools with advanced AI',
     badge: 'Most Popular',
     features: [
-      'All 24 AI marketing tools',
+      'All 12 AI marketing tools',
       '200 generations per month',
       'Claude Sonnet (Advanced AI)',
       'Priority support',
-      'Content calendar planner',
       'Email sequence generator',
     ],
     highlight: true,
@@ -47,7 +46,7 @@ const plans = [
     description: 'Unlimited power for teams & agencies',
     badge: null,
     features: [
-      'All 24 AI marketing tools',
+      'All 12 AI marketing tools',
       'Unlimited generations',
       'Claude Sonnet (Advanced AI)',
       'Dedicated support',
@@ -129,7 +128,7 @@ function BillingContent() {
         <h1 className="text-3xl font-bold text-white mb-2">Billing & Plans</h1>
         <p className="text-gray-400">
           {userPlan === 'free'
-            ? 'Upgrade your plan to unlock all 24 AI marketing tools.'
+            ? 'Upgrade your plan to unlock all 12 AI marketing tools.'
             : `You're on the ${userPlan.charAt(0).toUpperCase() + userPlan.slice(1)} plan.`}
         </p>
       </div>
@@ -181,9 +180,9 @@ function BillingContent() {
               Current Plan: {userPlan.charAt(0).toUpperCase() + userPlan.slice(1)}
             </p>
             <p className="text-xs text-gray-500">
-              {userPlan === 'free' ? '5 tools, 3 gens/day' :
-               userPlan === 'pro' ? '24 tools, 200 gens/month' :
-               '24 tools, unlimited'}
+              {userPlan === 'free' ? '2 tools, 3 gens/day' :
+               userPlan === 'pro' ? '12 tools, 200 gens/month' :
+               '12 tools, unlimited'}
             </p>
           </div>
         </div>

@@ -133,7 +133,7 @@ export function buildWelcomeEmail(name: string): { subject: string; html: string
     <div style="background: white; border-radius: 16px; padding: 40px 32px; box-shadow: 0 1px 3px rgba(0,0,0,0.1);">
 
       <h2 style="font-size: 28px; font-weight: 700; color: #111827; margin: 0 0 8px 0;">Welcome, ${firstName}!</h2>
-      <p style="font-size: 16px; color: #6b7280; margin: 0 0 24px 0;">Your account is ready. You have access to <strong style="color: #111827;">5 free AI tools</strong> with 3 generations per day — no credit card needed.</p>
+      <p style="font-size: 16px; color: #6b7280; margin: 0 0 24px 0;">Your account is ready. You have access to <strong style="color: #111827;">2 free AI tools</strong> with 3 generations per day — no credit card needed.</p>
 
       <!-- CTA -->
       <div style="text-align: center; margin: 32px 0;">
@@ -151,7 +151,7 @@ export function buildWelcomeEmail(name: string): { subject: string; html: string
 
       <!-- Upgrade CTA -->
       <div style="background: #fef2f2; border: 1px solid #fecaca; border-radius: 12px; padding: 20px; text-align: center; margin-top: 32px;">
-        <p style="font-size: 14px; color: #991b1b; margin: 0 0 12px 0; font-weight: 600;">Unlock all 24 tools for just $29/month</p>
+        <p style="font-size: 14px; color: #991b1b; margin: 0 0 12px 0; font-weight: 600;">Unlock all 12 tools for just $29/month</p>
         <a href="https://shijo.ai/dashboard" style="display: inline-block; background: #111827; color: white; text-decoration: none; padding: 10px 24px; border-radius: 8px; font-size: 14px; font-weight: 600;">View Pro Plan</a>
       </div>
     </div>
@@ -167,7 +167,7 @@ export function buildWelcomeEmail(name: string): { subject: string; html: string
   `.trim();
 
   return {
-    subject: `Welcome to SHIJO.AI — Your 5 free AI tools are ready, ${firstName}!`,
+    subject: `Welcome to SHIJO.AI — Your 2 free AI tools are ready, ${firstName}!`,
     html,
   };
 }

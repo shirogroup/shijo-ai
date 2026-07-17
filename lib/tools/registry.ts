@@ -4,9 +4,15 @@
  * Each tool defines its metadata, fields, model tier, and category.
  * This registry drives the tools directory page, the generate API routing,
  * and the access control system.
+ *
+ * Lineup consolidated from 23 to 12 tools per the Product Handoff Rev2
+ * (market-research-backed keep/cut decision, section 4). The 'content'
+ * category was removed here because both tools that used it (Content Idea
+ * Generator, Video Content Suite) were cut, leaving it empty — an empty
+ * category in the nav would be a broken UI state, not a business decision.
  */
 
-export type ToolCategory = 'social' | 'seo' | 'ads' | 'email' | 'content';
+export type ToolCategory = 'social' | 'seo' | 'ads' | 'email';
 export type ModelTier = 'haiku' | 'sonnet';
 export type PlanAccess = 'free' | 'pro' | 'enterprise';
 
@@ -38,7 +44,6 @@ export const CATEGORIES: Record<ToolCategory, { label: string; color: string; bg
   seo:    { label: 'SEO', color: 'text-blue-600', bgColor: 'bg-blue-50' },
   ads:    { label: 'Ads & Copy', color: 'text-orange-600', bgColor: 'bg-orange-50' },
   email:  { label: 'Email', color: 'text-green-600', bgColor: 'bg-green-50' },
-  content:{ label: 'Content', color: 'text-purple-600', bgColor: 'bg-purple-50' },
 };
 
 // ─── Tool definitions ───────────────────────────────────────────────
@@ -59,105 +64,6 @@ export const TOOLS: ToolConfig[] = [
       { id: 'platform', label: 'Platform', placeholder: 'Instagram', type: 'select', options: ['Instagram', 'LinkedIn', 'Twitter/X', 'TikTok', 'Facebook', 'Threads'] },
       { id: 'tone', label: 'Brand Voice', placeholder: 'e.g. Playful, professional, bold' },
       { id: 'goal', label: 'Goal', placeholder: 'e.g. Engagement, sales, awareness', type: 'select', options: ['Engagement', 'Sales', 'Awareness', 'Traffic', 'Community'] },
-    ],
-  },
-  {
-    id: 'social-content-planner',
-    name: 'Social Content Planner',
-    description: 'Generate a multi-day content calendar with topics, formats, and posting times.',
-    icon: '📅',
-    category: 'social',
-    modelTier: 'sonnet',
-    minPlan: 'pro',
-    outputLabel: 'Your Content Calendar',
-    fields: [
-      { id: 'niche', label: 'Niche / Industry', placeholder: 'e.g. SaaS, fitness, real estate', required: true },
-      { id: 'platforms', label: 'Platforms', placeholder: 'e.g. Instagram, LinkedIn' },
-      { id: 'days', label: 'Number of Days', placeholder: '7', type: 'select', options: ['7', '14', '30'] },
-      { id: 'tone', label: 'Tone', placeholder: 'e.g. Professional yet approachable' },
-    ],
-  },
-  {
-    id: 'hashtag-optimizer',
-    name: 'Hashtag Optimizer',
-    description: 'Get 30 optimized hashtags grouped by reach: high-volume, medium, niche, and branded.',
-    icon: '#️⃣',
-    category: 'social',
-    modelTier: 'haiku',
-    minPlan: 'free',
-    outputLabel: 'Your Hashtag Strategy',
-    fields: [
-      { id: 'niche', label: 'Niche / Industry', placeholder: 'e.g. Yoga, SaaS, Photography', required: true },
-      { id: 'topic', label: 'Post Topic', placeholder: 'e.g. Morning routine tips' },
-      { id: 'platform', label: 'Platform', placeholder: 'Instagram', type: 'select', options: ['Instagram', 'TikTok', 'Twitter/X', 'LinkedIn', 'YouTube'] },
-      { id: 'accountSize', label: 'Account Size', placeholder: 'Small', type: 'select', options: ['Small (under 10K)', 'Medium (10K-100K)', 'Large (100K+)'] },
-    ],
-  },
-  {
-    id: 'carousel-reels-generator',
-    name: 'Carousel & Reels Script',
-    description: 'Create slide-by-slide carousel content or short-form video scripts with hooks and CTAs.',
-    icon: '🎬',
-    category: 'social',
-    modelTier: 'sonnet',
-    minPlan: 'pro',
-    outputLabel: 'Your Script',
-    fields: [
-      { id: 'topic', label: 'Topic', placeholder: 'e.g. 5 SEO mistakes beginners make', required: true },
-      { id: 'type', label: 'Format', placeholder: 'Carousel', type: 'select', options: ['Carousel', 'Reels/Shorts Script', 'TikTok Script'] },
-      { id: 'platform', label: 'Platform', placeholder: 'Instagram', type: 'select', options: ['Instagram', 'TikTok', 'YouTube Shorts', 'LinkedIn'] },
-      { id: 'count', label: 'Number of Slides/Segments', placeholder: '7', type: 'select', options: ['5', '7', '10'] },
-      { id: 'goal', label: 'Goal', placeholder: 'e.g. Educate and engage' },
-    ],
-  },
-  {
-    id: 'content-repurposing',
-    name: 'Content Repurposer',
-    description: 'Transform one piece of content into 6+ formats: tweets, LinkedIn posts, emails, TikTok scripts, and short-form rewrites.',
-    icon: '🔄',
-    category: 'social',
-    modelTier: 'sonnet',
-    minPlan: 'pro',
-    outputLabel: 'Repurposed Content',
-    fields: [
-      { id: 'content', label: 'Original Content', placeholder: 'Paste your blog post, transcript, or long-form content here...', type: 'textarea', required: true },
-      { id: 'originalFormat', label: 'Original Format', placeholder: 'Blog post', type: 'select', options: ['Blog Post', 'Video Transcript', 'Podcast Transcript', 'Newsletter', 'Report', 'Long Social Post'] },
-      { id: 'niche', label: 'Niche / Brand', placeholder: 'e.g. SaaS marketing' },
-      { id: 'shortFormLength', label: 'Short-form target length', placeholder: '150-200 words', type: 'select', options: ['100-150 words', '150-200 words', '200-300 words'], required: false },
-    ],
-  },
-  {
-    id: 'social-bio-optimizer',
-    name: 'Social Bio Optimizer',
-    description: 'Write 3 optimized bio variations for any platform — respecting character limits.',
-    icon: '👤',
-    category: 'social',
-    modelTier: 'haiku',
-    minPlan: 'free',
-    outputLabel: 'Your Bio Variations',
-    fields: [
-      { id: 'business', label: 'Business / Person Name', placeholder: 'e.g. Jane Smith, Acme Co.', required: true },
-      { id: 'description', label: 'What They Do', placeholder: 'e.g. Helps small businesses grow with SEO', required: true },
-      { id: 'platform', label: 'Platform', placeholder: 'Instagram', type: 'select', options: ['Instagram', 'LinkedIn', 'Twitter/X', 'TikTok', 'Threads', 'Bluesky', 'YouTube'] },
-      { id: 'audience', label: 'Target Audience', placeholder: 'e.g. Small business owners' },
-      { id: 'tone', label: 'Tone', placeholder: 'e.g. Professional, witty, bold' },
-    ],
-  },
-  {
-    id: 'linkedin-post-generator',
-    name: 'LinkedIn Post Generator',
-    description: 'Craft engaging LinkedIn posts with hook formulas, storytelling, and professional tone optimized for the algorithm.',
-    icon: '💼',
-    category: 'social',
-    modelTier: 'sonnet',
-    minPlan: 'free',
-    outputLabel: 'Your LinkedIn Posts',
-    fields: [
-      { id: 'topic', label: 'Topic / Key Message', placeholder: 'e.g. Why I stopped chasing vanity metrics', required: true },
-      { id: 'postType', label: 'Post Type', placeholder: 'Story-based', type: 'select', options: ['Story-based', 'Listicle', 'Hot Take / Opinion', 'How-To / Tutorial', 'Case Study', 'Personal Update'] },
-      { id: 'audience', label: 'Target Audience', placeholder: 'e.g. B2B marketers, startup founders' },
-      { id: 'tone', label: 'Tone', placeholder: 'e.g. Authentic, thought-leader, conversational' },
-      { id: 'cta', label: 'Call to Action', placeholder: 'e.g. Comment below, visit link, share your thoughts' },
     ],
   },
 
@@ -292,36 +198,6 @@ export const TOOLS: ToolConfig[] = [
     ],
   },
   {
-    id: 'pain-to-hook',
-    name: 'Pain-to-Hook Converter',
-    description: 'Transform pain points into 10 scroll-stopping hooks: story openers, pattern interrupts, bold claims, and questions.',
-    icon: '🪝',
-    category: 'ads',
-    modelTier: 'sonnet',
-    minPlan: 'pro',
-    outputLabel: 'Your Hooks',
-    fields: [
-      { id: 'product', label: 'Product / Service', placeholder: 'e.g. Social media management tool', required: true },
-      { id: 'pain', label: 'Main Pain Point', placeholder: 'e.g. Spending 3 hours daily on social media with no results', required: true },
-      { id: 'audience', label: 'Audience', placeholder: 'e.g. Solo entrepreneurs, small business owners' },
-    ],
-  },
-  {
-    id: 'offer-angle-matrix',
-    name: 'Sales Angle Generator',
-    description: 'Generate 12 unique offer angles across transformation, fear, speed, and authority categories.',
-    icon: '💎',
-    category: 'ads',
-    modelTier: 'sonnet',
-    minPlan: 'pro',
-    outputLabel: 'Your Sales Angles',
-    fields: [
-      { id: 'offer', label: 'Offer / Product', placeholder: 'e.g. AI-powered SEO tool', required: true },
-      { id: 'benefit', label: 'Main Benefit', placeholder: 'e.g. Saves time on content creation' },
-      { id: 'market', label: 'Target Market', placeholder: 'e.g. Small business owners, agencies' },
-    ],
-  },
-  {
     id: 'landing-page-copy',
     name: 'Landing Page Copy Generator',
     description: 'Generate complete landing page sections: hero, benefits, social proof, FAQ, and CTA blocks.',
@@ -358,22 +234,6 @@ export const TOOLS: ToolConfig[] = [
     ],
   },
   {
-    id: 'subject-line-generator',
-    name: 'Subject Line Generator',
-    description: 'Generate 20 high-open-rate subject lines grouped by curiosity, value, urgency, personalization, and pattern interrupt.',
-    icon: '💌',
-    category: 'email',
-    modelTier: 'haiku',
-    minPlan: 'pro',
-    outputLabel: 'Your Subject Lines',
-    fields: [
-      { id: 'topic', label: 'Email Topic', placeholder: 'e.g. New feature announcement', required: true },
-      { id: 'audience', label: 'Audience', placeholder: 'e.g. Existing subscribers' },
-      { id: 'goal', label: 'Email Goal', placeholder: 'Get opens and clicks', type: 'select', options: ['Get opens and clicks', 'Drive purchases', 'Re-engage inactive', 'Announce news', 'Nurture leads'] },
-      { id: 'tone', label: 'Brand Voice', placeholder: 'e.g. Friendly, bold, witty' },
-    ],
-  },
-  {
     id: 'newsletter-generator',
     name: 'Newsletter Generator',
     description: 'Create a complete newsletter issue with subject line, personal opening, feature content, tips, and P.S. line.',
@@ -388,41 +248,6 @@ export const TOOLS: ToolConfig[] = [
       { id: 'audience', label: 'Audience', placeholder: 'e.g. Marketing professionals' },
       { id: 'length', label: 'Length', placeholder: 'Medium', type: 'select', options: ['Short (200-400 words)', 'Medium (400-600 words)', 'Long (600-900 words)'] },
       { id: 'tone', label: 'Tone', placeholder: 'e.g. Informative and friendly' },
-    ],
-  },
-
-  // ── CONTENT ─────────────────────────────────────────────────────
-  {
-    id: 'content-idea-generator',
-    name: 'Content Idea Generator',
-    description: 'Generate 20 content ideas grouped by type: educational, inspirational, promotional, and engagement.',
-    icon: '💡',
-    category: 'content',
-    modelTier: 'sonnet',
-    minPlan: 'pro',
-    outputLabel: 'Your Content Ideas',
-    fields: [
-      { id: 'niche', label: 'Niche / Industry', placeholder: 'e.g. Digital marketing, fitness, SaaS', required: true },
-      { id: 'audience', label: 'Target Audience', placeholder: 'e.g. Startup founders' },
-      { id: 'platforms', label: 'Platforms', placeholder: 'e.g. Blog, Instagram, YouTube' },
-      { id: 'goal', label: 'Content Goal', placeholder: 'Educate', type: 'select', options: ['Educate and grow audience', 'Generate leads', 'Build authority', 'Drive engagement', 'Promote product'] },
-    ],
-  },
-  {
-    id: 'video-content-suite',
-    name: 'Video Content Suite',
-    description: 'Extract clip moments from transcripts OR convert video scripts into SEO-optimized blog posts.',
-    icon: '🎥',
-    category: 'content',
-    modelTier: 'sonnet',
-    minPlan: 'pro',
-    outputLabel: 'Your Content',
-    fields: [
-      { id: 'content', label: 'Transcript or Script', placeholder: 'Paste your video transcript or script here...', type: 'textarea', required: true },
-      { id: 'outputType', label: 'What do you need?', placeholder: 'Extract clips', type: 'select', options: ['Extract short-form clips', 'Convert to blog post', 'Both (clips + blog)'], required: true },
-      { id: 'keyword', label: 'Target SEO Keyword (for blog)', placeholder: 'e.g. How to do keyword research' },
-      { id: 'platform', label: 'Clip Platform Target', placeholder: 'TikTok/Reels', type: 'select', options: ['TikTok/Reels/Shorts', 'YouTube Shorts', 'LinkedIn Video'] },
-      { id: 'tone', label: 'Tone (for blog)', placeholder: 'e.g. Informative and conversational' },
     ],
   },
 ];

@@ -1,11 +1,11 @@
 /**
  * AI Tools Usage Tracking
  *
- * Handles plan-based access control and usage metering for the 24 AI tools.
+ * Handles plan-based access control and usage metering for the 12 AI tools.
  *
- * Free:       5 tools, 3 gens/day, Haiku only
- * Pro:        24 tools, 200 gens/month, Sonnet for complex tools
- * Enterprise: 24 tools, unlimited, Sonnet for complex tools
+ * Free:       2 tools, 3 gens/day, Haiku only
+ * Pro:        12 tools, 200 gens/month, Sonnet for complex tools
+ * Enterprise: 12 tools, unlimited, Sonnet for complex tools
  */
 
 import { db } from '@/db';
@@ -124,7 +124,7 @@ export async function checkToolAccess(
         remaining: 0,
         limit,
         period: 'day',
-        upgradePrompt: 'Upgrade to Pro ($29/mo) for 200 generations/month across all 24 tools',
+        upgradePrompt: 'Upgrade to Pro ($29/mo) for 200 generations/month across all 12 tools',
       };
     }
 

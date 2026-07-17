@@ -23,7 +23,7 @@ export function Hero() {
             className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-primary/10 border border-primary/20 mb-8"
           >
             <Sparkles className="w-4 h-4 text-primary" />
-            <span className="text-sm font-medium text-primary">24 AI-Powered Marketing Tools</span>
+            <span className="text-sm font-medium text-primary">12 AI-Powered Marketing Tools</span>
           </motion.div>
 
           {/* Headline */}
@@ -57,7 +57,7 @@ export function Hero() {
           >
             <div className="flex items-center gap-1.5">
               <Zap className="w-4 h-4 text-primary" />
-              <span>5 tools free forever</span>
+              <span>2 tools free forever</span>
             </div>
             <div className="flex items-center gap-1.5">
               <Shield className="w-4 h-4 text-primary" />
@@ -80,7 +80,7 @@ export function Hero() {
             </Link>
             <Link href="#features">
               <Button size="lg" variant="outline" className="text-lg px-8 h-14 border-2">
-                See All 24 Tools
+                See All 12 Tools
               </Button>
             </Link>
           </motion.div>

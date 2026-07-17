@@ -50,9 +50,9 @@ export const seoConfig = {
       canonical: 'https://shijo.ai/ai-visibility',
     },
     pricing: {
-      title: 'SEO Tools Pricing | Affordable AI-Powered Keyword Research Plans - SHIJO.ai',
-      description: 'Transparent pricing for enterprise AI SEO tools. Plans starting at $39/month. Includes unlimited keyword research, AI visibility tracking, and rank monitoring. 14-day free trial.',
-      keywords: ['SEO tools pricing', 'keyword research tool cost', 'affordable SEO software'],
+      title: 'AI Marketing Tools Pricing | Free, Pro & Enterprise Plans - SHIJO.ai',
+      description: 'Simple pricing for AI-powered marketing tools. Free plan with 2 tools and 3 generations/day. Pro at $29/mo or Enterprise at $99/mo unlocks all 12 tools with advanced AI models.',
+      keywords: ['AI marketing tools pricing', 'keyword research tool cost', 'affordable SEO software'],
       canonical: 'https://shijo.ai/pricing',
     },
     dashboard: {

@@ -16,16 +16,16 @@ export default function ContentPage() {
       </p>
       <div className="flex gap-3">
         <Link
-          href="/dashboard/tools/content-idea-generator"
-          className="bg-gray-800 hover:bg-gray-700 text-white text-sm font-medium px-4 py-2 rounded-lg transition-colors"
-        >
-          Content Idea Generator
-        </Link>
-        <Link
           href="/dashboard/tools/seo-content-brief"
           className="bg-gray-800 hover:bg-gray-700 text-white text-sm font-medium px-4 py-2 rounded-lg transition-colors"
         >
           SEO Content Brief
+        </Link>
+        <Link
+          href="/dashboard/tools/newsletter-generator"
+          className="bg-gray-800 hover:bg-gray-700 text-white text-sm font-medium px-4 py-2 rounded-lg transition-colors"
+        >
+          Newsletter Generator
         </Link>
       </div>
     </div>

@@ -40,7 +40,7 @@ export const PLAN_FEATURES = {
     interval: null,
     features: {
       aiToolsDaily: 3,         // 3 generations/day
-      aiToolsAccess: 5,        // 5 free tools
+      aiToolsAccess: 2,        // 2 free tools
       aiModel: 'haiku',        // Haiku only
     },
   },
@@ -53,7 +53,7 @@ export const PLAN_FEATURES = {
     annualPriceId: STRIPE_PRICE_IDS.PRO_ANNUAL,
     features: {
       aiToolsMonthly: 200,     // 200 generations/month
-      aiToolsAccess: 24,       // All 24 tools
+      aiToolsAccess: 12,       // All 12 tools
       aiModel: 'auto',         // Haiku or Sonnet per tool config
     },
   },
@@ -66,7 +66,7 @@ export const PLAN_FEATURES = {
     annualPriceId: STRIPE_PRICE_IDS.ENTERPRISE_ANNUAL,
     features: {
       aiToolsMonthly: -1,      // Unlimited
-      aiToolsAccess: 24,       // All 24 tools
+      aiToolsAccess: 12,       // All 12 tools
       aiModel: 'auto',         // Haiku or Sonnet per tool config
     },
   },

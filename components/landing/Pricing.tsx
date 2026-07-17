@@ -19,12 +19,12 @@ export function Pricing() {
           {/* Free */}
           <Card className="p-8">
             <h3 className="text-2xl font-bold mb-2">Free</h3>
-            <p className="text-muted-foreground mb-6">Try 5 tools, no card required</p>
+            <p className="text-muted-foreground mb-6">Try 2 tools, no card required</p>
             <p className="text-4xl font-bold mb-6">
               $0<span className="text-base font-normal text-muted-foreground">/forever</span>
             </p>
             <ul className="space-y-3 mb-8">
-              <li className="flex items-center gap-2"><Check className="w-5 h-5 text-primary" /> 5 AI tools (Haiku-powered)</li>
+              <li className="flex items-center gap-2"><Check className="w-5 h-5 text-primary" /> 2 AI tools (Haiku-powered)</li>
               <li className="flex items-center gap-2"><Check className="w-5 h-5 text-primary" /> 3 generations per day</li>
               <li className="flex items-center gap-2"><Check className="w-5 h-5 text-primary" /> No credit card needed</li>
             </ul>
@@ -39,7 +39,7 @@ export function Pricing() {
               Most Popular
             </div>
             <h3 className="text-2xl font-bold mb-2">Pro</h3>
-            <p className="text-muted-foreground mb-6">All 24 tools, advanced AI</p>
+            <p className="text-muted-foreground mb-6">All 12 tools, advanced AI</p>
             <p className="text-4xl font-bold mb-2">
               $29<span className="text-base font-normal text-muted-foreground">/month</span>
             </p>
@@ -47,7 +47,7 @@ export function Pricing() {
               or $278/year <span className="text-primary font-medium">(save 20%)</span>
             </p>
             <ul className="space-y-3 mb-8">
-              <li className="flex items-center gap-2"><Check className="w-5 h-5 text-primary" /> All 24 AI tools</li>
+              <li className="flex items-center gap-2"><Check className="w-5 h-5 text-primary" /> All 12 AI tools</li>
               <li className="flex items-center gap-2"><Check className="w-5 h-5 text-primary" /> Sonnet AI for complex tasks</li>
               <li className="flex items-center gap-2"><Check className="w-5 h-5 text-primary" /> 200 generations/month</li>
               <li className="flex items-center gap-2"><Check className="w-5 h-5 text-primary" /> Priority support</li>
