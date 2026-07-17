@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/db';
-import { users, userQuotas } from '@/db/schema';
+import { users } from '@/db/schema';
 import { getSession } from '@/lib/auth';
 import { eq } from 'drizzle-orm';
 
@@ -29,10 +29,8 @@ export async function GET(req: NextRequest) {
       );
     }
 
-    const quota = await db.query.userQuotas.findFirst({
-      where: eq(userQuotas.userId, user.id),
-    });
-
+    // Legacy per-feature quota system retired — usage is tracked via
+    // lib/tools/usage.ts (see /api/usage) instead.
     return NextResponse.json({
       user: {
         id: user.id,
@@ -42,7 +40,7 @@ export async function GET(req: NextRequest) {
         subscriptionStatus: user.subscriptionStatus,
         createdAt: user.createdAt,
       },
-      quota: quota || null,
+      quota: null,
     });
   } catch (error) {
     console.error('Get user error:', error);

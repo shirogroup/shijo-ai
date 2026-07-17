@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/db';
-import { users, userQuotas } from '@/db/schema';
+import { users } from '@/db/schema';
 import { hashPassword, signToken } from '@/lib/auth';
 import { eq } from 'drizzle-orm';
 import { sendEmail, buildWelcomeEmail } from '@/lib/email';
@@ -48,26 +48,6 @@ export async function POST(req: NextRequest) {
       name: name || null,
       planTier: 'free',
     }).returning();
-
-    // Initialize user quota (free plan defaults)
-    await db.insert(userQuotas).values({
-      userId: newUser.id,
-      planTier: 'free',
-      billingCycleStart: new Date().toISOString().split('T')[0],
-      billingCycleEnd: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
-      seedKeywordsQuota: 10000,
-      expansionsQuota: 3,
-      clusteringQuota: 0,
-      briefsQuota: 0,
-      auditsQuota: 0,
-      metaGenQuota: 1000,
-      aeoQuota: 0,
-      searchVolumeQuota: 0,
-      serpSnapshotsQuota: 0,
-      aiVisibilityScansQuota: 0,
-      aiSimulatorQuota: 0,
-      predictiveSeoQuota: 0,
-    });
 
     // Create JWT token
     const token = signToken({

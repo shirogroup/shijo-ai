@@ -30,6 +30,9 @@ export const STRIPE_PRODUCT_IDS = {
 // Whether credit pack purchases are enabled (set to true after LIVE IDs are configured)
 export const CREDIT_PACKS_ENABLED = false;
 
+// Note: these aiTools* fields are descriptive/reference only. The actual
+// enforced limits live in lib/tools/usage.ts (TOOL_LIMITS) — that's the
+// single source of truth. Keep the two in sync manually if either changes.
 export const PLAN_FEATURES = {
   free: {
     name: 'Free',
@@ -39,26 +42,6 @@ export const PLAN_FEATURES = {
       aiToolsDaily: 3,         // 3 generations/day
       aiToolsAccess: 5,        // 5 free tools
       aiModel: 'haiku',        // Haiku only
-      // Legacy keyword features (kept for compatibility)
-      seedKeywords: 10000,
-      expansions: 0,
-      clustering: 0,
-      briefs: 0,
-      audits: 0,
-      metaGen: 1000,
-      aeo: 0,
-      searchVolume: 0,
-      serpSnapshots: 0,
-      rankKeywords: 0,
-      aiVisibility: 0,
-      aiSimulator: 0,
-      predictiveSeo: 0,
-    },
-    dailyLimits: {
-      expansions: 3,
-      clustering: 1,
-      audits: 1,
-      aiTools: 3,
     },
   },
   pro: {
@@ -72,26 +55,6 @@ export const PLAN_FEATURES = {
       aiToolsMonthly: 200,     // 200 generations/month
       aiToolsAccess: 24,       // All 24 tools
       aiModel: 'auto',         // Haiku or Sonnet per tool config
-      seedKeywords: 10000,
-      expansions: 100,
-      clustering: 50,
-      briefs: 300,
-      audits: 50,
-      metaGen: 1000,
-      aeo: 100,
-      searchVolume: 500,
-      serpSnapshots: 100,
-      rankKeywords: 50,
-      aiVisibility: 0,
-      aiSimulator: 0,
-      predictiveSeo: 0,
-    },
-    burstAllowance: {
-      expansions: 25,
-      briefs: 50,
-      audits: 10,
-      searchVolume: 100,
-      serpSnapshots: 20,
     },
   },
   enterprise: {
@@ -105,28 +68,6 @@ export const PLAN_FEATURES = {
       aiToolsMonthly: -1,      // Unlimited
       aiToolsAccess: 24,       // All 24 tools
       aiModel: 'auto',         // Haiku or Sonnet per tool config
-      seedKeywords: 10000,
-      expansions: 5000,
-      clustering: 500,
-      briefs: 2000,
-      audits: 500,
-      metaGen: 10000,
-      aeo: 1000,
-      searchVolume: 5000,
-      serpSnapshots: 1000,
-      rankKeywords: 200,
-      aiVisibility: 2,
-      aiSimulator: 100,
-      predictiveSeo: 200,
-    },
-    burstAllowance: {
-      expansions: 500,
-      briefs: 400,
-      audits: 100,
-      searchVolume: 1000,
-      serpSnapshots: 200,
-      aiSimulator: 20,
-      predictiveSeo: 40,
     },
   },
 } as const;
@@ -159,15 +100,6 @@ export const CREDIT_PACKS = [
     bestValue: true,
   },
 ] as const;
-
-export const CREDIT_COSTS = {
-  expansion: 3,
-  clustering: 5,
-  serpSnapshot: 10,
-  searchVolume: 5,
-  pageAudit: 50,
-  rankSnapshot: 50,
-} as const;
 
 export type PlanTier = 'free' | 'pro' | 'enterprise';
 export type CreditPackId = typeof STRIPE_PRICE_IDS[keyof typeof STRIPE_PRICE_IDS];

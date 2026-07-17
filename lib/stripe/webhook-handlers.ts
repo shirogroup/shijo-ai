@@ -1,8 +1,8 @@
 import Stripe from 'stripe';
 import { db } from '../../db';
-import { users, userQuotas, credits, subscriptions } from '../../db/schema';
-import { eq, sql } from 'drizzle-orm';
-import { PLAN_FEATURES, STRIPE_PRICE_IDS } from './products';
+import { users, credits, subscriptions } from '../../db/schema';
+import { eq } from 'drizzle-orm';
+import { STRIPE_PRICE_IDS } from './products';
 import { getStripeClient } from '../stripe';
 
 const stripe = getStripeClient();
@@ -48,50 +48,11 @@ async function handleSubscriptionCreated(subscription: Stripe.Subscription) {
     currentPeriodEnd: new Date(subscription.current_period_end * 1000),
     cancelAtPeriodEnd: subscription.cancel_at_period_end,
   });
-  
-  const planFeatures = PLAN_FEATURES[planTier].features;
-  
-  // userQuotas uses date() - need string format 'YYYY-MM-DD'
-  const billingCycleEndDate = new Date(subscription.current_period_end * 1000);
-  
-  await db.insert(userQuotas).values({
-    userId: user.id,
-    planTier,
-    billingCycleStart: new Date().toISOString().split('T')[0],
-    billingCycleEnd: billingCycleEndDate.toISOString().split('T')[0],
-    seedKeywordsQuota: planFeatures.seedKeywords,
-    expansionsQuota: planFeatures.expansions,
-    clusteringQuota: planFeatures.clustering,
-    briefsQuota: planFeatures.briefs,
-    auditsQuota: planFeatures.audits,
-    metaGenQuota: planFeatures.metaGen,
-    aeoQuota: planFeatures.aeo,
-    searchVolumeQuota: planFeatures.searchVolume,
-    serpSnapshotsQuota: planFeatures.serpSnapshots,
-    aiVisibilityScansQuota: planFeatures.aiVisibility,
-    aiSimulatorQuota: planFeatures.aiSimulator,
-    predictiveSeoQuota: planFeatures.predictiveSeo,
-  }).onConflictDoUpdate({
-    target: [userQuotas.userId],
-    set: {
-      planTier,
-      billingCycleEnd: billingCycleEndDate.toISOString().split('T')[0],
-      seedKeywordsQuota: planFeatures.seedKeywords,
-      expansionsQuota: planFeatures.expansions,
-      clusteringQuota: planFeatures.clustering,
-      briefsQuota: planFeatures.briefs,
-      auditsQuota: planFeatures.audits,
-      metaGenQuota: planFeatures.metaGen,
-      aeoQuota: planFeatures.aeo,
-      searchVolumeQuota: planFeatures.searchVolume,
-      serpSnapshotsQuota: planFeatures.serpSnapshots,
-      aiVisibilityScansQuota: planFeatures.aiVisibility,
-      aiSimulatorQuota: planFeatures.aiSimulator,
-      predictiveSeoQuota: planFeatures.predictiveSeo,
-      updatedAt: new Date(),
-    },
-  });
-  
+
+  // Note: per-feature quota tracking (userQuotas) was retired — plan
+  // access/limits are enforced entirely via lib/tools/usage.ts, keyed off
+  // users.planTier (already updated above).
+
   console.log(`Subscription created for user ${user.id}, plan: ${planTier}`);
 }
 
@@ -145,55 +106,23 @@ async function handleSubscriptionDeleted(subscription: Stripe.Subscription) {
       updatedAt: new Date(),
     })
     .where(eq(users.id, user.id));
-  
-  await db
-    .update(userQuotas)
-    .set({
-      planTier: 'free',
-      expansionsQuota: 0,
-      clusteringQuota: 0,
-      briefsQuota: 0,
-      auditsQuota: 0,
-      aeoQuota: 0,
-      searchVolumeQuota: 0,
-      serpSnapshotsQuota: 0,
-      aiVisibilityScansQuota: 0,
-      aiSimulatorQuota: 0,
-      predictiveSeoQuota: 0,
-      updatedAt: new Date(),
-    })
-    .where(eq(userQuotas.userId, user.id));
 }
 
 async function handleInvoicePaymentSucceeded(invoice: Stripe.Invoice) {
   const customerId = invoice.customer as string;
-  
+
   const [user] = await db
     .select()
     .from(users)
     .where(eq(users.stripeCustomerId, customerId))
     .limit(1);
-  
+
   if (!user) return;
-  
-  await db
-    .update(userQuotas)
-    .set({
-      seedKeywordsUsed: 0,
-      expansionsUsed: 0,
-      clusteringUsed: 0,
-      briefsUsed: 0,
-      auditsUsed: 0,
-      metaGenUsed: 0,
-      aeoUsed: 0,
-      searchVolumeUsed: 0,
-      serpSnapshotsUsed: 0,
-      aiVisibilityScansUsed: 0,
-      aiSimulatorUsed: 0,
-      predictiveSeoUsed: 0,
-      updatedAt: new Date(),
-    })
-    .where(eq(userQuotas.userId, user.id));
+
+  // Monthly AI-tools usage resets automatically — lib/tools/usage.ts counts
+  // usageLogs rows since the start of the calendar month, no explicit
+  // reset needed here.
+  console.log(`Invoice payment succeeded for user ${user.id}`);
 }
 
 async function handleInvoicePaymentFailed(invoice: Stripe.Invoice) {
@@ -220,14 +149,10 @@ async function handleCheckoutSessionCompleted(session: Stripe.Checkout.Session) 
     else if (amountTotal === 900) creditsToAdd = 100;
     
     if (creditsToAdd > 0) {
-      await db
-        .update(userQuotas)
-        .set({
-          creditsBalance: sql`COALESCE(${userQuotas.creditsBalance}, 0) + ${creditsToAdd}`,
-          updatedAt: new Date(),
-        })
-        .where(eq(userQuotas.userId, user.id));
-      
+      // Note: credit packs are not currently purchasable (CREDIT_PACKS_ENABLED
+      // is false in lib/stripe/products.ts, sandbox price IDs only) — this
+      // path records purchase history but no longer maintains a separate
+      // userQuotas.creditsBalance counter, since that system was retired.
       await db.insert(credits).values({
         userId: user.id,
         amount: creditsToAdd,
