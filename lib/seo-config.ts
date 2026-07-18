@@ -33,7 +33,7 @@ export const seoConfig = {
   pages: {
     home: {
       title: 'SHIJO.ai - AI-Powered SEO Tools | Keyword Research & AI Search Visibility Tracking',
-      description: 'Enterprise AI SEO platform for keyword research, AI search visibility tracking in ChatGPT & Claude, and SEO automation. Track rankings, optimize content, and dominate AI search. Free trial available.',
+      description: 'AI-powered SEO and marketing platform with 12 tools for keyword research, content generation, ad copy, and email. 2 tools free forever, no credit card required.',
       keywords: ['AI SEO tools', 'keyword research tool', 'AI search visibility', 'ChatGPT SEO'],
       canonical: 'https://shijo.ai',
     },

@@ -21,7 +21,7 @@ export default function RegisterPage() {
           {/* Header */}
           <div className="text-center mb-8">
             <h1 className="text-2xl font-bold mb-2">Create your account</h1>
-            <p className="text-gray-600">Start your free trial today</p>
+            <p className="text-gray-600">2 tools free forever, no credit card needed</p>
           </div>
 
           {/* Form */}

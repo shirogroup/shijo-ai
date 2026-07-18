@@ -59,8 +59,8 @@ export function Footer() {
             <h4 className="font-bold mb-4">Company</h4>
             <ul className="space-y-2">
               <li>
-                <Link href="/#about" className="text-gray-400 hover:text-white transition-colors">
-                  About Us
+                <Link href="/contact" className="text-gray-400 hover:text-white transition-colors">
+                  Contact
                 </Link>
               </li>
               <li>
@@ -93,6 +93,18 @@ export function Footer() {
             </Link>
             <Link href="/cookies" className="text-gray-400 hover:text-white transition-colors">
               Cookie Policy
+            </Link>
+            <Link href="/gdpr-compliance" className="text-gray-400 hover:text-white transition-colors">
+              GDPR Compliance
+            </Link>
+            <Link href="/ai-compliance" className="text-gray-400 hover:text-white transition-colors">
+              AI Compliance
+            </Link>
+            <Link href="/security" className="text-gray-400 hover:text-white transition-colors">
+              Security
+            </Link>
+            <Link href="/contact" className="text-gray-400 hover:text-white transition-colors">
+              Contact
             </Link>
           </div>
           

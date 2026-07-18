@@ -41,6 +41,28 @@ export const termsAcceptances = pgTable('terms_acceptances', {
   userIdx: index('idx_terms_acceptances_user').on(table.userId),
 }));
 
+// Contact-page / support-ticket submissions. userId is nullable and
+// onDelete: 'set null' (not cascade) — a ticket is a support record, not
+// user-owned data in the GDPR-export sense, so it should survive account
+// deletion for the team's own record-keeping rather than vanish with the
+// account it was filed from.
+export const supportTickets = pgTable('support_tickets', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  userId: uuid('user_id').references(() => users.id, { onDelete: 'set null' }),
+  name: varchar('name', { length: 255 }).notNull(),
+  email: varchar('email', { length: 255 }).notNull(),
+  subject: varchar('subject', { length: 255 }).notNull(),
+  message: text('message').notNull(),
+  status: varchar('status', { length: 20 }).default('open').notNull(), // open | in_progress | resolved
+  adminNotes: text('admin_notes'),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  updatedAt: timestamp('updated_at').defaultNow().notNull(),
+  resolvedAt: timestamp('resolved_at'),
+}, (table) => ({
+  statusIdx: index('idx_support_tickets_status').on(table.status, table.createdAt),
+  userIdx: index('idx_support_tickets_user').on(table.userId),
+}));
+
 export const subscriptions = pgTable('subscriptions', {
   id: uuid('id').primaryKey().defaultRandom(),
   userId: uuid('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),

@@ -50,10 +50,9 @@ export function Pricing() {
               <li className="flex items-center gap-2"><Check className="w-5 h-5 text-primary" /> All 12 AI tools</li>
               <li className="flex items-center gap-2"><Check className="w-5 h-5 text-primary" /> Sonnet AI for complex tasks</li>
               <li className="flex items-center gap-2"><Check className="w-5 h-5 text-primary" /> 200 generations/month</li>
-              <li className="flex items-center gap-2"><Check className="w-5 h-5 text-primary" /> Priority support</li>
             </ul>
             <Link href="/register">
-              <Button className="w-full bg-primary hover:bg-primary/90 text-white">Start Pro Trial</Button>
+              <Button className="w-full bg-primary hover:bg-primary/90 text-white">Get Started with Pro</Button>
             </Link>
           </Card>
 
@@ -70,11 +69,10 @@ export function Pricing() {
             <ul className="space-y-3 mb-8">
               <li className="flex items-center gap-2"><Check className="w-5 h-5 text-primary" /> Everything in Pro</li>
               <li className="flex items-center gap-2"><Check className="w-5 h-5 text-primary" /> Unlimited generations</li>
-              <li className="flex items-center gap-2"><Check className="w-5 h-5 text-primary" /> Team collaboration</li>
-              <li className="flex items-center gap-2"><Check className="w-5 h-5 text-primary" /> Dedicated account manager</li>
+              <li className="flex items-center gap-2 text-muted-foreground"><Check className="w-5 h-5 text-primary" /> Team collaboration <span className="text-xs">(coming soon)</span></li>
             </ul>
             <Link href="/register">
-              <Button className="w-full" variant="outline">Start Enterprise Trial</Button>
+              <Button className="w-full" variant="outline">Get Started with Enterprise</Button>
             </Link>
           </Card>
         </div>

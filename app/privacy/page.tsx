@@ -17,7 +17,7 @@ export default function PrivacyPage() {
           <p className="text-gray-500 mb-12">Last updated: July 17, 2026</p>
 
           <div className="prose prose-gray max-w-none space-y-8">
-            <section>
+            <section id="1">
               <h2 className="text-2xl font-semibold text-gray-900 mb-4">1. Introduction</h2>
               <p className="text-gray-700 leading-relaxed">
                 SHIRO Technologies LLC (&quot;Company,&quot; &quot;we,&quot; &quot;us,&quot; or &quot;our&quot;) operates
@@ -27,7 +27,7 @@ export default function PrivacyPage() {
               </p>
             </section>
 
-            <section>
+            <section id="2">
               <h2 className="text-2xl font-semibold text-gray-900 mb-4">2. Information We Collect</h2>
               <p className="text-gray-700 leading-relaxed mb-4">
                 <strong>Account Information:</strong> When you register, we collect your name, email
@@ -52,7 +52,7 @@ export default function PrivacyPage() {
               </p>
             </section>
 
-            <section>
+            <section id="3">
               <h2 className="text-2xl font-semibold text-gray-900 mb-4">3. How We Use Your Information</h2>
               <p className="text-gray-700 leading-relaxed">
                 We use your information to: provide and maintain the Service; process subscriptions and
@@ -63,7 +63,7 @@ export default function PrivacyPage() {
               </p>
             </section>
 
-            <section>
+            <section id="4">
               <h2 className="text-2xl font-semibold text-gray-900 mb-4">4. AI Data Processing</h2>
               <p className="text-gray-700 leading-relaxed mb-4">
                 When you use our AI-powered tools, the inputs you submit are sent to our third-party AI
@@ -84,7 +84,7 @@ export default function PrivacyPage() {
               </p>
             </section>
 
-            <section>
+            <section id="5">
               <h2 className="text-2xl font-semibold text-gray-900 mb-4">5. Data Sharing &amp; Sub-Processors</h2>
               <p className="text-gray-700 leading-relaxed mb-4">
                 We share data with the following categories of service providers, each of which processes
@@ -108,7 +108,7 @@ export default function PrivacyPage() {
               </p>
             </section>
 
-            <section>
+            <section id="6">
               <h2 className="text-2xl font-semibold text-gray-900 mb-4">6. International Data Transfers</h2>
               <p className="text-gray-700 leading-relaxed">
                 We and our service providers listed in Section 5 are based in the United States. If you
@@ -119,7 +119,7 @@ export default function PrivacyPage() {
               </p>
             </section>
 
-            <section>
+            <section id="7">
               <h2 className="text-2xl font-semibold text-gray-900 mb-4">7. Data Security</h2>
               <p className="text-gray-700 leading-relaxed">
                 We implement industry-standard security measures including encrypted data transmission
@@ -130,7 +130,7 @@ export default function PrivacyPage() {
               </p>
             </section>
 
-            <section>
+            <section id="8">
               <h2 className="text-2xl font-semibold text-gray-900 mb-4">8. Security Incident Notification</h2>
               <p className="text-gray-700 leading-relaxed">
                 If we become aware of a security incident that compromises the confidentiality, integrity,
@@ -140,7 +140,7 @@ export default function PrivacyPage() {
               </p>
             </section>
 
-            <section>
+            <section id="9">
               <h2 className="text-2xl font-semibold text-gray-900 mb-4">9. Data Retention</h2>
               <p className="text-gray-700 leading-relaxed">
                 We retain your account data for as long as your account is active. Upon account deletion,
@@ -151,13 +151,19 @@ export default function PrivacyPage() {
               </p>
             </section>
 
-            <section>
+            <section id="10">
               <h2 className="text-2xl font-semibold text-gray-900 mb-4">10. Your Privacy Rights</h2>
               <p className="text-gray-700 leading-relaxed mb-4">
                 Depending on your jurisdiction, you may have the right to: access the personal data we hold
                 about you; request correction of inaccurate data; request deletion of your data; object to
                 or restrict certain processing; and receive your data in a portable format. To exercise any
                 of these rights, contact us at the address in Section 17.
+              </p>
+              <p className="text-gray-700 leading-relaxed mb-4">
+                <strong>Self-service tools:</strong> logged-in users can export a complete copy of their
+                account data, or permanently delete their account and all associated data, at any time from{' '}
+                <strong>Dashboard &rarr; Settings &rarr; Data &amp; Privacy</strong> &mdash; no request or
+                waiting period required.
               </p>
               <p className="text-gray-700 leading-relaxed">
                 <strong>For users in the European Economic Area, United Kingdom, or Switzerland:</strong> we
@@ -168,7 +174,7 @@ export default function PrivacyPage() {
               </p>
             </section>
 
-            <section>
+            <section id="11">
               <h2 className="text-2xl font-semibold text-gray-900 mb-4">11. Canadian Privacy Rights (PIPEDA)</h2>
               <p className="text-gray-700 leading-relaxed">
                 If you are located in Canada, we collect, use, and disclose your personal information in
@@ -183,7 +189,7 @@ export default function PrivacyPage() {
               </p>
             </section>
 
-            <section>
+            <section id="12">
               <h2 className="text-2xl font-semibold text-gray-900 mb-4">12. California Privacy Rights (CCPA/CPRA)</h2>
               <p className="text-gray-700 leading-relaxed">
                 If you are a California resident, you have the right to know what personal information we
@@ -195,7 +201,7 @@ export default function PrivacyPage() {
               </p>
             </section>
 
-            <section>
+            <section id="13">
               <h2 className="text-2xl font-semibold text-gray-900 mb-4">13. Cookies</h2>
               <p className="text-gray-700 leading-relaxed">
                 We use cookies and similar technologies for authentication, security, and analytics
@@ -205,7 +211,7 @@ export default function PrivacyPage() {
               </p>
             </section>
 
-            <section>
+            <section id="14">
               <h2 className="text-2xl font-semibold text-gray-900 mb-4">14. AI-Generated Content &amp; the EU AI Act</h2>
               <p className="text-gray-700 leading-relaxed">
                 Content generated through our AI tools is produced using large language models provided by
@@ -217,7 +223,7 @@ export default function PrivacyPage() {
               </p>
             </section>
 
-            <section>
+            <section id="15">
               <h2 className="text-2xl font-semibold text-gray-900 mb-4">15. Children&apos;s Privacy</h2>
               <p className="text-gray-700 leading-relaxed">
                 The Service is not directed to individuals under the age of 18, and our Terms of Service
@@ -228,7 +234,7 @@ export default function PrivacyPage() {
               </p>
             </section>
 
-            <section>
+            <section id="16">
               <h2 className="text-2xl font-semibold text-gray-900 mb-4">16. Changes to This Policy</h2>
               <p className="text-gray-700 leading-relaxed">
                 We may update this Privacy Policy from time to time. We will notify you of material changes
@@ -238,7 +244,7 @@ export default function PrivacyPage() {
               </p>
             </section>
 
-            <section>
+            <section id="17">
               <h2 className="text-2xl font-semibold text-gray-900 mb-4">17. Contact</h2>
               <p className="text-gray-700 leading-relaxed">
                 For questions about this Privacy Policy or to exercise your data rights, contact us at:

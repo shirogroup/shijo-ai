@@ -281,3 +281,165 @@ export function buildTermsAcceptedEmail(
     html,
   };
 }
+
+// ─── Account deletion confirmation ─────────────────────────────────────
+
+export function buildAccountDeletedEmail(
+  name: string,
+  opts: { email: string; deletedAt: string }
+): { subject: string; html: string } {
+  const firstName = name?.split(' ')[0] || 'there';
+  const html = `
+<!DOCTYPE html>
+<html>
+<head><meta charset="utf-8"></head>
+<body style="margin: 0; padding: 0; background: #f3f4f6; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;">
+  <div style="max-width: 560px; margin: 0 auto; padding: 40px 20px;">
+    <div style="text-align: center; margin-bottom: 32px;">
+      <div style="display: inline-block; background: linear-gradient(135deg, #CC0000, #990000); color: white; width: 48px; height: 48px; line-height: 48px; border-radius: 12px; font-size: 24px; font-weight: bold;">S</div>
+      <h1 style="margin: 12px 0 0 0; font-size: 24px; color: #111827;">SHIJO.AI</h1>
+    </div>
+
+    <div style="background: white; border-radius: 16px; padding: 40px 32px; box-shadow: 0 1px 3px rgba(0,0,0,0.1);">
+      <h2 style="font-size: 22px; font-weight: 700; color: #111827; margin: 0 0 16px 0;">Your Account Has Been Deleted</h2>
+      <p style="font-size: 16px; color: #6b7280; margin: 0 0 24px 0;">Hi ${firstName}, this confirms that the SHIJO.AI account associated with <strong>${opts.email}</strong> was deleted on ${opts.deletedAt}, at your request.</p>
+
+      <div style="background: #f9fafb; border-radius: 8px; padding: 20px; margin-bottom: 24px;">
+        <p style="font-size: 13px; color: #374151; margin: 0 0 8px 0;">What happened:</p>
+        <ul style="font-size: 13px; color: #374151; margin: 0; padding-left: 18px;">
+          <li style="margin-bottom: 6px;">Your account, profile, and all associated tool data (keywords, briefs, generations, usage history) were permanently deleted.</li>
+          <li style="margin-bottom: 6px;">Any active subscription was canceled immediately — no further charges will occur.</li>
+          <li>Per our Privacy Policy, some records may be retained for a limited period where required by law or for legitimate business purposes (such as fraud prevention or financial record-keeping), then deleted or anonymized.</li>
+        </ul>
+      </div>
+
+      <p style="font-size: 14px; color: #9ca3af; margin: 0;">If you did not request this deletion, contact us immediately at legal@shijo.ai.</p>
+    </div>
+
+    <div style="text-align: center; margin-top: 32px; color: #9ca3af; font-size: 12px;">
+      <p>&copy; 2026 SHIJO.ai — SHIRO Technologies LLC</p>
+    </div>
+  </div>
+</body>
+</html>
+  `.trim();
+
+  return {
+    subject: 'Your SHIJO.AI account has been deleted',
+    html,
+  };
+}
+
+// ─── Support ticket: confirmation to the submitter ─────────────────────
+
+export function buildTicketReceivedEmail(
+  name: string,
+  opts: { subject: string; message: string; ticketId: string }
+): { subject: string; html: string } {
+  const firstName = name?.split(' ')[0] || 'there';
+  const html = `
+<!DOCTYPE html>
+<html>
+<head><meta charset="utf-8"></head>
+<body style="margin: 0; padding: 0; background: #f3f4f6; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;">
+  <div style="max-width: 560px; margin: 0 auto; padding: 40px 20px;">
+    <div style="text-align: center; margin-bottom: 32px;">
+      <div style="display: inline-block; background: linear-gradient(135deg, #CC0000, #990000); color: white; width: 48px; height: 48px; line-height: 48px; border-radius: 12px; font-size: 24px; font-weight: bold;">S</div>
+      <h1 style="margin: 12px 0 0 0; font-size: 24px; color: #111827;">SHIJO.AI</h1>
+    </div>
+
+    <div style="background: white; border-radius: 16px; padding: 40px 32px; box-shadow: 0 1px 3px rgba(0,0,0,0.1);">
+      <h2 style="font-size: 22px; font-weight: 700; color: #111827; margin: 0 0 16px 0;">We got your message</h2>
+      <p style="font-size: 16px; color: #6b7280; margin: 0 0 24px 0;">Hi ${firstName}, thanks for reaching out. This confirms we received your message and a member of the team will get back to you by email.</p>
+
+      <div style="background: #f9fafb; border-radius: 8px; padding: 20px; margin-bottom: 8px;">
+        <p style="font-size: 13px; color: #374151; margin: 0 0 8px 0;"><strong>Subject:</strong> ${opts.subject}</p>
+        <p style="font-size: 13px; color: #374151; margin: 0; white-space: pre-wrap;">${opts.message}</p>
+      </div>
+      <p style="font-size: 12px; color: #9ca3af; margin: 8px 0 0 0;">Reference: ${opts.ticketId}</p>
+    </div>
+
+    <div style="text-align: center; margin-top: 32px; color: #9ca3af; font-size: 12px;">
+      <p>&copy; 2026 SHIJO.ai — SHIRO Technologies LLC</p>
+    </div>
+  </div>
+</body>
+</html>
+  `.trim();
+
+  return {
+    subject: `We received your message — ${opts.subject}`,
+    html,
+  };
+}
+
+// ─── Support ticket: internal notification to the team ────────────────
+
+export function buildTicketNotificationEmail(
+  opts: { name: string; email: string; subject: string; message: string; ticketId: string }
+): { subject: string; html: string } {
+  const html = `
+<!DOCTYPE html>
+<html>
+<head><meta charset="utf-8"></head>
+<body style="margin: 0; padding: 0; background: #f3f4f6; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;">
+  <div style="max-width: 560px; margin: 0 auto; padding: 40px 20px;">
+    <div style="background: white; border-radius: 16px; padding: 32px; box-shadow: 0 1px 3px rgba(0,0,0,0.1);">
+      <h2 style="font-size: 20px; font-weight: 700; color: #111827; margin: 0 0 16px 0;">New contact form submission</h2>
+      <div style="background: #f9fafb; border-radius: 8px; padding: 20px;">
+        <p style="font-size: 13px; color: #374151; margin: 0 0 8px 0;"><strong>From:</strong> ${opts.name} &lt;${opts.email}&gt;</p>
+        <p style="font-size: 13px; color: #374151; margin: 0 0 8px 0;"><strong>Subject:</strong> ${opts.subject}</p>
+        <p style="font-size: 13px; color: #374151; margin: 0 0 8px 0; white-space: pre-wrap;"><strong>Message:</strong>\n${opts.message}</p>
+        <p style="font-size: 12px; color: #9ca3af; margin: 8px 0 0 0;">Ticket ID: ${opts.ticketId}</p>
+      </div>
+      <p style="font-size: 13px; color: #6b7280; margin: 16px 0 0 0;">Manage this in the admin panel at /admin/tickets.</p>
+    </div>
+  </div>
+</body>
+</html>
+  `.trim();
+
+  return {
+    subject: `[Contact form] ${opts.subject}`,
+    html,
+  };
+}
+
+// ─── Support ticket: resolution notice to the submitter ───────────────
+
+export function buildTicketResolvedEmail(
+  name: string,
+  opts: { subject: string; adminNotes?: string | null }
+): { subject: string; html: string } {
+  const firstName = name?.split(' ')[0] || 'there';
+  const html = `
+<!DOCTYPE html>
+<html>
+<head><meta charset="utf-8"></head>
+<body style="margin: 0; padding: 0; background: #f3f4f6; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;">
+  <div style="max-width: 560px; margin: 0 auto; padding: 40px 20px;">
+    <div style="text-align: center; margin-bottom: 32px;">
+      <div style="display: inline-block; background: linear-gradient(135deg, #CC0000, #990000); color: white; width: 48px; height: 48px; line-height: 48px; border-radius: 12px; font-size: 24px; font-weight: bold;">S</div>
+      <h1 style="margin: 12px 0 0 0; font-size: 24px; color: #111827;">SHIJO.AI</h1>
+    </div>
+
+    <div style="background: white; border-radius: 16px; padding: 40px 32px; box-shadow: 0 1px 3px rgba(0,0,0,0.1);">
+      <h2 style="font-size: 22px; font-weight: 700; color: #111827; margin: 0 0 16px 0;">Your request has been resolved</h2>
+      <p style="font-size: 16px; color: #6b7280; margin: 0 0 16px 0;">Hi ${firstName}, we've marked your message about "${opts.subject}" as resolved.</p>
+      ${opts.adminNotes ? `<div style="background: #f9fafb; border-radius: 8px; padding: 20px;"><p style="font-size: 13px; color: #374151; margin: 0; white-space: pre-wrap;">${opts.adminNotes}</p></div>` : ''}
+      <p style="font-size: 14px; color: #9ca3af; margin: 16px 0 0 0;">If this didn't fully resolve your issue, just reply to this email or use the <a href="https://shijo.ai/contact" style="color: #CC0000;">contact form</a> again.</p>
+    </div>
+
+    <div style="text-align: center; margin-top: 32px; color: #9ca3af; font-size: 12px;">
+      <p>&copy; 2026 SHIJO.ai — SHIRO Technologies LLC</p>
+    </div>
+  </div>
+</body>
+</html>
+  `.trim();
+
+  return {
+    subject: `Resolved: ${opts.subject}`,
+    html,
+  };
+}

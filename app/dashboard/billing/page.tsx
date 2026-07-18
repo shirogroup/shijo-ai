@@ -16,7 +16,6 @@ const plans = [
       '2 AI marketing tools',
       '3 generations per day',
       'Claude Haiku (Fast AI)',
-      'Basic support',
     ],
     highlight: false,
     tier: 'free',
@@ -32,7 +31,6 @@ const plans = [
       'All 12 AI marketing tools',
       '200 generations per month',
       'Claude Sonnet (Advanced AI)',
-      'Priority support',
       'Email sequence generator',
     ],
     highlight: true,
@@ -49,7 +47,6 @@ const plans = [
       'All 12 AI marketing tools',
       'Unlimited generations',
       'Claude Sonnet (Advanced AI)',
-      'Dedicated support',
       'Team collaboration (coming soon)',
       'Custom integrations (coming soon)',
     ],
@@ -336,7 +333,7 @@ function BillingContent() {
           </div>
           <div>
             <p className="font-medium text-gray-200 mb-1">Do you offer refunds?</p>
-            <p className="text-gray-400">We offer a 7-day money-back guarantee for all paid plans, no questions asked.</p>
+            <p className="text-gray-400">Refunds are handled on a case-by-case basis — contact us and we&apos;ll take a look. See our <a href="/terms#4" className="text-primary hover:underline">Terms of Service</a> for details.</p>
           </div>
           <div>
             <p className="font-medium text-gray-200 mb-1">Is my payment secure?</p>

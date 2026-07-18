@@ -61,6 +61,10 @@ export default function AdminTermsPage() {
 
   return (
     <div className="p-6 md:p-10 max-w-7xl mx-auto">
+      <div className="flex gap-4 mb-6 text-sm">
+        <span className="text-white font-medium border-b-2 border-shiro-red pb-1">Terms Acceptances</span>
+        <a href="/admin/tickets" className="text-gray-400 hover:text-white pb-1">Support Tickets</a>
+      </div>
       <h1 className="text-2xl font-bold text-white mb-1">Terms &amp; Privacy Acceptances</h1>
       <p className="text-gray-400 text-sm mb-6">
         Audit log of every user who accepted the Terms of Service and Privacy Policy at registration.

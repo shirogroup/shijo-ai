@@ -17,7 +17,7 @@ export default function TermsPage() {
           <p className="text-gray-500 mb-12">Last updated: July 17, 2026</p>
 
           <div className="prose prose-gray max-w-none space-y-8">
-            <section>
+            <section id="1">
               <h2 className="text-2xl font-semibold text-gray-900 mb-4">1. Acceptance of Terms</h2>
               <p className="text-gray-700 leading-relaxed">
                 By accessing or using SHIJO.AI (&quot;the Service&quot;), operated by SHIRO Technologies LLC
@@ -34,7 +34,7 @@ export default function TermsPage() {
               </p>
             </section>
 
-            <section>
+            <section id="2">
               <h2 className="text-2xl font-semibold text-gray-900 mb-4">2. Description of Service</h2>
               <p className="text-gray-700 leading-relaxed">
                 SHIJO.AI is an AI-powered SEO and digital marketing platform that provides keyword research,
@@ -45,7 +45,7 @@ export default function TermsPage() {
               </p>
             </section>
 
-            <section>
+            <section id="3">
               <h2 className="text-2xl font-semibold text-gray-900 mb-4">3. Account Registration</h2>
               <p className="text-gray-700 leading-relaxed">
                 You must provide accurate information when creating an account. You are responsible for
@@ -57,7 +57,7 @@ export default function TermsPage() {
               </p>
             </section>
 
-            <section>
+            <section id="4">
               <h2 className="text-2xl font-semibold text-gray-900 mb-4">4. Subscription &amp; Billing</h2>
               <p className="text-gray-700 leading-relaxed mb-4">
                 Paid subscriptions are available on a recurring monthly or annual billing cycle, as selected
@@ -85,7 +85,7 @@ export default function TermsPage() {
               </p>
             </section>
 
-            <section>
+            <section id="5">
               <h2 className="text-2xl font-semibold text-gray-900 mb-4">5. Acceptable Use</h2>
               <p className="text-gray-700 leading-relaxed mb-4">
                 You agree not to: (a) use the Service for any unlawful purpose; (b) attempt to gain
@@ -118,7 +118,7 @@ export default function TermsPage() {
               </p>
             </section>
 
-            <section>
+            <section id="6">
               <h2 className="text-2xl font-semibold text-gray-900 mb-4">6. AI-Generated Content; Intellectual Property</h2>
               <p className="text-gray-700 leading-relaxed mb-4">
                 The Service, including its design, code, branding, and underlying software, is the property
@@ -139,7 +139,7 @@ export default function TermsPage() {
               </p>
             </section>
 
-            <section>
+            <section id="7">
               <h2 className="text-2xl font-semibold text-gray-900 mb-4">7. Service Changes</h2>
               <p className="text-gray-700 leading-relaxed">
                 We are continuously developing the Service and may add, modify, or discontinue individual
@@ -150,7 +150,7 @@ export default function TermsPage() {
               </p>
             </section>
 
-            <section>
+            <section id="8">
               <h2 className="text-2xl font-semibold text-gray-900 mb-4">8. Disclaimer of Warranties</h2>
               <p className="text-gray-700 leading-relaxed">
                 THE SERVICE IS PROVIDED &quot;AS IS&quot; AND &quot;AS AVAILABLE&quot; WITHOUT WARRANTIES OF ANY KIND,
@@ -163,7 +163,7 @@ export default function TermsPage() {
               </p>
             </section>
 
-            <section>
+            <section id="9">
               <h2 className="text-2xl font-semibold text-gray-900 mb-4">9. Limitation of Liability</h2>
               <p className="text-gray-700 leading-relaxed">
                 TO THE MAXIMUM EXTENT PERMITTED BY LAW, SHIRO TECHNOLOGIES LLC SHALL NOT BE LIABLE FOR ANY
@@ -178,7 +178,7 @@ export default function TermsPage() {
               </p>
             </section>
 
-            <section>
+            <section id="10">
               <h2 className="text-2xl font-semibold text-gray-900 mb-4">10. Indemnification</h2>
               <p className="text-gray-700 leading-relaxed mb-4">
                 You agree to indemnify, defend, and hold harmless SHIRO Technologies LLC and its officers,
@@ -199,7 +199,7 @@ export default function TermsPage() {
               </p>
             </section>
 
-            <section>
+            <section id="11">
               <h2 className="text-2xl font-semibold text-gray-900 mb-4">11. Export Control &amp; Sanctions Compliance</h2>
               <p className="text-gray-700 leading-relaxed">
                 You represent that you are not located in, under the control of, or a national or resident
@@ -211,7 +211,7 @@ export default function TermsPage() {
               </p>
             </section>
 
-            <section>
+            <section id="12">
               <h2 className="text-2xl font-semibold text-gray-900 mb-4">12. Termination</h2>
               <p className="text-gray-700 leading-relaxed">
                 We may suspend or terminate your access to the Service at any time for violation of these
@@ -223,7 +223,7 @@ export default function TermsPage() {
               </p>
             </section>
 
-            <section>
+            <section id="13">
               <h2 className="text-2xl font-semibold text-gray-900 mb-4">13. Dispute Resolution; Arbitration Agreement</h2>
               <p className="text-gray-700 leading-relaxed mb-4">
                 <strong>Please read this section carefully — it affects your legal rights.</strong> Except
@@ -248,7 +248,7 @@ export default function TermsPage() {
               </p>
             </section>
 
-            <section>
+            <section id="14">
               <h2 className="text-2xl font-semibold text-gray-900 mb-4">14. Governing Law</h2>
               <p className="text-gray-700 leading-relaxed">
                 These Terms, and any dispute not subject to arbitration under Section 13, shall be governed
@@ -258,7 +258,7 @@ export default function TermsPage() {
               </p>
             </section>
 
-            <section>
+            <section id="15">
               <h2 className="text-2xl font-semibold text-gray-900 mb-4">15. Force Majeure</h2>
               <p className="text-gray-700 leading-relaxed">
                 We will not be liable for any failure or delay in performance resulting from causes beyond
@@ -269,7 +269,7 @@ export default function TermsPage() {
               </p>
             </section>
 
-            <section>
+            <section id="16">
               <h2 className="text-2xl font-semibold text-gray-900 mb-4">16. General Provisions</h2>
               <p className="text-gray-700 leading-relaxed mb-4">
                 <strong>Severability:</strong> If any provision of these Terms is found unenforceable, the
@@ -292,7 +292,7 @@ export default function TermsPage() {
               </p>
             </section>
 
-            <section>
+            <section id="17">
               <h2 className="text-2xl font-semibold text-gray-900 mb-4">17. Contact</h2>
               <p className="text-gray-700 leading-relaxed">
                 For questions about these Terms, contact us at:

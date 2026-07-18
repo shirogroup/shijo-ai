@@ -54,8 +54,8 @@ export function Header() {
           <Link href="#pricing" className="text-sm font-bold text-white hover:text-primary transition-colors">
             Pricing
           </Link>
-          <Link href="#about" className="text-sm font-bold text-white hover:text-primary transition-colors">
-            About
+          <Link href="/contact" className="text-sm font-bold text-white hover:text-primary transition-colors">
+            Contact
           </Link>
         </nav>
 
@@ -68,7 +68,7 @@ export function Header() {
           </Link>
           <Link href="/register">
             <Button size="sm" className="bg-primary hover:bg-primary/90 text-white">
-              Start Free Trial
+              Start Free
             </Button>
           </Link>
         </div>
@@ -92,15 +92,15 @@ export function Header() {
           <Link href="#pricing" className="block text-sm font-bold text-white hover:text-primary py-2" onClick={() => setMobileOpen(false)}>
             Pricing
           </Link>
-          <Link href="#about" className="block text-sm font-bold text-white hover:text-primary py-2" onClick={() => setMobileOpen(false)}>
-            About
+          <Link href="/contact" className="block text-sm font-bold text-white hover:text-primary py-2" onClick={() => setMobileOpen(false)}>
+            Contact
           </Link>
           <div className="flex flex-col gap-2 pt-2 border-t border-gray-800">
             <Link href="/login">
               <Button variant="outline" size="sm" className="w-full text-white border-gray-600 hover:bg-gray-800">Sign In</Button>
             </Link>
             <Link href="/register">
-              <Button size="sm" className="w-full bg-primary hover:bg-primary/90 text-white">Start Free Trial</Button>
+              <Button size="sm" className="w-full bg-primary hover:bg-primary/90 text-white">Start Free</Button>
             </Link>
           </div>
         </div>
