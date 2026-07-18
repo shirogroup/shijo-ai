@@ -34,7 +34,7 @@ export const posts: BlogPost[] = [
     publishedAt: '2026-07-18',
     readTime: '6 min read',
     keywords: ['ai seo tools', 'keyword research tool', 'ai keyword research tool', 'best keywords for seo'],
-    relatedToolHref: '/lp',
+    relatedToolHref: '/ai-marketing-tools',
     relatedToolLabel: 'Try the AI keyword research tool',
     content: [
       { type: 'p', text: 'Traditional keyword research means pulling a seed list, expanding it manually, cross-referencing search volume in a separate tool, then guessing at intent by scanning search results one by one. It works, but it eats an afternoon before you\'ve written a single word of content.' },
@@ -59,7 +59,7 @@ export const posts: BlogPost[] = [
     publishedAt: '2026-07-04',
     readTime: '5 min read',
     keywords: ['ai ad copy generator', 'google ads copy generator', 'ppc ad copy tool', 'ad headline generator tool'],
-    relatedToolHref: '/lp',
+    relatedToolHref: '/ai-marketing-tools',
     relatedToolLabel: 'Try the AI ad copy generator',
     content: [
       { type: 'p', text: 'The easiest mistake with AI ad copy tools is treating the first draft as the final draft. A language model will happily generate ten grammatically correct, on-brand-sounding headlines that all convert at roughly the average rate for your industry — which is to say, not particularly well.' },

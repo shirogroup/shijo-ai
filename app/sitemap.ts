@@ -70,7 +70,7 @@ export default function sitemap(): MetadataRoute.Sitemap {
       priority: 0.4,
     },
     {
-      url: `${baseUrl}/lp`,
+      url: `${baseUrl}/ai-marketing-tools`,
       lastModified: new Date(),
       changeFrequency: 'weekly',
       priority: 0.7,

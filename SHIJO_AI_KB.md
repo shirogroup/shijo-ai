@@ -193,6 +193,8 @@ Also fixed a real, separate, non-Ads-related bug found during the same investiga
 - Blog post dates staggered (2026-07-18 / 2026-07-04 / 2026-06-20) instead of all three dated the same day, so the blog reads as actively maintained.
 - Added `keywords` metadata to every page that was missing it (`/terms`, `/privacy`, `/cookies`, `/security`, `/gdpr-compliance`, `/ai-compliance`, `/blog`), drawing from the 50-phrase Google Ads keyword list already delivered to the user.
 
+**`/lp` renamed to `/ai-marketing-tools`** (2026-07-18) — user didn't want the ad/organic landing page on an internal-sounding slug; renamed to the actual head keyword phrase. `next.config.ts` now has a permanent redirect `/lp → /ai-marketing-tools` (checked before filesystem routes), and `app/lp/page.tsx` itself was reduced to a `noindex` + `redirect()` safety net rather than deleted (sandbox can't delete files). All internal references updated: `app/contact/page.tsx`'s promo card, `lib/blog/posts.ts`'s `relatedToolHref` on two posts, `app/sitemap.ts`. **If the user already pasted `shijo.ai/lp` into Google Ads' Final URL field, it will still work** (redirects to the new page) but should be updated to `shijo.ai/ai-marketing-tools` directly when convenient.
+
 ⚠️ **None of this has been pushed yet** — same as before, these are local file edits pending `git add / commit / push` from the user's own Git Bash.
 
 ---

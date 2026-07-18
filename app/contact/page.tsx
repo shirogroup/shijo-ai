@@ -18,7 +18,7 @@ const promoCards = [
     title: '12 Tools, One Platform',
     bullets: ['SEO & keyword research', 'Ad copy & landing pages', 'Email & social captions'],
     cta: 'Explore the tools',
-    href: '/lp',
+    href: '/ai-marketing-tools',
     gradient: 'from-fuchsia-600 to-purple-700',
     glow: 'bg-fuchsia-500',
   },
