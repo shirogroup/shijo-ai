@@ -22,6 +22,18 @@ const config: Config = {
           DEFAULT: "#0a0a0a",
           foreground: "#ffffff",
         },
+        // Aliases used throughout the legal-pages template (Header.tsx,
+        // Footer.tsx, /terms, /privacy, /cookies, /contact, /security,
+        // /gdpr-compliance, /ai-compliance, auth forms) via classes like
+        // `bg-shiro-black`, `text-shiro-red`, `hover:bg-shiro-red-dark`.
+        // These were never defined here, so Tailwind's JIT compiler
+        // silently generated no CSS for them — every one of those pages
+        // rendered with a plain white/unstyled footer and dead-looking red
+        // links instead of the intended dark footer and brand-red accents.
+        // Found 2026-07-18 comparing the live /contact and /terms pages.
+        "shiro-red": "#DC0019",
+        "shiro-red-dark": "#B10014",
+        "shiro-black": "#0a0a0a",
         destructive: {
           DEFAULT: "hsl(var(--destructive))",
           foreground: "hsl(var(--destructive-foreground))",

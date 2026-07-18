@@ -1,9 +1,26 @@
 import { MetadataRoute } from 'next';
+import { posts } from '@/lib/blog/posts';
 
 export default function sitemap(): MetadataRoute.Sitemap {
   const baseUrl = 'https://shijo.ai';
 
+  const blogEntries: MetadataRoute.Sitemap = [
+    {
+      url: `${baseUrl}/blog`,
+      lastModified: new Date(),
+      changeFrequency: 'weekly',
+      priority: 0.6,
+    },
+    ...posts.map((post) => ({
+      url: `${baseUrl}/blog/${post.slug}`,
+      lastModified: new Date(post.publishedAt),
+      changeFrequency: 'monthly' as const,
+      priority: 0.5,
+    })),
+  ];
+
   return [
+    ...blogEntries,
     {
       url: baseUrl,
       lastModified: new Date(),
@@ -51,6 +68,12 @@ export default function sitemap(): MetadataRoute.Sitemap {
       lastModified: new Date(),
       changeFrequency: 'monthly',
       priority: 0.4,
+    },
+    {
+      url: `${baseUrl}/lp`,
+      lastModified: new Date(),
+      changeFrequency: 'weekly',
+      priority: 0.7,
     },
   ];
 }

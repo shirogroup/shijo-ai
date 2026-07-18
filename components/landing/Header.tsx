@@ -54,6 +54,9 @@ export function Header() {
           <Link href="#pricing" className="text-sm font-bold text-white hover:text-primary transition-colors">
             Pricing
           </Link>
+          <Link href="/blog" className="text-sm font-bold text-white hover:text-primary transition-colors">
+            Blog
+          </Link>
           <Link href="/contact" className="text-sm font-bold text-white hover:text-primary transition-colors">
             Contact
           </Link>
@@ -91,6 +94,9 @@ export function Header() {
           </Link>
           <Link href="#pricing" className="block text-sm font-bold text-white hover:text-primary py-2" onClick={() => setMobileOpen(false)}>
             Pricing
+          </Link>
+          <Link href="/blog" className="block text-sm font-bold text-white hover:text-primary py-2" onClick={() => setMobileOpen(false)}>
+            Blog
           </Link>
           <Link href="/contact" className="block text-sm font-bold text-white hover:text-primary py-2" onClick={() => setMobileOpen(false)}>
             Contact

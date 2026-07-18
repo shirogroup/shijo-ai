@@ -9,10 +9,10 @@ import {
 import { Button } from '@/components/ui/button';
 
 const toolCategories = [
-  { icon: Search, label: 'SEO', color: 'text-blue-600', bg: 'bg-blue-50', desc: 'Keyword research, content briefs, meta tags, FAQ sections, AI Overview optimization' },
-  { icon: Megaphone, label: 'Ads & Copy', color: 'text-orange-600', bg: 'bg-orange-50', desc: 'Ad copy, headline testing, audience personas, landing page copy' },
-  { icon: Mail, label: 'Email', color: 'text-green-600', bg: 'bg-green-50', desc: 'Sequence generator, newsletter drafts' },
-  { icon: Pencil, label: 'Social Media', color: 'text-pink-600', bg: 'bg-pink-50', desc: 'Scroll-stopping captions with hooks and CTAs' },
+  { icon: Search, label: 'AI Keyword Research Tool', color: 'text-blue-600', bg: 'bg-blue-50', desc: 'Keyword research, SEO content briefs, meta tags, FAQ sections, and AI Overview optimization for ChatGPT and Google AI search.' },
+  { icon: Megaphone, label: 'AI Ad Copy Generator', color: 'text-orange-600', bg: 'bg-orange-50', desc: 'Google, Meta, and LinkedIn ad copy, headline A/B testing, audience personas, and landing page copy.' },
+  { icon: Mail, label: 'AI Email Sequence Generator', color: 'text-green-600', bg: 'bg-green-50', desc: 'Multi-step email sequences and newsletter drafts for any funnel stage.' },
+  { icon: Pencil, label: 'Social Media Caption Generator', color: 'text-pink-600', bg: 'bg-pink-50', desc: 'Scroll-stopping captions with hooks and CTAs for any platform.' },
 ];
 
 const plans = [
@@ -22,6 +22,7 @@ const plans = [
 ];
 
 const faqs = [
+  { q: 'What is SHIJO.AI?', a: 'SHIJO.AI is an all-in-one AI marketing platform for digital marketers, agencies, and small businesses — 12 tools covering keyword research, AI ad copy, email sequences, and social media captions, built on Claude AI.' },
   { q: 'Is there a free trial?', a: 'No trial needed — the Free plan is free forever with 2 tools and 3 generations a day, no credit card required. Upgrade whenever you’re ready.' },
   { q: 'Can I cancel anytime?', a: 'Yes. Cancel anytime from your dashboard; you keep access through the end of your current billing period.' },
   { q: 'Is my payment secure?', a: 'All payments are processed by Stripe. We never see or store your card details.' },
@@ -107,9 +108,13 @@ export function LandingPageContent() {
       {/* Tool categories */}
       <section className="py-16 bg-muted/30">
         <div className="container mx-auto px-6">
-          <h2 className="text-2xl md:text-3xl font-bold text-center mb-10">
+          <h2 className="text-2xl md:text-3xl font-bold text-center mb-3">
             12 Tools Across <span className="text-primary">4 Categories</span>
           </h2>
+          <p className="text-center text-muted-foreground max-w-2xl mx-auto mb-10 text-sm">
+            An all-in-one AI marketing platform built for digital marketers, agencies, and small
+            business teams who need SEO, ad, email, and social content without adding headcount.
+          </p>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5 max-w-5xl mx-auto">
             {toolCategories.map((cat) => {
               const Icon = cat.icon;
