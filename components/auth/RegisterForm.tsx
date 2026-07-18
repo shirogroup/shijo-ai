@@ -13,6 +13,7 @@ export function RegisterForm() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
+  const [acceptedTerms, setAcceptedTerms] = useState(false);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
 
@@ -30,10 +31,15 @@ export function RegisterForm() {
       return;
     }
 
+    if (!acceptedTerms) {
+      setError('You must agree to the Terms of Service and Privacy Policy to continue');
+      return;
+    }
+
     setLoading(true);
 
     try {
-      const result = await register(email, password, name);
+      const result = await register(email, password, name, acceptedTerms);
 
       if (result.success) {
         window.location.href = '/dashboard';
@@ -112,10 +118,32 @@ export function RegisterForm() {
           />
         </div>
 
+        <div className="flex items-start gap-2 pt-1">
+          <input
+            id="acceptedTerms"
+            type="checkbox"
+            checked={acceptedTerms}
+            onChange={(e) => setAcceptedTerms(e.target.checked)}
+            disabled={loading}
+            required
+            className="mt-1 h-4 w-4 shrink-0 rounded border-gray-300 text-shiro-red focus:ring-shiro-red"
+          />
+          <Label htmlFor="acceptedTerms" className="text-sm font-normal leading-snug text-gray-500">
+            I agree to the{' '}
+            <a href="/terms" target="_blank" rel="noopener noreferrer" className="text-shiro-red hover:underline">
+              Terms of Service
+            </a>{' '}
+            and{' '}
+            <a href="/privacy" target="_blank" rel="noopener noreferrer" className="text-shiro-red hover:underline">
+              Privacy Policy
+            </a>
+          </Label>
+        </div>
+
         <Button
           type="submit"
           className="w-full"
-          disabled={loading}
+          disabled={loading || !acceptedTerms}
         >
           {loading ? 'Creating account...' : 'Create Account'}
         </Button>

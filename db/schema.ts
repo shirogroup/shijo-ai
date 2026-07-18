@@ -14,11 +14,31 @@ export const users = pgTable('users', {
   planTier: varchar('plan_tier', { length: 20 }).default('free').notNull(),
   subscriptionId: varchar('subscription_id', { length: 255 }),
   subscriptionStatus: varchar('subscription_status', { length: 50 }),
+  isAdmin: boolean('is_admin').default(false).notNull(),
   createdAt: timestamp('created_at').defaultNow().notNull(),
   updatedAt: timestamp('updated_at').defaultNow().notNull(),
 }, (table) => ({
   emailIdx: index('idx_users_email').on(table.email),
   stripeIdx: index('idx_users_stripe').on(table.stripeCustomerId),
+}));
+
+// Audit log of Terms of Service / Privacy Policy acceptances.
+// Kept as a standalone append-only table (rather than columns on `users`)
+// so re-acceptance after a document update creates a new row instead of
+// overwriting the prior record — the admin panel at /admin/terms reads
+// from this table.
+export const termsAcceptances = pgTable('terms_acceptances', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  userId: uuid('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
+  email: varchar('email', { length: 255 }).notNull(),
+  name: varchar('name', { length: 255 }),
+  termsVersion: varchar('terms_version', { length: 20 }).notNull(),
+  privacyVersion: varchar('privacy_version', { length: 20 }).notNull(),
+  ipAddress: varchar('ip_address', { length: 64 }),
+  userAgent: text('user_agent'),
+  acceptedAt: timestamp('accepted_at').defaultNow().notNull(),
+}, (table) => ({
+  userIdx: index('idx_terms_acceptances_user').on(table.userId),
 }));
 
 export const subscriptions = pgTable('subscriptions', {

@@ -1,15 +1,20 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/db';
-import { users } from '@/db/schema';
+import { users, termsAcceptances } from '@/db/schema';
 import { hashPassword, signToken } from '@/lib/auth';
 import { eq } from 'drizzle-orm';
-import { sendEmail, buildWelcomeEmail } from '@/lib/email';
+import { sendEmail, buildWelcomeEmail, buildTermsAcceptedEmail } from '@/lib/email';
+import { CURRENT_TERMS_VERSION, CURRENT_PRIVACY_VERSION } from '@/lib/legal';
 
 export const runtime = 'nodejs';
 
+// Address that receives a copy of every Terms/Privacy acceptance email, as
+// a durable record independent of the termsAcceptances table.
+const LEGAL_RECORDS_CC = 'legal@shijo.ai';
+
 export async function POST(req: NextRequest) {
   try {
-    const { email, password, name } = await req.json();
+    const { email, password, name, acceptedTerms } = await req.json();
 
     // Validation
     if (!email || !password) {
@@ -22,6 +27,15 @@ export async function POST(req: NextRequest) {
     if (password.length < 8) {
       return NextResponse.json(
         { error: 'Password must be at least 8 characters' },
+        { status: 400 }
+      );
+    }
+
+    // Terms/Privacy acceptance is mandatory — must be an explicit true,
+    // not just truthy, and not inferred from account creation alone.
+    if (acceptedTerms !== true) {
+      return NextResponse.json(
+        { error: 'You must agree to the Terms of Service and Privacy Policy to create an account' },
         { status: 400 }
       );
     }
@@ -48,6 +62,24 @@ export async function POST(req: NextRequest) {
       name: name || null,
       planTier: 'free',
     }).returning();
+
+    // Record Terms/Privacy acceptance — append-only audit row, captures
+    // the exact document versions in effect and best-effort IP/UA.
+    const forwardedFor = req.headers.get('x-forwarded-for');
+    const ipAddress = forwardedFor ? forwardedFor.split(',')[0].trim() : (req.headers.get('x-real-ip') || 'unknown');
+    const userAgent = req.headers.get('user-agent') || 'unknown';
+    const acceptedAt = new Date();
+
+    await db.insert(termsAcceptances).values({
+      userId: newUser.id,
+      email: newUser.email,
+      name: newUser.name,
+      termsVersion: CURRENT_TERMS_VERSION,
+      privacyVersion: CURRENT_PRIVACY_VERSION,
+      ipAddress,
+      userAgent,
+      acceptedAt,
+    });
 
     // Create JWT token
     const token = signToken({
@@ -82,6 +114,22 @@ export async function POST(req: NextRequest) {
       }
     }).catch((err) => {
       console.error(`[REGISTER] Failed to send welcome email:`, err);
+    });
+
+    // Send Terms/Privacy acceptance confirmation, CC'd to legal records
+    // (fire and forget — don't block registration)
+    const acceptanceEmail = buildTermsAcceptedEmail(name || email.split('@')[0], {
+      termsVersion: CURRENT_TERMS_VERSION,
+      privacyVersion: CURRENT_PRIVACY_VERSION,
+      acceptedAt: acceptedAt.toISOString(),
+      ipAddress,
+    });
+    sendEmail({ to: email.toLowerCase(), cc: LEGAL_RECORDS_CC, ...acceptanceEmail }).then((sent) => {
+      if (sent) {
+        console.log(`[REGISTER] Terms acceptance email sent to ${email} (cc ${LEGAL_RECORDS_CC})`);
+      }
+    }).catch((err) => {
+      console.error(`[REGISTER] Failed to send terms acceptance email:`, err);
     });
 
     return response;

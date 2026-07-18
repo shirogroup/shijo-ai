@@ -15,9 +15,10 @@ interface SendEmailOptions {
   to: string;
   subject: string;
   html: string;
+  cc?: string | string[];
 }
 
-export async function sendEmail({ to, subject, html }: SendEmailOptions): Promise<boolean> {
+export async function sendEmail({ to, subject, html, cc }: SendEmailOptions): Promise<boolean> {
   if (!RESEND_API_KEY) {
     console.warn('[EMAIL] RESEND_API_KEY not set — skipping email send');
     return false;
@@ -33,6 +34,7 @@ export async function sendEmail({ to, subject, html }: SendEmailOptions): Promis
       body: JSON.stringify({
         from: FROM_EMAIL,
         to: [to],
+        ...(cc ? { cc: Array.isArray(cc) ? cc : [cc] } : {}),
         subject,
         html,
       }),
@@ -222,6 +224,60 @@ export function buildPasswordResetEmail(name: string, resetUrl: string): { subje
 
   return {
     subject: 'Reset your SHIJO.AI password',
+    html,
+  };
+}
+
+// ─── Terms of Service / Privacy Policy acceptance confirmation ───────────
+
+export function buildTermsAcceptedEmail(
+  name: string,
+  opts: { termsVersion: string; privacyVersion: string; acceptedAt: string; ipAddress: string }
+): { subject: string; html: string } {
+  const firstName = name?.split(' ')[0] || 'there';
+  const html = `
+<!DOCTYPE html>
+<html>
+<head><meta charset="utf-8"></head>
+<body style="margin: 0; padding: 0; background: #f3f4f6; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;">
+  <div style="max-width: 560px; margin: 0 auto; padding: 40px 20px;">
+    <div style="text-align: center; margin-bottom: 32px;">
+      <div style="display: inline-block; background: linear-gradient(135deg, #CC0000, #990000); color: white; width: 48px; height: 48px; line-height: 48px; border-radius: 12px; font-size: 24px; font-weight: bold;">S</div>
+      <h1 style="margin: 12px 0 0 0; font-size: 24px; color: #111827;">SHIJO.AI</h1>
+    </div>
+
+    <div style="background: white; border-radius: 16px; padding: 40px 32px; box-shadow: 0 1px 3px rgba(0,0,0,0.1);">
+      <h2 style="font-size: 22px; font-weight: 700; color: #111827; margin: 0 0 16px 0;">Terms &amp; Privacy Policy Accepted</h2>
+      <p style="font-size: 16px; color: #6b7280; margin: 0 0 24px 0;">Hi ${firstName}, this confirms you accepted the SHIJO.AI Terms of Service and Privacy Policy when you created your account.</p>
+
+      <div style="background: #f9fafb; border-radius: 8px; padding: 20px; margin-bottom: 24px;">
+        <p style="font-size: 13px; color: #374151; margin: 0 0 8px 0;"><strong>Terms of Service version:</strong> ${opts.termsVersion}</p>
+        <p style="font-size: 13px; color: #374151; margin: 0 0 8px 0;"><strong>Privacy Policy version:</strong> ${opts.privacyVersion}</p>
+        <p style="font-size: 13px; color: #374151; margin: 0 0 8px 0;"><strong>Accepted at:</strong> ${opts.acceptedAt}</p>
+        <p style="font-size: 13px; color: #374151; margin: 0;"><strong>IP address on record:</strong> ${opts.ipAddress}</p>
+      </div>
+
+      <p style="font-size: 14px; color: #9ca3af; margin: 0 0 8px 0;">You can review these documents any time:</p>
+      <p style="font-size: 14px; margin: 0 0 24px 0;">
+        <a href="https://shijo.ai/terms" style="color: #CC0000;">Terms of Service</a> &nbsp;•&nbsp;
+        <a href="https://shijo.ai/privacy" style="color: #CC0000;">Privacy Policy</a>
+      </p>
+
+      <div style="background: #f9fafb; border-radius: 8px; padding: 16px;">
+        <p style="font-size: 13px; color: #6b7280; margin: 0;">This email is a record of your acceptance and does not require any action.</p>
+      </div>
+    </div>
+
+    <div style="text-align: center; margin-top: 32px; color: #9ca3af; font-size: 12px;">
+      <p>&copy; 2026 SHIJO.ai — SHIRO Technologies LLC</p>
+    </div>
+  </div>
+</body>
+</html>
+  `.trim();
+
+  return {
+    subject: 'Your SHIJO.AI Terms of Service & Privacy Policy acceptance',
     html,
   };
 }

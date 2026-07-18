@@ -32,8 +32,11 @@ function decodeJWTPayload(token: string): { userId: string; email: string; exp?:
 export function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
-  // Protected routes
-  const protectedRoutes = ['/dashboard'];
+  // Protected routes — /admin additionally requires isAdmin, which is
+  // checked server-side in /api/admin/* routes against the database (not
+  // here, since this Edge middleware only decodes the JWT payload without
+  // verifying its signature — see decodeJWTPayload above).
+  const protectedRoutes = ['/dashboard', '/admin'];
   const isProtectedRoute = protectedRoutes.some(route =>
     pathname.startsWith(route)
   );
@@ -69,5 +72,5 @@ export function middleware(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ['/dashboard/:path*'],
+  matcher: ['/dashboard/:path*', '/admin/:path*'],
 };

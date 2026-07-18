@@ -38,6 +38,7 @@ export async function GET(req: NextRequest) {
         name: user.name,
         planTier: user.planTier,
         subscriptionStatus: user.subscriptionStatus,
+        isAdmin: user.isAdmin,
         createdAt: user.createdAt,
       },
       quota: null,
