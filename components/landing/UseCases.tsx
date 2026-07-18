@@ -3,11 +3,16 @@ import { motion } from 'framer-motion';
 import { Building2, Users, Globe, TrendingUp } from 'lucide-react';
 import { Card } from '@/components/ui/card';
 
+// Descriptions limited to what the 12 shipped tools actually do — no
+// rank-tracking, client-management, or AI-mention-monitoring claims, since
+// none of those exist in the product (see Product Handoff Rev2, Section 6:
+// "New Features to Build" — rank tracking and AI visibility tracking are
+// both future, unbuilt work, not current capabilities).
 const useCases = [
-  { icon: Building2, title: 'Enterprise Marketing Teams', description: 'Scale SEO operations across multiple brands and regions. Centralized reporting and team collaboration.', metrics: '200+ tracked keywords', highlight: 'Most Popular' },
-  { icon: Users, title: 'Digital Marketing Agencies', description: 'Manage client SEO campaigns efficiently. White-label reports and automated workflows.', metrics: 'Unlimited clients', highlight: 'Agency Ready' },
-  { icon: Globe, title: 'SaaS & Tech Companies', description: 'Track product visibility in AI search engines. Monitor brand mentions in ChatGPT and Claude.', metrics: 'AI visibility tracking', highlight: 'AI-First' },
-  { icon: TrendingUp, title: 'E-commerce Brands', description: 'Optimize product pages for search and AI discovery. Track competitor keyword strategies.', metrics: 'Product SEO focus', highlight: 'Conversion Optimized' },
+  { icon: Building2, title: 'Enterprise Marketing Teams', description: 'Generate on-brand SEO content, ad copy, and email campaigns at scale, without expanding headcount.', metrics: '12 AI tools, one workspace', highlight: 'Most Popular' },
+  { icon: Users, title: 'Digital Marketing Agencies', description: 'Turn around client-ready keyword research, content briefs, and ad copy in minutes instead of hours.', metrics: 'Faster campaign turnaround', highlight: 'Agency Ready' },
+  { icon: Globe, title: 'SaaS & Tech Companies', description: 'Optimize product and content pages so they read clearly to Google AI Overviews, ChatGPT, and other AI search tools.', metrics: 'AI Overview Optimizer tool', highlight: 'AI-First' },
+  { icon: TrendingUp, title: 'E-commerce Brands', description: 'Generate keyword-driven product page copy and identify content gaps against how customers actually search.', metrics: 'Product SEO focus', highlight: 'Conversion Optimized' },
 ];
 
 export function UseCases() {

@@ -111,9 +111,6 @@ export function Features() {
           ))}
         </div>
 
-        <div className="text-center mt-12">
-          <p className="text-sm text-muted-foreground">New tools added monthly</p>
-        </div>
       </div>
     </section>
   );

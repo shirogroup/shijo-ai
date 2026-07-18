@@ -21,7 +21,7 @@ export function CTASection() {
             <span className="text-primary">Start Generating.</span>
           </h2>
           <p className="text-xl text-muted-foreground mb-8 max-w-2xl mx-auto">
-            24 AI tools. One subscription. Captions, SEO content, ad copy, emails, and more — ready in seconds.
+            12 AI tools. One subscription. Captions, SEO content, ad copy, emails, and more — ready in seconds.
           </p>
           <div className="flex flex-col sm:flex-row items-center justify-center gap-4 mb-12">
             <Link href="/register">

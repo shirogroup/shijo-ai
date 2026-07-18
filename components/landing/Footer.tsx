@@ -9,7 +9,7 @@ export function Footer() {
           <div className="flex items-center gap-6">
             <Link href="/terms" className="text-sm font-bold text-gray-300 hover:text-primary transition-colors">Terms</Link>
             <Link href="/privacy" className="text-sm font-bold text-gray-300 hover:text-primary transition-colors">Privacy</Link>
-            <Link href="/ai-usage" className="text-sm font-bold text-gray-300 hover:text-primary transition-colors">AI Usage</Link>
+            <Link href="/privacy#4" className="text-sm font-bold text-gray-300 hover:text-primary transition-colors">AI Usage</Link>
           </div>
         </div>
       </div>
