@@ -7,10 +7,12 @@ import { sendEmail, buildTicketReceivedEmail, buildTicketNotificationEmail } fro
 
 export const runtime = 'nodejs';
 
-// Shared inbox for now — same address used for terms-acceptance and
-// account-deletion records (see lib/email.ts). Point this at a dedicated
-// support@ alias once one exists.
-const SUPPORT_INBOX = 'legal@shijo.ai';
+// Internal notification inbox for Contact-form submissions — explicitly
+// set to the team's actual monitored mailbox per user request (2026-07-18),
+// separate from the info@shijo.ai address shown publicly on the Contact
+// page and separate from legal@shijo.ai (used for ToS/privacy/legal
+// records elsewhere in lib/email.ts).
+const SUPPORT_INBOX = 'info@shiroapps.com';
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 

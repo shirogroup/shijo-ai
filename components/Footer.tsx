@@ -1,4 +1,5 @@
 import Link from 'next/link';
+import { LogoMark } from '@/components/Logo';
 
 export function Footer() {
   const currentYear = new Date().getFullYear();
@@ -10,9 +11,7 @@ export function Footer() {
           {/* Company Info */}
           <div className="col-span-1 md:col-span-2">
             <div className="flex items-center space-x-2 mb-4">
-              <div className="w-8 h-8 gradient-cta rounded-lg flex items-center justify-center">
-                <span className="text-white font-bold text-xl">S</span>
-              </div>
+              <LogoMark className="w-8 h-8" />
               <span className="text-xl font-bold">SHIJO.AI</span>
             </div>
             <p className="text-gray-400 mb-4 max-w-md">

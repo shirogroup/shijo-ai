@@ -8,13 +8,21 @@ import { GA_MEASUREMENT_ID } from "@/lib/analytics";
 
 const inter = Inter({ subsets: ["latin"] });
 
+// Root-level fallback metadata — used by any route that doesn't define its
+// own `metadata`/`generateMetadata` export. Previously claimed a
+// "track your visibility in ChatGPT, Claude & Perplexity" AI-visibility
+// feature that was never built (same class of fabricated claim removed
+// from UseCases.tsx earlier in this project) and named Claude by name in
+// public marketing text, which the user does not want disclosed outside
+// the legal/compliance pages. Rewritten 2026-07-18 to match the real
+// 12-tool product and the corrected copy already used in lib/seo-config.ts.
 export const metadata: Metadata = {
-  title: "SHIJO.AI - AI-Powered SEO Tools | Keyword Research & AI Search Visibility",
-  description: "Track your visibility in ChatGPT, Claude & Perplexity. AI-powered keyword research, content optimization, and SERP analysis in one platform.",
-  keywords: "SEO tools, AI search, keyword research, SERP analysis, content optimization, ChatGPT visibility, Claude AI, Perplexity",
+  title: "SHIJO.AI - AI Marketing Tools for SEO, Ads, Email & Social",
+  description: "AI-powered marketing platform with 12 tools for keyword research, content generation, ad copy, and email. 2 tools free forever, no credit card required.",
+  keywords: "AI marketing tools, AI SEO tools, keyword research, ad copy generator, email sequence generator, social media caption generator",
   openGraph: {
-    title: "SHIJO.AI - AI-Powered SEO Tools",
-    description: "Track your visibility in ChatGPT, Claude & Perplexity. AI-powered keyword research, content optimization, and SERP analysis.",
+    title: "SHIJO.AI - AI Marketing Tools for SEO, Ads, Email & Social",
+    description: "AI-powered marketing platform with 12 tools for keyword research, content generation, ad copy, and email.",
     url: "https://shijo.ai",
     siteName: "SHIJO.AI",
     locale: "en_US",
@@ -22,8 +30,8 @@ export const metadata: Metadata = {
   },
   twitter: {
     card: "summary_large_image",
-    title: "SHIJO.AI - AI-Powered SEO Tools",
-    description: "AI-powered keyword research and search visibility tracking",
+    title: "SHIJO.AI - AI Marketing Tools for SEO, Ads, Email & Social",
+    description: "AI-powered marketing platform with 12 tools for keyword research, content generation, ad copy, and email.",
   },
   robots: {
     index: true,

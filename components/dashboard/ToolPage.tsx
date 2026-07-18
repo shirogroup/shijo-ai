@@ -179,7 +179,7 @@ export default function ToolPage({
           </h2>
           <p className="text-gray-400 mb-6 max-w-md mx-auto">
             {title} requires a {minPlan === 'pro' ? 'Pro ($29/mo)' : 'Enterprise ($99/mo)'} plan.
-            Upgrade to unlock all {minPlan === 'pro' ? '24' : 'enterprise-tier'} tools.
+            Upgrade to unlock all 12 tools.
           </p>
           <Link
             href="/dashboard/billing"

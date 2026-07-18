@@ -15,7 +15,7 @@ const plans = [
     features: [
       '2 AI marketing tools',
       '3 generations per day',
-      'Claude Haiku (Fast AI)',
+      'Fast AI',
     ],
     highlight: false,
     tier: 'free',
@@ -30,7 +30,7 @@ const plans = [
     features: [
       'All 12 AI marketing tools',
       '200 generations per month',
-      'Claude Sonnet (Advanced AI)',
+      'Advanced AI',
       'Email sequence generator',
     ],
     highlight: true,
@@ -46,7 +46,7 @@ const plans = [
     features: [
       'All 12 AI marketing tools',
       'Unlimited generations',
-      'Claude Sonnet (Advanced AI)',
+      'Advanced AI',
       'Team collaboration (coming soon)',
       'Custom integrations (coming soon)',
     ],

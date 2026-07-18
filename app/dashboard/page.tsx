@@ -59,7 +59,7 @@ export default function DashboardOverview() {
             {userPlan === 'free' ? 'Fast' : 'Advanced'}
           </p>
           <p className="text-xs text-gray-500 mt-1">
-            {userPlan === 'free' ? 'Claude Haiku' : 'Claude Sonnet'}
+            {userPlan === 'free' ? 'Fast AI model' : 'Advanced AI model'}
           </p>
         </div>
 

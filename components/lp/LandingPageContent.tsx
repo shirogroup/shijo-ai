@@ -7,6 +7,7 @@ import {
   Search, Megaphone, Mail, Pencil,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { LogoMark } from '@/components/Logo';
 
 const toolCategories = [
   { icon: Search, label: 'AI Keyword Research Tool', color: 'text-blue-600', bg: 'bg-blue-50', desc: 'Keyword research, SEO content briefs, meta tags, FAQ sections, and AI Overview optimization for ChatGPT and Google AI search.' },
@@ -16,13 +17,13 @@ const toolCategories = [
 ];
 
 const plans = [
-  { name: 'Free', price: '$0', period: 'forever', features: ['2 AI tools (Haiku-powered)', '3 generations per day', 'No credit card needed'], cta: 'Start Free', highlight: false },
-  { name: 'Pro', price: '$29', period: '/month', features: ['All 12 AI tools', 'Claude Sonnet for complex tasks', '200 generations/month'], cta: 'Get Started with Pro', highlight: true },
+  { name: 'Free', price: '$0', period: 'forever', features: ['2 AI tools', '3 generations per day', 'No credit card needed'], cta: 'Start Free', highlight: false },
+  { name: 'Pro', price: '$29', period: '/month', features: ['All 12 AI tools', 'Advanced AI for complex tasks', '200 generations/month'], cta: 'Get Started with Pro', highlight: true },
   { name: 'Enterprise', price: '$99', period: '/month', features: ['Everything in Pro', 'Unlimited generations', 'Team collaboration (coming soon)'], cta: 'Get Started with Enterprise', highlight: false },
 ];
 
 const faqs = [
-  { q: 'What is SHIJO.AI?', a: 'SHIJO.AI is an all-in-one AI marketing platform for digital marketers, agencies, and small businesses — 12 tools covering keyword research, AI ad copy, email sequences, and social media captions, built on Claude AI.' },
+  { q: 'What is SHIJO.AI?', a: 'SHIJO.AI is an all-in-one AI marketing platform for digital marketers, agencies, and small businesses — 12 tools covering keyword research, AI ad copy, email sequences, and social media captions.' },
   { q: 'Is there a free trial?', a: 'No trial needed — the Free plan is free forever with 2 tools and 3 generations a day, no credit card required. Upgrade whenever you’re ready.' },
   { q: 'Can I cancel anytime?', a: 'Yes. Cancel anytime from your dashboard; you keep access through the end of your current billing period.' },
   { q: 'Is my payment secure?', a: 'All payments are processed by Stripe. We never see or store your card details.' },
@@ -34,7 +35,10 @@ export function LandingPageContent() {
       {/* Minimal header — logo + sign in only, no nav links to click away on */}
       <header className="border-b border-gray-800 bg-black">
         <div className="container mx-auto px-6 h-16 flex items-center justify-between">
-          <span className="text-xl font-bold text-primary">SHIJO.AI</span>
+          <div className="flex items-center gap-2">
+            <LogoMark className="w-7 h-7" />
+            <span className="text-xl font-bold text-primary">SHIJO.AI</span>
+          </div>
           <Link href="/login" className="text-sm font-medium text-gray-300 hover:text-primary transition-colors">
             Sign In
           </Link>
@@ -74,7 +78,7 @@ export function LandingPageContent() {
               transition={{ delay: 0.2 }}
               className="text-lg md:text-xl text-muted-foreground mb-8 max-w-2xl mx-auto"
             >
-              One AI marketing platform, powered by Claude — keyword research, ad copy, email sequences,
+              One AI marketing platform — keyword research, ad copy, email sequences,
               and social captions, without switching tools or hiring more writers.
             </motion.p>
 
@@ -106,7 +110,7 @@ export function LandingPageContent() {
       </section>
 
       {/* Tool categories */}
-      <section className="py-16 bg-muted/30">
+      <section className="py-12 bg-muted/30">
         <div className="container mx-auto px-6">
           <h2 className="text-2xl md:text-3xl font-bold text-center mb-3">
             12 Tools Across <span className="text-primary">4 Categories</span>
@@ -133,7 +137,7 @@ export function LandingPageContent() {
       </section>
 
       {/* How it works */}
-      <section className="py-16">
+      <section className="py-12">
         <div className="container mx-auto px-6">
           <h2 className="text-2xl md:text-3xl font-bold text-center mb-10">How It Works</h2>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-8 max-w-4xl mx-auto text-center">
@@ -155,7 +159,7 @@ export function LandingPageContent() {
       </section>
 
       {/* Pricing snapshot */}
-      <section className="py-16 bg-muted/30">
+      <section className="py-12 bg-muted/30">
         <div className="container mx-auto px-6">
           <h2 className="text-2xl md:text-3xl font-bold text-center mb-2">Simple Pricing</h2>
           <p className="text-center text-muted-foreground mb-10">Start free, upgrade when ready</p>
@@ -189,7 +193,7 @@ export function LandingPageContent() {
       </section>
 
       {/* FAQ */}
-      <section className="py-16">
+      <section className="py-12">
         <div className="container mx-auto px-6 max-w-2xl">
           <h2 className="text-2xl md:text-3xl font-bold text-center mb-10">Common Questions</h2>
           <div className="space-y-6">
@@ -204,7 +208,7 @@ export function LandingPageContent() {
       </section>
 
       {/* Final CTA */}
-      <section className="py-16 bg-gradient-to-br from-primary/5 via-background to-primary/5">
+      <section className="py-12 bg-gradient-to-br from-primary/5 via-background to-primary/5">
         <div className="container mx-auto px-6 text-center">
           <h2 className="text-3xl md:text-4xl font-bold mb-4">Ready to Stop Writing from Scratch?</h2>
           <p className="text-lg text-muted-foreground mb-8">2 tools free forever. No credit card needed.</p>

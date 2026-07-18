@@ -1,4 +1,5 @@
 import Link from 'next/link';
+import { LogoMark } from '@/components/Logo';
 
 export function Footer() {
   const currentYear = new Date().getFullYear();
@@ -9,7 +10,10 @@ export function Footer() {
         <div className="grid grid-cols-1 md:grid-cols-4 gap-8 mb-8">
           {/* Company Info */}
           <div className="col-span-1 md:col-span-2">
-            <span className="text-xl font-bold text-white">SHIJO.AI</span>
+            <div className="flex items-center gap-2">
+              <LogoMark className="w-7 h-7" />
+              <span className="text-xl font-bold text-white">SHIJO.AI</span>
+            </div>
             <p className="text-gray-400 mt-3 mb-4 max-w-md text-sm">
               12 AI-powered marketing tools for SEO, content, ads, and email &mdash; keyword research,
               content generation, and campaign copy in one subscription.

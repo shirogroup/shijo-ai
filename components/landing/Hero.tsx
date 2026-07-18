@@ -44,7 +44,7 @@ export function Hero() {
             transition={{ delay: 0.2 }}
             className="text-xl md:text-2xl text-muted-foreground mb-8 max-w-3xl mx-auto"
           >
-            SEO, social media, email, ads, and content — all powered by Claude AI.
+            SEO, social media, email, ads, and content — all powered by advanced AI models.
             Generate high-converting copy in seconds, not hours.
           </motion.p>
 

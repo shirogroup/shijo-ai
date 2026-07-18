@@ -5,6 +5,7 @@ import { Footer } from '@/components/Footer';
 export const metadata: Metadata = {
   title: 'Terms of Service | SHIJO.AI',
   description: 'Terms of Service for SHIJO.AI - AI-powered SEO and marketing platform.',
+  keywords: ['shijo.ai terms of service', 'ai marketing platform terms'],
 };
 
 export default function TermsPage() {

@@ -5,6 +5,7 @@ import { Footer } from '@/components/Footer';
 export const metadata: Metadata = {
   title: 'Cookie Policy | SHIJO.AI',
   description: 'Cookie Policy for SHIJO.AI - how we use cookies and similar technologies.',
+  keywords: ['shijo.ai cookie policy', 'ai marketing platform cookies'],
 };
 
 export default function CookiesPage() {

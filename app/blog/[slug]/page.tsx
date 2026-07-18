@@ -57,7 +57,7 @@ export default async function BlogPostPage({ params }: PageProps) {
       />
       <Header />
       <main className="min-h-screen bg-white">
-        <article className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
+        <article className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
           <Link href="/blog" className="inline-flex items-center gap-1.5 text-sm text-gray-500 hover:text-shiro-red mb-8 transition-colors">
             <ArrowLeft className="w-3.5 h-3.5" /> Back to blog
           </Link>
