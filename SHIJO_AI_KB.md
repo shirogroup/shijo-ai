@@ -326,3 +326,22 @@ Rev2 (re-uploaded and re-read in full this pass) is a code-verified audit agains
 - `app/robots.ts` and `app/sitemap.ts` were edited earlier this same session (disallow `/dashboard/`, drop `/login`+`/register` from sitemap) but were never actually committed — confirmed via `git diff --ignore-space-at-eol --stat` showing only these two files as real (non-CRLF-noise) uncommitted changes, and confirmed live `shijo.ai/robots.txt` and `/sitemap.xml` still serve the old rules. Push command given to user; not yet confirmed run. **Check this first before assuming SEO fixes are live.**
 
 **Business-judgment content in Rev2 not independently re-verified (same caveat as the prior cross-check in §11):** Acquire.com market comparables, and the tool keep/cut *rationale* (as opposed to the keep/cut *list itself*, which was executed and verified) — these are business analysis, not code facts, outside the scope of a code/live-site audit.
+
+---
+
+## 17. Session pickup (2026-07-18, later same day) — brand assets confirmed pushed, SEO fixes confirmed live
+
+**✅ CONFIRMED via `git status`/`git log`/`git fetch` this session:** local HEAD and `origin/main` are in sync at commit `9523432` ("Add brand logo PNG assets") — **one commit ahead of `298f2c1`**. This means the `public/brand/` PNGs (square, landscape, transparent icon) that the prior session's handoff note said were "still uncommitted" have since been committed and pushed by the user — that action item is done, no longer outstanding. The same commit also added `docs/NEXT-SESSION-PROMPT.md` and `docs/PROJECT-INSTRUCTIONS.md`.
+
+- ✅ The ~40 files `git status` shows as "modified" are reconfirmed pure CRLF/LF noise (`git diff --ignore-space-at-eol --stat` returns empty) — same known issue as §2/§10, not real uncommitted work.
+- ✅ **`app/robots.ts`/`app/sitemap.ts` SEO fixes (flagged as unpushed in §12) are now confirmed live**, fetched directly this session: `https://shijo.ai/robots.txt` matches the repo's current `disallow: /api/, /admin/, /dashboard/` rules exactly; `sitemap.xml` serves correctly. This §12 open item is resolved.
+- ✅ `shijo.ai/lp` confirmed live-redirecting to `shijo.ai/ai-marketing-tools` (301, correct canonical/OG/meta tags, "12 AI-Powered Marketing Tools" copy, no "24 tools" or Claude/Anthropic mentions in visible content) — the `/lp` → `/ai-marketing-tools` rename from §16 is confirmed shipped and correct.
+
+**Still open, unchanged from before (nothing new done on these yet this session):**
+- §0 Vercel secret rotation — on hold per standing user instruction, not actioned.
+- §4 Stripe test/live key mismatch — still needs user to check Vercel dashboard directly.
+- §5 Resend API key presence in Vercel production — still unverified.
+- §9 items 2, 3, 5, 8 (JWT signature gap, rate limiting, DB migration completeness, live E2E testing) — all unchanged, on hold or unverified.
+- Google Ads campaign: 6 sitelinks recommendations delivered but not yet confirmed entered into the account; Callouts and Lead forms sections not yet done.
+
+**Not yet done this session — waiting on user direction per "ask me what's next rather than assuming."**
