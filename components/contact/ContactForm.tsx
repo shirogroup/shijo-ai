@@ -2,15 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { Loader2, CheckCircle } from 'lucide-react';
-
-const REASON_OPTIONS = [
-  { value: 'general', label: 'General Question' },
-  { value: 'billing', label: 'Billing' },
-  { value: 'technical', label: 'Technical / Bug' },
-  { value: 'feature_request', label: 'Feature Request' },
-  { value: 'partnership', label: 'Partnership / Press' },
-  { value: 'other', label: 'Other' },
-] as const;
+import { REASON_OPTIONS } from '@/lib/contactReasons';
 
 export function ContactForm() {
   const [name, setName] = useState('');

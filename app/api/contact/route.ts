@@ -4,6 +4,7 @@ import { supportTickets } from '@/db/schema';
 import { getSession } from '@/lib/auth';
 import { verifyCaptcha } from '@/lib/captcha';
 import { sendEmail, buildTicketReceivedEmail, buildTicketNotificationEmail } from '@/lib/email';
+import { REASON_OPTIONS, VALID_REASONS } from '@/lib/contactReasons';
 
 export const runtime = 'nodejs';
 
@@ -15,17 +16,6 @@ export const runtime = 'nodejs';
 const SUPPORT_INBOX = 'info@shiroapps.com';
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-
-export const REASON_OPTIONS = [
-  { value: 'general', label: 'General Question' },
-  { value: 'billing', label: 'Billing' },
-  { value: 'technical', label: 'Technical / Bug' },
-  { value: 'feature_request', label: 'Feature Request' },
-  { value: 'partnership', label: 'Partnership / Press' },
-  { value: 'other', label: 'Other' },
-] as const;
-
-const VALID_REASONS = new Set(REASON_OPTIONS.map((r) => r.value));
 
 export async function POST(req: NextRequest) {
   try {

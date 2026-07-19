@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { ShieldAlert, Loader2, Mail } from 'lucide-react';
+import { REASON_LABELS } from '@/lib/contactReasons';
 
 interface Ticket {
   id: string;
@@ -23,15 +24,6 @@ const STATUS_STYLES: Record<Ticket['status'], string> = {
   open: 'bg-yellow-900/40 text-yellow-300 border-yellow-800',
   in_progress: 'bg-blue-900/40 text-blue-300 border-blue-800',
   resolved: 'bg-green-900/40 text-green-300 border-green-800',
-};
-
-const REASON_LABELS: Record<string, string> = {
-  general: 'General Question',
-  billing: 'Billing',
-  technical: 'Technical / Bug',
-  feature_request: 'Feature Request',
-  partnership: 'Partnership / Press',
-  other: 'Other',
 };
 
 export default function AdminTicketsPage() {
