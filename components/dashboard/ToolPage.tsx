@@ -68,7 +68,13 @@ export default function ToolPage({
   const handleGenerate = async () => {
     if (isLocked) return;
 
-    const required = fields.filter((f) => f.required !== false);
+    // Only fields explicitly marked required: true in the registry are
+    // mandatory. Fields with no `required` key at all (the majority —
+    // Platform, Brand Voice, Goal, Page Type, Brand Name, etc.) were
+    // deliberately left optional by the registry's design; treating
+    // "not === false" as required (the previous logic) forced every one
+    // of those optional fields to be filled in before generating anything.
+    const required = fields.filter((f) => f.required === true);
     const missing = required.filter((f) => !inputs[f.id]?.trim());
     if (missing.length > 0) {
       setError(`Please fill in: ${missing.map((f) => f.label).join(', ')}`);
@@ -203,7 +209,7 @@ export default function ToolPage({
                 <div key={field.id}>
                   <label className="block text-sm font-medium text-gray-300 mb-1.5">
                     {field.label}
-                    {field.required !== false && <span className="text-blue-400 ml-1">*</span>}
+                    {field.required === true && <span className="text-blue-400 ml-1">*</span>}
                   </label>
                   {field.type === 'select' ? (
                     <select
