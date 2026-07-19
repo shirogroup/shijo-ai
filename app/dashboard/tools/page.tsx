@@ -77,7 +77,11 @@ export default function ToolsDirectory() {
                           </span>
                         )}
                         <span className="text-xs text-gray-600">
-                          {tool.modelTier === 'haiku' ? 'Fast' : 'Advanced'}
+                          {/* Free plan is always forced to the fast model regardless
+                              of the tool's own configured tier (see /api/generate) —
+                              match that here so this badge doesn't promise "Advanced"
+                              only for the tool page to show "Fast AI" once opened. */}
+                          {userPlan === 'free' || tool.modelTier === 'haiku' ? 'Fast' : 'Advanced'}
                         </span>
                       </div>
                     </div>

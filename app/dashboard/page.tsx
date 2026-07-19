@@ -43,7 +43,7 @@ export default function DashboardOverview() {
             <span className="text-xs text-gray-500">Available Tools</span>
           </div>
           <p className="text-2xl font-bold text-white">
-            {userPlan === 'free' ? '5' : '12'}
+            {userPlan === 'free' ? freeTools.length : '12'}
           </p>
           <p className="text-xs text-gray-500 mt-1">
             {userPlan === 'free' ? 'of 12 total' : 'all unlocked'}

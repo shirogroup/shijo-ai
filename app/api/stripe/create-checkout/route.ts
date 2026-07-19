@@ -69,10 +69,29 @@ export async function POST(req: NextRequest) {
     }
 
     // Get or create Stripe customer
+    const stripe = getStripeClient();
     let customerId = user.stripeCustomerId;
 
+    // A stored Stripe customer ID can go stale — e.g. it was created
+    // under a different Stripe mode/account (test vs. live) than the key
+    // currently configured, or the customer was deleted directly in
+    // Stripe. Verify it still resolves before reusing it; without this
+    // check, checkout fails permanently for that user with no recovery
+    // path (this is the exact cause of "No such customer" errors seen
+    // in production).
+    if (customerId) {
+      try {
+        const existing = await stripe.customers.retrieve(customerId);
+        if ((existing as { deleted?: boolean }).deleted) {
+          customerId = null;
+        }
+      } catch {
+        customerId = null;
+      }
+    }
+
     if (!customerId) {
-      const customer = await getStripeClient().customers.create({
+      const customer = await stripe.customers.create({
         email: user.email,
         name: user.name || undefined,
         metadata: {
@@ -92,7 +111,7 @@ export async function POST(req: NextRequest) {
     const priceId = VALID_PLANS[plan][interval as 'monthly' | 'annual'];
     const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://www.shijo.ai';
 
-    const checkoutSession = await getStripeClient().checkout.sessions.create({
+    const checkoutSession = await stripe.checkout.sessions.create({
       customer: customerId,
       mode: 'subscription',
       line_items: [
