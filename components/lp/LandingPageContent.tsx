@@ -1,9 +1,10 @@
 'use client';
 
+import { useState } from 'react';
 import Link from 'next/link';
 import { motion } from 'framer-motion';
 import {
-  ArrowRight, Check, Zap, Shield, CreditCard,
+  ArrowRight, Check, Zap, Shield, CreditCard, X,
   Search, Megaphone, Mail, Pencil,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -30,8 +31,17 @@ const faqs = [
 ];
 
 export function LandingPageContent() {
+  const [showMobileBar, setShowMobileBar] = useState(true);
+
   return (
-    <main className="min-h-screen bg-background">
+    <main className="min-h-screen bg-background pb-16 md:pb-0">
+      {/* Slim promo strip — honest, verifiable claim only (no fabricated
+          ratings/customer counts), reinforces the ad's promise the instant
+          the page loads, before the visitor even scrolls to the header. */}
+      <div className="bg-primary text-white text-center text-xs sm:text-sm font-medium py-1.5 px-4">
+        🎉 2 AI tools free forever — no credit card required
+      </div>
+
       {/* Minimal header — logo + sign in + a real Sign Up CTA, no nav links
           to click away on. Sticky so the CTA stays reachable while
           scrolling, matching the pattern used by Jasper/other AI-tool ad
@@ -242,6 +252,27 @@ export function LandingPageContent() {
           </div>
         </div>
       </footer>
+
+      {/* Sticky bottom CTA bar — mobile only. Long-scroll ad landing pages
+          convert better with the CTA always in thumb reach; dismissible so
+          it doesn't feel forced on anyone who's already decided not to. */}
+      {showMobileBar && (
+        <div className="md:hidden fixed bottom-0 inset-x-0 z-50 border-t border-gray-800 bg-black/95 backdrop-blur-sm px-4 py-3 flex items-center gap-3">
+          <span className="flex-1 text-xs text-gray-300">2 tools free forever, no card needed</span>
+          <Link href="/register" className="flex-shrink-0">
+            <Button size="sm" className="bg-primary hover:bg-primary/90 text-white font-semibold">
+              Start Free
+            </Button>
+          </Link>
+          <button
+            onClick={() => setShowMobileBar(false)}
+            aria-label="Dismiss"
+            className="flex-shrink-0 text-gray-500 hover:text-white transition-colors"
+          >
+            <X className="w-4 h-4" />
+          </button>
+        </div>
+      )}
     </main>
   );
 }
