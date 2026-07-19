@@ -129,7 +129,12 @@ export default function ToolPage({
             {cat.label}
           </span>
           <span className="text-xs text-gray-500">
-            {userPlan === 'free' ? 'Fast' : modelTier === 'haiku' ? 'Fast' : 'Advanced'} AI
+            {/* The free-plan forced-Haiku downgrade (see /api/generate) only ever
+                applies to tools a free user can actually reach (minPlan === 'free').
+                For a locked Pro/Enterprise tool being previewed by a free user, show
+                the tool's real tier — that's what a Pro/Enterprise user (the only
+                one who can actually run it) will get. */}
+            {(userPlan === 'free' && minPlan === 'free') || modelTier === 'haiku' ? 'Fast' : 'Advanced'} AI
           </span>
           {isLocked && (
             <span className="text-xs text-yellow-500 flex items-center gap-1">

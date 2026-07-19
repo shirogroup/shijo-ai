@@ -77,11 +77,13 @@ export default function ToolsDirectory() {
                           </span>
                         )}
                         <span className="text-xs text-gray-600">
-                          {/* Free plan is always forced to the fast model regardless
-                              of the tool's own configured tier (see /api/generate) —
-                              match that here so this badge doesn't promise "Advanced"
-                              only for the tool page to show "Fast AI" once opened. */}
-                          {userPlan === 'free' || tool.modelTier === 'haiku' ? 'Fast' : 'Advanced'}
+                          {/* The free-plan forced-Haiku downgrade (see /api/generate)
+                              only ever applies to tools a free user can actually reach
+                              (minPlan === 'free') — checkToolAccess blocks free users
+                              from Pro/Enterprise tools before model selection even
+                              happens. So a locked tool should still show its real tier
+                              here, since that's what a Pro/Enterprise user gets. */}
+                          {(userPlan === 'free' && isFree) || tool.modelTier === 'haiku' ? 'Fast' : 'Advanced'}
                         </span>
                       </div>
                     </div>
