@@ -45,7 +45,7 @@ const plans = [
     badge: null,
     features: [
       'All 12 AI marketing tools',
-      'Unlimited generations',
+      'Unlimited generations (fair use)',
       'Advanced AI',
       'Team collaboration (coming soon)',
       'Custom integrations (coming soon)',
@@ -330,6 +330,10 @@ function BillingContent() {
           <div>
             <p className="font-medium text-gray-200 mb-1">What happens when I hit my limit?</p>
             <p className="text-gray-400">Free users reset daily at midnight. Pro users reset monthly. You can always upgrade for more generations.</p>
+          </div>
+          <div>
+            <p className="font-medium text-gray-200 mb-1">What does &quot;fair use&quot; mean for Enterprise?</p>
+            <p className="text-gray-400">Enterprise generations are unlimited for real, everyday use — the fair-use policy only exists to catch automated or abusive traffic patterns. If you have a genuinely high-volume use case, <a href="/contact" className="text-primary hover:underline">reach out</a> and we&apos;ll work out a plan that fits.</p>
           </div>
           <div>
             <p className="font-medium text-gray-200 mb-1">Do you offer refunds?</p>

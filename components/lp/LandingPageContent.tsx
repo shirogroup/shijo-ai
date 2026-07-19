@@ -19,7 +19,7 @@ const toolCategories = [
 const plans = [
   { name: 'Free', price: '$0', period: 'forever', features: ['2 AI tools', '3 generations per day', 'No credit card needed'], cta: 'Start Free', highlight: false },
   { name: 'Pro', price: '$29', period: '/month', features: ['All 12 AI tools', 'Advanced AI for complex tasks', '200 generations/month'], cta: 'Get Started with Pro', highlight: true },
-  { name: 'Enterprise', price: '$99', period: '/month', features: ['Everything in Pro', 'Unlimited generations', 'Team collaboration (coming soon)'], cta: 'Get Started with Enterprise', highlight: false },
+  { name: 'Enterprise', price: '$99', period: '/month', features: ['Everything in Pro', 'Unlimited generations (fair use)', 'Team collaboration (coming soon)'], cta: 'Get Started with Enterprise', highlight: false },
 ];
 
 const faqs = [

@@ -28,10 +28,26 @@ export const TOOL_LIMITS = {
   },
   enterprise: {
     dailyGenerations: 0,
-    monthlyGenerations: -1,   // -1 = unlimited
+    monthlyGenerations: -1,   // -1 = unlimited (as shown to the user — see ENTERPRISE_FAIR_USE_CAP below)
     forcedModel: null,
   },
 } as const;
+
+// Enterprise is marketed and displayed as "Unlimited generations" (with a
+// fair-use policy disclosed in the pricing copy), but the tool calls
+// underneath are real, metered Anthropic API cost — 9 of the 12 tools run
+// on Sonnet, and a single account hammering the endpoint with zero ceiling
+// has no cost floor at all under the old code. This is a hidden backstop,
+// not a customer-facing quota: normal usage (even genuinely heavy usage)
+// never approaches it, so the dashboard keeps showing "Unlimited" and this
+// only ever fires for runaway/scripted usage. Deliberately not shown in
+// getUsageStats() — surfacing an exact number would both contradict the
+// "Unlimited" marketing copy and make the fair-use ceiling easy to probe
+// for exactly. If a real Enterprise customer ever hits this, it should be
+// treated as a "call the customer, discuss actual usage" conversation, not
+// a silent cutoff — that's why the block message points to contacting the
+// team rather than an automatic upsell (there's no higher tier to upsell to).
+const ENTERPRISE_FAIR_USE_CAP = 3000;
 
 // ─── Types ────────────────────────────────────────────────────────────
 export interface UsageCheckResult {
@@ -175,7 +191,33 @@ export async function checkToolAccess(
     };
   }
 
-  // Enterprise — unlimited
+  // Enterprise — displayed/marketed as unlimited, but backed by a hidden
+  // fair-use ceiling (see ENTERPRISE_FAIR_USE_CAP above) so a runaway or
+  // scripted account can't generate uncapped real API cost.
+  const enterpriseMonthStart = getMonthStart();
+  const [enterpriseRow] = await db
+    .select({ total: count() })
+    .from(usageLogs)
+    .where(
+      and(
+        eq(usageLogs.userId, userId),
+        eq(usageLogs.feature, 'ai-tools'),
+        sql`${usageLogs.createdAt} >= ${enterpriseMonthStart}`
+      )
+    );
+  const enterpriseUsed = enterpriseRow?.total ?? 0;
+
+  if (enterpriseUsed >= ENTERPRISE_FAIR_USE_CAP) {
+    return {
+      allowed: false,
+      reason: "You've reached our fair-use limit for this billing cycle.",
+      remaining: 0,
+      limit: -1,
+      period: 'month',
+      upgradePrompt: 'Contact us — we\'ll work out a custom plan for your usage volume.',
+    };
+  }
+
   return {
     allowed: true,
     remaining: -1,

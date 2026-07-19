@@ -68,7 +68,7 @@ export function Pricing() {
             </p>
             <ul className="space-y-3 mb-8">
               <li className="flex items-center gap-2"><Check className="w-5 h-5 text-primary" /> Everything in Pro</li>
-              <li className="flex items-center gap-2"><Check className="w-5 h-5 text-primary" /> Unlimited generations</li>
+              <li className="flex items-center gap-2"><Check className="w-5 h-5 text-primary" /> Unlimited generations (fair use)</li>
               <li className="flex items-center gap-2 text-muted-foreground"><Check className="w-5 h-5 text-primary" /> Team collaboration <span className="text-xs">(coming soon)</span></li>
             </ul>
             <Link href="/register">
