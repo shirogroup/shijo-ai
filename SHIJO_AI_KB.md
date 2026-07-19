@@ -474,3 +474,25 @@ Context: real Google Ads traffic already hit the site (35 clicks, 3.19K impressi
 1. Push the Bug 5 fix (`components/dashboard/ToolPage.tsx` required-field logic) — this is the only outstanding local-only fix as of this update.
 2. Still waiting on the Vercel Runtime Log line for the `/api/account/export` 500 (Bug 4, unresolved, task #12).
 3. This account's free-plan daily quota is now fully used (0 of 3, resets at midnight) — any further live generation testing on this account needs to wait for reset or a plan upgrade.
+
+---
+
+## 24. Post-payment prep: upgrade CTA inside tools + outreach one-pager (2026-07-19, later same session)
+
+Sri confirmed the Bug-5 fix (`8144d3b`, required-field logic) deployed. Regression-checked live before building anything new, per Sri's explicit instruction to "make sure nothing will break and free tools are working again":
+- Re-verified `/dashboard/tools/post-caption-generator`: only "Topic or Product" shows the required `*` now (Platform/Brand Voice/Goal no longer show it).
+- Submitted with only Topic filled — correctly skipped the old "Please fill in..." client-side block and reached the real server-side check, which correctly returned "Daily limit reached" (this account's 3/3 daily quota was already used from the previous testing round). Confirms the fix works and the daily-limit gate still works — no regression.
+
+**New: upgrade CTA inside free tools (Sri's request).** Added a CTA card in `components/dashboard/ToolPage.tsx`, rendered directly under a successful result, shown only to free-plan users (`result && userPlan === 'free'`) — i.e. right after they've seen the tool actually produce something useful, not before. Copy (the "Why Upgrade" message, kept short per request): *"Like what you see? You're on the Free plan — 2 tools, 3 generations/day, Fast AI. Upgrade to Pro for all 12 AI tools, 200 generations/month, and our most advanced AI model."* with a gradient "Upgrade to Pro — $29/mo" button linking to `/dashboard/billing`. Local edit, not yet pushed — see push command below.
+
+**New: one-page outreach doc.** Built `docs/marketing/SHIJO-AI-One-Pager.docx` — single page, uses the real brand logo (`public/brand/shijo-logo-landscape-1200x300.png`), covers: what it is, best use cases per category (Social/SEO/Ads/Email, pulled directly from the actual 12-tool registry — no invented features), two **real, unedited example outputs** captured during this session's live testing (Post Caption Generator LinkedIn example, SEO Meta Generator CRM example), and the three real plans/prices. Rendered to PDF and visually verified before finalizing. **Caught and fixed one draft mistake before finalizing:** the first draft said "powered by Claude, Anthropic's AI models" in customer-facing copy — this directly violates the project's standing rule (AI vendor name is legal/compliance-page-only, never in marketing copy) — corrected to "powered by advanced AI language models."
+
+**Not yet done — needs Sri's action:**
+1. Push the upgrade-CTA addition:
+```
+rm -f .git/index.lock
+git add components/dashboard/ToolPage.tsx SHIJO_AI_KB.md
+git commit -m "Add upgrade CTA to free-tool results"
+git push origin main
+```
+2. Still outstanding from before: the `/api/account/export` 500 log line (Bug 4), and the optional `is_admin` flip for `srikanth@shiroapps.com`.

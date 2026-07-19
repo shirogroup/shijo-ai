@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Copy, Check, RefreshCw, ArrowLeft, Sparkles, Lock, AlertCircle } from 'lucide-react';
+import { Copy, Check, RefreshCw, ArrowLeft, Sparkles, Lock, AlertCircle, Crown } from 'lucide-react';
 import Link from 'next/link';
 import type { FieldConfig } from '@/lib/tools/registry';
 import { CATEGORIES, type ToolCategory, type PlanAccess } from '@/lib/tools/registry';
@@ -296,6 +296,31 @@ export default function ToolPage({
                 <div className="text-center text-gray-500">
                   <div className="text-5xl mb-3 opacity-30">{icon}</div>
                   <p className="text-sm">Fill in your details and click<br /><strong className="text-gray-400">Generate with AI</strong></p>
+                </div>
+              </div>
+            )}
+
+            {/* Upgrade CTA — shown right after a free-plan user gets a real
+                result, when the value of the tool is freshest in their mind.
+                Only for free-plan users; Pro/Enterprise already have this. */}
+            {result && userPlan === 'free' && (
+              <div className="mt-4 bg-gradient-to-r from-blue-900/40 to-purple-900/40 border border-blue-800/50 rounded-xl p-4 flex-shrink-0">
+                <div className="flex items-start gap-3">
+                  <Crown className="w-5 h-5 text-yellow-400 flex-shrink-0 mt-0.5" />
+                  <div className="flex-1">
+                    <p className="text-sm text-white font-semibold mb-1">Like what you see?</p>
+                    <p className="text-xs text-gray-300 mb-3">
+                      You&apos;re on the Free plan — 2 tools, 3 generations/day, Fast AI. Upgrade to Pro
+                      for all 12 AI tools, 200 generations/month, and our most advanced AI model.
+                    </p>
+                    <Link
+                      href="/dashboard/billing"
+                      className="inline-flex items-center gap-1.5 bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white text-xs font-semibold px-4 py-2 rounded-lg transition-all"
+                    >
+                      <Sparkles className="w-3.5 h-3.5" />
+                      Upgrade to Pro — $29/mo
+                    </Link>
+                  </div>
                 </div>
               </div>
             )}
