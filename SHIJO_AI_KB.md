@@ -496,3 +496,13 @@ git commit -m "Add upgrade CTA to free-tool results"
 git push origin main
 ```
 2. Still outstanding from before: the `/api/account/export` 500 log line (Bug 4), and the optional `is_admin` flip for `srikanth@shiroapps.com`.
+
+---
+
+## 25. Bug 4 (Export my data) resolved — confirmed schema-drift fix (2026-07-19, later same session)
+
+Sri ran the migration (`docs/manual-db-changes/2026-07-19-keyword-clusters-name-column.sql` — `ALTER TABLE keyword_clusters ADD COLUMN IF NOT EXISTS name varchar(255);`). Retested live immediately: clicked "Export my data" again on `srikanth@shiroapps.com`, confirmed via network request log that `GET /api/account/export` now returns **200** (previous request in the same tab session shows the earlier **500**, side by side, for a clean before/after). No code push was needed — this was purely a database-side fix, code (`db/schema.ts`, `app/api/account/export/route.ts`) was already correct.
+
+Since this endpoint runs 19 parallel queries covering nearly every user-owned table in the schema, and Promise.all only ever surfaced the *first* failing query (the earlier concern noted in §22), a clean 200 here means all 19 succeeded — there is no other lingering schema-drift column bug hiding behind this one. Bug 4 is fully closed.
+
+**Session status at this point:** all 5 real bugs found this session (Stripe stale-customer checkout, dashboard tool-count, tools-list/detail model badge mismatch ×2, force-required optional fields, keyword_clusters schema drift) are fixed and confirmed live. Remaining open items: the upgrade-CTA push (§24, still local-only pending Sri's push), and the pre-existing longer-term tasks (§0 Vercel secret rotation, admin `is_admin` flip for real E2E admin-panel testing, optional real $29 Pro purchase test).
