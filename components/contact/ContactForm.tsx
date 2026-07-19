@@ -3,9 +3,19 @@
 import { useState, useEffect, useCallback } from 'react';
 import { Loader2, CheckCircle } from 'lucide-react';
 
+const REASON_OPTIONS = [
+  { value: 'general', label: 'General Question' },
+  { value: 'billing', label: 'Billing' },
+  { value: 'technical', label: 'Technical / Bug' },
+  { value: 'feature_request', label: 'Feature Request' },
+  { value: 'partnership', label: 'Partnership / Press' },
+  { value: 'other', label: 'Other' },
+] as const;
+
 export function ContactForm() {
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
+  const [reason, setReason] = useState<string>('general');
   const [subject, setSubject] = useState('');
   const [message, setMessage] = useState('');
   const [captchaAnswer, setCaptchaAnswer] = useState('');
@@ -46,7 +56,7 @@ export function ContactForm() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
-        body: JSON.stringify({ name, email, subject, message, captchaToken, captchaAnswer }),
+        body: JSON.stringify({ name, email, reason, subject, message, captchaToken, captchaAnswer }),
       });
       const data = await res.json();
 
@@ -57,6 +67,7 @@ export function ContactForm() {
       setSuccess(true);
       setName('');
       setEmail('');
+      setReason('general');
       setSubject('');
       setMessage('');
     } catch (err) {
@@ -108,6 +119,19 @@ export function ContactForm() {
             className="w-full px-3 py-2 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-shiro-red/30 focus:border-shiro-red"
           />
         </div>
+      </div>
+
+      <div>
+        <label className="block text-sm font-medium text-gray-700 mb-1">Reason for contacting</label>
+        <select
+          value={reason}
+          onChange={(e) => setReason(e.target.value)}
+          className="w-full px-3 py-2 rounded-lg border border-gray-300 bg-white focus:outline-none focus:ring-2 focus:ring-shiro-red/30 focus:border-shiro-red"
+        >
+          {REASON_OPTIONS.map((r) => (
+            <option key={r.value} value={r.value}>{r.label}</option>
+          ))}
+        </select>
       </div>
 
       <div>

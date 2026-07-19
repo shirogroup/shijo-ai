@@ -330,11 +330,32 @@ export function buildAccountDeletedEmail(
   };
 }
 
+// ─── Shared "customer support" signature block ─────────────────────────
+// Simple, not salesy — appended to customer-facing support emails
+// (ticket received / resolved) so they read as coming from a real team
+// rather than an unsigned automated notice.
+function supportSignature(): string {
+  return `
+    <p style="font-size: 14px; color: #6b7280; margin: 28px 0 0 0;">
+      Best,<br>
+      <strong style="color: #111827;">The SHIJO.AI Support Team</strong><br>
+      <a href="mailto:info@shijo.ai" style="color: #CC0000; text-decoration: none;">info@shijo.ai</a>
+    </p>
+  `;
+}
+
+// Simple, single-style badge — just surfaces the category, no per-category
+// priority color-coding (kept deliberately simple per product decision).
+function reasonBadge(reasonLabel?: string): string {
+  if (!reasonLabel) return '';
+  return `<span style="display: inline-block; background: #e5e7eb; color: #374151; font-size: 11px; font-weight: 600; padding: 3px 10px; border-radius: 9999px; margin-bottom: 10px;">${reasonLabel}</span>`;
+}
+
 // ─── Support ticket: confirmation to the submitter ─────────────────────
 
 export function buildTicketReceivedEmail(
   name: string,
-  opts: { subject: string; message: string; ticketId: string }
+  opts: { subject: string; message: string; ticketId: string; reasonLabel?: string }
 ): { subject: string; html: string } {
   const firstName = name?.split(' ')[0] || 'there';
   const html = `
@@ -353,10 +374,13 @@ export function buildTicketReceivedEmail(
       <p style="font-size: 16px; color: #6b7280; margin: 0 0 24px 0;">Hi ${firstName}, thanks for reaching out. This confirms we received your message and a member of the team will get back to you by email.</p>
 
       <div style="background: #f9fafb; border-radius: 8px; padding: 20px; margin-bottom: 8px;">
+        ${reasonBadge(opts.reasonLabel)}
         <p style="font-size: 13px; color: #374151; margin: 0 0 8px 0;"><strong>Subject:</strong> ${opts.subject}</p>
         <p style="font-size: 13px; color: #374151; margin: 0; white-space: pre-wrap;">${opts.message}</p>
       </div>
       <p style="font-size: 12px; color: #9ca3af; margin: 8px 0 0 0;">Reference: ${opts.ticketId}</p>
+
+      ${supportSignature()}
     </div>
 
     <div style="text-align: center; margin-top: 32px; color: #9ca3af; font-size: 12px;">
@@ -376,7 +400,7 @@ export function buildTicketReceivedEmail(
 // ─── Support ticket: internal notification to the team ────────────────
 
 export function buildTicketNotificationEmail(
-  opts: { name: string; email: string; subject: string; message: string; ticketId: string }
+  opts: { name: string; email: string; subject: string; message: string; ticketId: string; reasonLabel?: string }
 ): { subject: string; html: string } {
   const html = `
 <!DOCTYPE html>
@@ -387,6 +411,7 @@ export function buildTicketNotificationEmail(
     <div style="background: white; border-radius: 16px; padding: 32px; box-shadow: 0 1px 3px rgba(0,0,0,0.1);">
       <h2 style="font-size: 20px; font-weight: 700; color: #111827; margin: 0 0 16px 0;">New contact form submission</h2>
       <div style="background: #f9fafb; border-radius: 8px; padding: 20px;">
+        ${reasonBadge(opts.reasonLabel)}
         <p style="font-size: 13px; color: #374151; margin: 0 0 8px 0;"><strong>From:</strong> ${opts.name} &lt;${opts.email}&gt;</p>
         <p style="font-size: 13px; color: #374151; margin: 0 0 8px 0;"><strong>Subject:</strong> ${opts.subject}</p>
         <p style="font-size: 13px; color: #374151; margin: 0 0 8px 0; white-space: pre-wrap;"><strong>Message:</strong>\n${opts.message}</p>
@@ -428,6 +453,8 @@ export function buildTicketResolvedEmail(
       <p style="font-size: 16px; color: #6b7280; margin: 0 0 16px 0;">Hi ${firstName}, we've marked your message about "${opts.subject}" as resolved.</p>
       ${opts.adminNotes ? `<div style="background: #f9fafb; border-radius: 8px; padding: 20px;"><p style="font-size: 13px; color: #374151; margin: 0; white-space: pre-wrap;">${opts.adminNotes}</p></div>` : ''}
       <p style="font-size: 14px; color: #9ca3af; margin: 16px 0 0 0;">If this didn't fully resolve your issue, just reply to this email or use the <a href="https://shijo.ai/contact" style="color: #CC0000;">contact form</a> again.</p>
+
+      ${supportSignature()}
     </div>
 
     <div style="text-align: center; margin-top: 32px; color: #9ca3af; font-size: 12px;">

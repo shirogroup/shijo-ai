@@ -4,6 +4,7 @@ import Script from "next/script";
 import "./globals.css";
 import { AuthProvider } from "@/contexts/AuthContext";
 import { GoogleAnalytics } from "@/components/GoogleAnalytics";
+import { CookieConsentBanner } from "@/components/CookieConsentBanner";
 import { GA_MEASUREMENT_ID } from "@/lib/analytics";
 
 const inter = Inter({ subsets: ["latin"] });
@@ -47,6 +48,23 @@ export default function RootLayout({
   return (
     <html lang="en">
       <head>
+        {/* Consent Mode default state — must run before gtag.js/GTM load so
+            both Google Analytics and the Google Ads conversion tag (fired
+            via GTM) start in a denied state until CookieConsentBanner grants
+            it. Without this, analytics/ad cookies could be set before the
+            user has made a choice. */}
+        <Script id="consent-default" strategy="beforeInteractive">
+          {`
+            window.dataLayer = window.dataLayer || [];
+            function gtag(){dataLayer.push(arguments);}
+            gtag('consent', 'default', {
+              analytics_storage: 'denied',
+              ad_storage: 'denied',
+              ad_user_data: 'denied',
+              ad_personalization: 'denied'
+            });
+          `}
+        </Script>
         <Script
           src={`https://www.googletagmanager.com/gtag/js?id=${GA_MEASUREMENT_ID}`}
           strategy="afterInteractive"
@@ -87,6 +105,7 @@ export default function RootLayout({
         <AuthProvider>
           <GoogleAnalytics />
           {children}
+          <CookieConsentBanner />
         </AuthProvider>
       </body>
     </html>

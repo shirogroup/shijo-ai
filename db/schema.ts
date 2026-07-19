@@ -53,6 +53,7 @@ export const supportTickets = pgTable('support_tickets', {
   email: varchar('email', { length: 255 }).notNull(),
   subject: varchar('subject', { length: 255 }).notNull(),
   message: text('message').notNull(),
+  reason: varchar('reason', { length: 30 }).default('general').notNull(), // general | billing | technical | feature_request | partnership | other
   status: varchar('status', { length: 20 }).default('open').notNull(), // open | in_progress | resolved
   adminNotes: text('admin_notes'),
   createdAt: timestamp('created_at').defaultNow().notNull(),

@@ -1,10 +1,10 @@
-import { Header } from '@/components/landing/Header';
+import { Header } from '@/components/Header';
 import { Hero } from '@/components/landing/Hero';
 import { Features } from '@/components/landing/Features';
 import { Pricing } from '@/components/landing/Pricing';
 import { UseCases } from '@/components/landing/UseCases';
 import { CTASection } from '@/components/landing/CTASection';
-import { Footer } from '@/components/landing/Footer';
+import { Footer } from '@/components/Footer';
 import { generatePageMetadata } from '@/lib/seo-config';
 
 export const metadata = generatePageMetadata('home');

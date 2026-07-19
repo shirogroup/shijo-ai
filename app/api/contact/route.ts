@@ -16,14 +16,26 @@ const SUPPORT_INBOX = 'info@shiroapps.com';
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
+export const REASON_OPTIONS = [
+  { value: 'general', label: 'General Question' },
+  { value: 'billing', label: 'Billing' },
+  { value: 'technical', label: 'Technical / Bug' },
+  { value: 'feature_request', label: 'Feature Request' },
+  { value: 'partnership', label: 'Partnership / Press' },
+  { value: 'other', label: 'Other' },
+] as const;
+
+const VALID_REASONS = new Set(REASON_OPTIONS.map((r) => r.value));
+
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json().catch(() => ({}));
-    const { name, email, subject, message, captchaToken, captchaAnswer } = body as {
+    const { name, email, subject, message, reason, captchaToken, captchaAnswer } = body as {
       name?: string;
       email?: string;
       subject?: string;
       message?: string;
+      reason?: string;
       captchaToken?: string;
       captchaAnswer?: string | number;
     };
@@ -31,6 +43,7 @@ export async function POST(req: NextRequest) {
     if (!name?.trim() || !email?.trim() || !subject?.trim() || !message?.trim()) {
       return NextResponse.json({ error: 'All fields are required.' }, { status: 400 });
     }
+    const safeReason = reason && VALID_REASONS.has(reason as any) ? reason : 'general';
     if (!EMAIL_RE.test(email.trim())) {
       return NextResponse.json({ error: 'Enter a valid email address.' }, { status: 400 });
     }
@@ -53,6 +66,7 @@ export async function POST(req: NextRequest) {
         email: email.trim(),
         subject: subject.trim(),
         message: message.trim(),
+        reason: safeReason,
       })
       .returning();
 
@@ -63,10 +77,13 @@ export async function POST(req: NextRequest) {
     // off when the function's response is sent, before the email's fetch()
     // call ever reaches Resend. Awaiting here guarantees the send is
     // actually attempted before the function ends.
+    const reasonLabel = REASON_OPTIONS.find((r) => r.value === safeReason)?.label ?? 'General Question';
+
     const confirmation = buildTicketReceivedEmail(name.trim(), {
       subject: subject.trim(),
       message: message.trim(),
       ticketId: ticket.id,
+      reasonLabel,
     });
     const notification = buildTicketNotificationEmail({
       name: name.trim(),
@@ -74,6 +91,7 @@ export async function POST(req: NextRequest) {
       subject: subject.trim(),
       message: message.trim(),
       ticketId: ticket.id,
+      reasonLabel,
     });
 
     await Promise.allSettled([
