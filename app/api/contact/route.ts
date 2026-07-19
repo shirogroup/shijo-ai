@@ -56,17 +56,18 @@ export async function POST(req: NextRequest) {
       })
       .returning();
 
-    // Fire-and-forget both emails — a slow/failed email provider shouldn't
-    // fail the ticket submission itself, the ticket is already saved.
+    // Await both emails (each independently caught) before returning —
+    // a slow/failed email provider still won't fail the ticket submission
+    // itself (the ticket is already saved above), but on Vercel's
+    // serverless runtime, un-awaited "fire and forget" promises can get cut
+    // off when the function's response is sent, before the email's fetch()
+    // call ever reaches Resend. Awaiting here guarantees the send is
+    // actually attempted before the function ends.
     const confirmation = buildTicketReceivedEmail(name.trim(), {
       subject: subject.trim(),
       message: message.trim(),
       ticketId: ticket.id,
     });
-    sendEmail({ to: email.trim(), subject: confirmation.subject, html: confirmation.html }).catch((err) =>
-      console.error('Contact confirmation email failed:', err)
-    );
-
     const notification = buildTicketNotificationEmail({
       name: name.trim(),
       email: email.trim(),
@@ -74,9 +75,15 @@ export async function POST(req: NextRequest) {
       message: message.trim(),
       ticketId: ticket.id,
     });
-    sendEmail({ to: SUPPORT_INBOX, subject: notification.subject, html: notification.html }).catch((err) =>
-      console.error('Contact internal notification email failed:', err)
-    );
+
+    await Promise.allSettled([
+      sendEmail({ to: email.trim(), subject: confirmation.subject, html: confirmation.html }).catch((err) =>
+        console.error('Contact confirmation email failed:', err)
+      ),
+      sendEmail({ to: SUPPORT_INBOX, subject: notification.subject, html: notification.html }).catch((err) =>
+        console.error('Contact internal notification email failed:', err)
+      ),
+    ]);
 
     return NextResponse.json({ success: true, ticketId: ticket.id });
   } catch (error) {

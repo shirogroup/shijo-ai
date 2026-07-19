@@ -42,7 +42,18 @@ export function RegisterForm() {
       const result = await register(email, password, name, acceptedTerms);
 
       if (result.success) {
-        window.location.href = '/dashboard';
+        // Fire a dataLayer event so Google Tag Manager can trigger a
+        // "signup complete" conversion tag (e.g. Google Ads conversion
+        // tracking). No PII (email/name) is included in the payload.
+        if (typeof window !== 'undefined') {
+          (window as any).dataLayer = (window as any).dataLayer || [];
+          (window as any).dataLayer.push({ event: 'sign_up_complete' });
+        }
+        // Small delay so GTM tags listening for the event above have a
+        // moment to fire their pixel/beacon before the page navigates away.
+        setTimeout(() => {
+          window.location.href = '/dashboard';
+        }, 250);
       } else {
         setError(result.error || 'Registration failed');
       }

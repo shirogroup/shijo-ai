@@ -58,7 +58,10 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
         subject: updated.subject,
         adminNotes: updated.adminNotes,
       });
-      sendEmail({ to: updated.email, subject, html }).catch((err) =>
+      // Awaited rather than fire-and-forget — see note in
+      // app/api/contact/route.ts on why un-awaited sends can get cut off
+      // before reaching Resend on Vercel.
+      await sendEmail({ to: updated.email, subject, html }).catch((err) =>
         console.error('Ticket-resolved email failed:', err)
       );
     }

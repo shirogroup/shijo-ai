@@ -4,37 +4,35 @@
 export const seoConfig = {
   siteName: 'SHIJO.ai',
   siteUrl: 'https://shijo.ai',
-  defaultTitle: 'SHIJO.ai - AI-Powered SEO Tools | Keyword Research & AI Search Visibility',
-  defaultDescription: 'Enterprise AI SEO platform for keyword research, AI search visibility tracking in ChatGPT & Claude, and SEO automation. Track rankings, optimize content, dominate AI search.',
-  
+  defaultTitle: 'SHIJO.AI - AI Marketing Tools for SEO, Ads, Email & Social',
+  defaultDescription: 'AI-powered marketing platform with 12 tools for keyword research, content generation, ad copy, and email. 2 tools free forever, no credit card required.',
+
   // Primary keywords (sorted by priority)
   primaryKeywords: [
     'AI SEO tools',           // 18,100/mo - CRITICAL
     'keyword research tool',   // 33,100/mo - HIGH
-    'AI search visibility',    // 590/mo - CRITICAL (trending)
-    'ChatGPT SEO',            // 2,900/mo - CRITICAL (trending)
     'SEO automation',         // 3,600/mo - HIGH
     'keyword research software', // Part of 33.1k cluster
     'enterprise SEO tools',    // 1,600/mo - HIGH
   ],
-  
+
   // Secondary keywords
   secondaryKeywords: [
-    'AI visibility tracking',
-    'generative engine optimization',
-    'LLM SEO',
     'keyword clustering tool',
     'search volume checker',
     'SERP analysis tool',
     'rank tracking software',
   ],
-  
+
   // Page-specific SEO
+  // NOTE: only `pages.home` is actually wired up (app/page.tsx calls
+  // generatePageMetadata('home')) — the other entries below are unused dead
+  // config as of 2026-07-18. Left in place but not linked from any route.
   pages: {
     home: {
-      title: 'SHIJO.ai - AI-Powered SEO Tools | Keyword Research & AI Search Visibility Tracking',
+      title: 'SHIJO.AI - AI Marketing Tools for SEO, Ads, Email & Social',
       description: 'AI-powered SEO and marketing platform with 12 tools for keyword research, content generation, ad copy, and email. 2 tools free forever, no credit card required.',
-      keywords: ['AI SEO tools', 'keyword research tool', 'AI search visibility', 'ChatGPT SEO'],
+      keywords: ['AI SEO tools', 'keyword research tool', 'AI marketing tools'],
       canonical: 'https://shijo.ai',
     },
     features: {
@@ -42,12 +40,6 @@ export const seoConfig = {
       description: 'Explore SHIJO.ai\'s AI-powered SEO features: automated keyword research, clustering, intent classification, search volume checking, SERP analysis, and rank tracking. Enterprise-grade SEO tools.',
       keywords: ['keyword research', 'keyword clustering', 'search volume checker', 'keyword difficulty'],
       canonical: 'https://shijo.ai/features',
-    },
-    aiVisibility: {
-      title: 'AI Search Visibility Tracking | Monitor ChatGPT, Claude & Perplexity Rankings - SHIJO.ai',
-      description: 'Track your brand visibility in ChatGPT, Claude, and Perplexity with SHIJO.ai. Monitor LLM citations, AI search rankings, and generative engine optimization (GEO) performance.',
-      keywords: ['AI search visibility', 'ChatGPT SEO', 'LLM SEO', 'generative engine optimization'],
-      canonical: 'https://shijo.ai/ai-visibility',
     },
     pricing: {
       title: 'AI Marketing Tools Pricing | Free, Pro & Enterprise Plans - SHIJO.ai',

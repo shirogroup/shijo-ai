@@ -84,10 +84,12 @@ export async function DELETE(req: NextRequest) {
 
     await clearSession();
 
-    // Fire-and-forget confirmation email; don't fail the deletion response
-    // if email sending has an issue, the account is already gone.
+    // Awaited (still independently caught, so an email failure never fails
+    // this response — the account is already gone either way) rather than
+    // fire-and-forget — see note in app/api/contact/route.ts on why
+    // un-awaited sends can get cut off before reaching Resend on Vercel.
     const { subject, html } = buildAccountDeletedEmail(name, { email, deletedAt });
-    sendEmail({ to: email, cc: LEGAL_RECORDS_CC, subject, html }).catch((err) =>
+    await sendEmail({ to: email, cc: LEGAL_RECORDS_CC, subject, html }).catch((err) =>
       console.error('Account-deletion confirmation email failed:', err)
     );
 

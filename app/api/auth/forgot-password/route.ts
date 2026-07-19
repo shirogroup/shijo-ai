@@ -49,7 +49,9 @@ export async function POST(req: NextRequest) {
     const resetUrl = `${baseUrl}/reset-password?token=${token}`;
     const resetEmail = buildPasswordResetEmail(user.name || email.split('@')[0], resetUrl);
 
-    sendEmail({ to: email.toLowerCase(), ...resetEmail }).then((sent) => {
+    // Awaited rather than fire-and-forget — see note in app/api/contact/route.ts
+    // on why un-awaited sends can get cut off before reaching Resend on Vercel.
+    await sendEmail({ to: email.toLowerCase(), ...resetEmail }).then((sent) => {
       if (sent) {
         console.log(`[FORGOT-PASSWORD] Reset email sent to ${email}`);
       } else {

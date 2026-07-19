@@ -106,31 +106,37 @@ export async function POST(req: NextRequest) {
       path: '/',
     });
 
-    // Send welcome email (fire and forget — don't block registration)
+    // Send welcome + terms-acceptance emails. Awaited (via Promise.allSettled,
+    // each independently caught) rather than true fire-and-forget — on
+    // Vercel's serverless runtime, un-awaited promises can get cut off when
+    // the function returns its response, before the email's fetch() call to
+    // Resend ever actually goes out. Awaiting here doesn't block the cookie
+    // already being set above; it just makes sure both sends are genuinely
+    // attempted before this function ends.
     const welcomeEmail = buildWelcomeEmail(name || email.split('@')[0]);
-    sendEmail({ to: email.toLowerCase(), ...welcomeEmail }).then((sent) => {
-      if (sent) {
-        console.log(`[REGISTER] Welcome email sent to ${email}`);
-      }
-    }).catch((err) => {
-      console.error(`[REGISTER] Failed to send welcome email:`, err);
-    });
-
-    // Send Terms/Privacy acceptance confirmation, CC'd to legal records
-    // (fire and forget — don't block registration)
     const acceptanceEmail = buildTermsAcceptedEmail(name || email.split('@')[0], {
       termsVersion: CURRENT_TERMS_VERSION,
       privacyVersion: CURRENT_PRIVACY_VERSION,
       acceptedAt: acceptedAt.toISOString(),
       ipAddress,
     });
-    sendEmail({ to: email.toLowerCase(), cc: LEGAL_RECORDS_CC, ...acceptanceEmail }).then((sent) => {
-      if (sent) {
-        console.log(`[REGISTER] Terms acceptance email sent to ${email} (cc ${LEGAL_RECORDS_CC})`);
-      }
-    }).catch((err) => {
-      console.error(`[REGISTER] Failed to send terms acceptance email:`, err);
-    });
+
+    await Promise.allSettled([
+      sendEmail({ to: email.toLowerCase(), ...welcomeEmail }).then((sent) => {
+        if (sent) {
+          console.log(`[REGISTER] Welcome email sent to ${email}`);
+        }
+      }).catch((err) => {
+        console.error(`[REGISTER] Failed to send welcome email:`, err);
+      }),
+      sendEmail({ to: email.toLowerCase(), cc: LEGAL_RECORDS_CC, ...acceptanceEmail }).then((sent) => {
+        if (sent) {
+          console.log(`[REGISTER] Terms acceptance email sent to ${email} (cc ${LEGAL_RECORDS_CC})`);
+        }
+      }).catch((err) => {
+        console.error(`[REGISTER] Failed to send terms acceptance email:`, err);
+      }),
+    ]);
 
     return response;
   } catch (error) {
