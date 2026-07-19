@@ -42,7 +42,7 @@ interface AuthContextType {
   loading: boolean;
   error: string | null;
   login: (email: string, password: string) => Promise<{ success: boolean; error?: string }>;
-  register: (email: string, password: string, name: string, acceptedTerms: boolean) => Promise<{ success: boolean; error?: string }>;
+  register: (email: string, password: string, confirmPassword: string, name: string, acceptedTerms: boolean) => Promise<{ success: boolean; error?: string }>;
   logout: () => Promise<void>;
   refetch: () => Promise<void>;
 }
@@ -108,13 +108,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
-  const register = async (email: string, password: string, name: string, acceptedTerms: boolean) => {
+  const register = async (email: string, password: string, confirmPassword: string, name: string, acceptedTerms: boolean) => {
     try {
       const response = await fetch('/api/auth/register', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
-        body: JSON.stringify({ email, password, name, acceptedTerms }),
+        body: JSON.stringify({ email, password, confirmPassword, name, acceptedTerms }),
       });
 
       const data = await response.json();

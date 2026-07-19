@@ -310,15 +310,15 @@ export default function ToolPage({
                   <div className="flex-1">
                     <p className="text-sm text-white font-semibold mb-1">Like what you see?</p>
                     <p className="text-xs text-gray-300 mb-3">
-                      You&apos;re on the Free plan — 2 tools, 3 generations/day, Fast AI. Upgrade to Pro
-                      for all 12 AI tools, 200 generations/month, and our most advanced AI model.
+                      Less than $1 a day unlocks all 12 AI tools, 200 generations a month, and our most
+                      advanced AI model — you&apos;re currently on Free (2 tools, 3 generations/day, Fast AI).
                     </p>
                     <Link
                       href="/dashboard/billing"
                       className="inline-flex items-center gap-1.5 bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white text-xs font-semibold px-4 py-2 rounded-lg transition-all"
                     >
                       <Sparkles className="w-3.5 h-3.5" />
-                      Upgrade to Pro — $29/mo
+                      Upgrade to Pro
                     </Link>
                   </div>
                 </div>

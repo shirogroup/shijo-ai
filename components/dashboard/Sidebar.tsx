@@ -120,7 +120,7 @@ export function Sidebar() {
                 <span className="text-sm font-semibold text-white">Upgrade to Pro</span>
               </div>
               <p className="text-xs text-gray-400">
-                Unlock all 12 tools &amp; 200 gens/month for $29/mo
+                Less than $1 a day for 200 AI generations a month
               </p>
             </Link>
           </div>

@@ -132,7 +132,7 @@ export default function DashboardOverview() {
                 Unlock all 12 AI marketing tools
               </h3>
               <p className="text-sm text-gray-300">
-                Upgrade to Pro for $29/mo — get 200 generations/month with advanced AI models across all tools.
+                Less than $1 a day for 200 AI generations a month — all 12 tools, advanced AI models included.
               </p>
             </div>
             <Link

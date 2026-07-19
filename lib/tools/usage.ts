@@ -141,7 +141,7 @@ export async function checkToolAccess(
         remaining: 0,
         limit,
         period: 'day',
-        upgradePrompt: 'Upgrade to Pro ($29/mo) for 200 generations/month across all 12 tools',
+        upgradePrompt: "You've used all 3 free generations today. Upgrade now so tomorrow isn't the only option.",
       };
     }
 

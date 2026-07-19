@@ -13,9 +13,13 @@ export const runtime = 'nodejs';
 // a durable record independent of the termsAcceptances table.
 const LEGAL_RECORDS_CC = 'legal@shijo.ai';
 
+// Same pattern used by app/api/contact/route.ts — kept in sync for
+// consistent server-side email validation across the app.
+const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
 export async function POST(req: NextRequest) {
   try {
-    const { email, password, name, acceptedTerms } = await req.json();
+    const { email, password, confirmPassword, name, acceptedTerms } = await req.json();
 
     // Validation
     if (!email || !password) {
@@ -25,9 +29,26 @@ export async function POST(req: NextRequest) {
       );
     }
 
+    if (!EMAIL_RE.test(email)) {
+      return NextResponse.json(
+        { error: 'Please enter a valid email address' },
+        { status: 400 }
+      );
+    }
+
     if (password.length < 8) {
       return NextResponse.json(
         { error: 'Password must be at least 8 characters' },
+        { status: 400 }
+      );
+    }
+
+    // RegisterForm.tsx already blocks submission on a client-side mismatch,
+    // but that check is UI-only and trivially bypassed by calling this route
+    // directly (e.g. via fetch/curl), so it must be re-verified server-side.
+    if (password !== confirmPassword) {
+      return NextResponse.json(
+        { error: 'Passwords do not match' },
         { status: 400 }
       );
     }

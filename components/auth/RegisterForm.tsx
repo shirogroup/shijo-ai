@@ -39,7 +39,7 @@ export function RegisterForm() {
     setLoading(true);
 
     try {
-      const result = await register(email, password, name, acceptedTerms);
+      const result = await register(email, password, confirmPassword, name, acceptedTerms);
 
       if (result.success) {
         // Fire a dataLayer event so Google Tag Manager can trigger a
