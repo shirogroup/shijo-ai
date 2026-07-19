@@ -3,6 +3,7 @@ import { db } from '@/db';
 import { users, passwordResets } from '@/db/schema';
 import { eq, and, gt } from 'drizzle-orm';
 import bcrypt from 'bcryptjs';
+import { serverErrorResponse } from '@/lib/api/errors';
 
 export const runtime = 'nodejs';
 
@@ -76,10 +77,6 @@ export async function POST(req: NextRequest) {
       message: 'Password has been reset successfully',
     });
   } catch (error) {
-    console.error('❌ RESET PASSWORD ERROR:', error);
-    return NextResponse.json(
-      { error: 'Failed to reset password' },
-      { status: 500 }
-    );
+    return serverErrorResponse('RST', 'RESET PASSWORD ERROR', error, 'Could not reset your password right now.');
   }
 }

@@ -4,6 +4,7 @@ import { getToolById } from '@/lib/tools/registry';
 import { PROMPTS } from '@/lib/tools/prompts';
 import { getSession } from '@/lib/auth';
 import { checkToolAccess, recordToolUsage } from '@/lib/tools/usage';
+import { serverErrorResponse } from '@/lib/api/errors';
 
 const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
 
@@ -32,11 +33,21 @@ export async function POST(req: NextRequest) {
 
     const { toolId, inputs } = await req.json();
 
+    // ── Validate request shape before doing anything else ───────────
+    // (Catches the empty/malformed-body case with a message that says
+    // what's actually wrong, instead of interpolating "undefined".)
+    if (!toolId || typeof toolId !== 'string') {
+      return NextResponse.json(
+        { success: false, error: 'Request is missing a required "toolId" field.' },
+        { status: 400 }
+      );
+    }
+
     // ── Validate tool exists ────────────────────────────────────────
     const tool = getToolById(toolId);
     if (!tool) {
       return NextResponse.json(
-        { success: false, error: `Unknown tool: ${toolId}` },
+        { success: false, error: `Unknown tool: "${toolId}". Check the tool ID matches one in the registry.` },
         { status: 400 }
       );
     }
@@ -119,10 +130,6 @@ export async function POST(req: NextRequest) {
       },
     });
   } catch (error) {
-    console.error('Generate API error:', error);
-    return NextResponse.json(
-      { success: false, error: 'Generation failed. Please try again.' },
-      { status: 500 }
-    );
+    return serverErrorResponse('GEN', 'Generate API error', error, 'Generation failed.');
   }
 }

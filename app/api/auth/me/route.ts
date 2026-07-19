@@ -3,6 +3,7 @@ import { db } from '@/db';
 import { users } from '@/db/schema';
 import { getSession } from '@/lib/auth';
 import { eq } from 'drizzle-orm';
+import { serverErrorResponse } from '@/lib/api/errors';
 
 export const runtime = 'nodejs';
 
@@ -44,10 +45,6 @@ export async function GET(req: NextRequest) {
       quota: null,
     });
   } catch (error) {
-    console.error('Get user error:', error);
-    return NextResponse.json(
-      { error: 'Internal server error' },
-      { status: 500 }
-    );
+    return serverErrorResponse('AME', 'Get user error', error, 'Could not load your account.');
   }
 }

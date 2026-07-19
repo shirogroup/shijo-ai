@@ -5,6 +5,7 @@ import { getSession } from '@/lib/auth';
 import { verifyCaptcha } from '@/lib/captcha';
 import { sendEmail, buildTicketReceivedEmail, buildTicketNotificationEmail } from '@/lib/email';
 import { REASON_OPTIONS, VALID_REASONS } from '@/lib/contactReasons';
+import { serverErrorResponse } from '@/lib/api/errors';
 
 export const runtime = 'nodejs';
 
@@ -95,7 +96,6 @@ export async function POST(req: NextRequest) {
 
     return NextResponse.json({ success: true, ticketId: ticket.id });
   } catch (error) {
-    console.error('Contact form submission error:', error);
-    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+    return serverErrorResponse('CTC', 'Contact form submission error', error, 'Your message could not be sent right now.');
   }
 }

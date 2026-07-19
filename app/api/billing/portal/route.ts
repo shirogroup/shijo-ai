@@ -4,6 +4,7 @@ import { getSession } from '@/lib/auth';
 import { db } from '../../../../db';
 import { users } from '../../../../db/schema';
 import { eq } from 'drizzle-orm';
+import { serverErrorResponse } from '@/lib/api/errors';
 
 export const runtime = 'nodejs';
 
@@ -45,10 +46,6 @@ export async function POST(req: NextRequest) {
     });
 
   } catch (error) {
-    console.error('Portal session creation error:', error);
-    return NextResponse.json(
-      { error: 'Failed to create portal session' },
-      { status: 500 }
-    );
+    return serverErrorResponse('PTL', 'Portal session creation error', error, 'Could not open the billing portal.');
   }
 }

@@ -5,6 +5,7 @@ import { hashPassword, signToken } from '@/lib/auth';
 import { eq } from 'drizzle-orm';
 import { sendEmail, buildWelcomeEmail, buildTermsAcceptedEmail } from '@/lib/email';
 import { CURRENT_TERMS_VERSION, CURRENT_PRIVACY_VERSION } from '@/lib/legal';
+import { serverErrorResponse } from '@/lib/api/errors';
 
 export const runtime = 'nodejs';
 
@@ -140,10 +141,6 @@ export async function POST(req: NextRequest) {
 
     return response;
   } catch (error) {
-    console.error('Registration error:', error);
-    return NextResponse.json(
-      { error: 'Internal server error' },
-      { status: 500 }
-    );
+    return serverErrorResponse('REG', 'Registration error', error, 'Could not create your account right now.');
   }
 }

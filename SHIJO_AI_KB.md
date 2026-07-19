@@ -1,6 +1,6 @@
 # SHIJO.AI — Knowledge Base / Status Reference
 
-**Last updated:** 2026-07-19 (Cowork session, later pass — live logged-in-account E2E test, §22, found + fixed 3 real bugs)
+**Last updated:** 2026-07-19 (Cowork session, later pass — full positive/negative test sweep, §27: 43 cases, 40 clean, 3 low-risk findings on registration endpoint)
 
 ## 0. 🚨 TOP PRIORITY — rotate Vercel secrets (found 2026-07-17, supersedes everything else in this doc)
 
@@ -506,3 +506,34 @@ Sri ran the migration (`docs/manual-db-changes/2026-07-19-keyword-clusters-name-
 Since this endpoint runs 19 parallel queries covering nearly every user-owned table in the schema, and Promise.all only ever surfaced the *first* failing query (the earlier concern noted in §22), a clean 200 here means all 19 succeeded — there is no other lingering schema-drift column bug hiding behind this one. Bug 4 is fully closed.
 
 **Session status at this point:** all 5 real bugs found this session (Stripe stale-customer checkout, dashboard tool-count, tools-list/detail model badge mismatch ×2, force-required optional fields, keyword_clusters schema drift) are fixed and confirmed live. Remaining open items: the upgrade-CTA push (§24, still local-only pending Sri's push), and the pre-existing longer-term tasks (§0 Vercel secret rotation, admin `is_admin` flip for real E2E admin-panel testing, optional real $29 Pro purchase test).
+
+---
+
+## 26. Full schema-drift audit — clean, no other landmines (2026-07-19, later same session)
+
+Per Sri's explicit request ("Check the database, tables schema and compare against the code to make sure we are not missing anything like we did before"): since no Postgres/Neon MCP connector is available in this session, built a code-driven audit instead of relying on manual review. A script parsed `db/schema.ts` directly (not hand-transcribed) to extract all 298 columns across all 32 tables, then generated 3 read-only SQL queries (validated against Postgres's real parser via `pglast`/libpg_query before handoff) comparing that list against `information_schema` in the live Neon database. Saved as `docs/manual-db-changes/2026-07-19-schema-drift-audit-READONLY.sql`.
+
+**Results, run by Sri in Neon's SQL Editor:**
+1. **Missing columns** (code expects, DB doesn't have): 0 rows. Clean.
+2. **Missing tables**: 0 rows. Clean.
+3. **Extra columns** (DB has, code doesn't reference) — informational, 8 rows found:
+   - `keyword_clusters.cluster_name` — the table's original column name, orphaned now that `db/schema.ts`/the app use `name` instead (added in §25's migration). Checked: `keyword_clusters` table is **completely empty** (0 rows), confirmed via a follow-up query — so no real data is orphaned, nothing to backfill. The Keywords feature is still "coming soon" in the UI (per §22's dashboard sweep), consistent with this table never having been used yet.
+   - `keyword_expansions.relevance_score`, `keyword_intents.reasoning`, `keyword_opportunities.factors` — the DB has columns ready for these, and `lib/ai/claude.ts` already contains AI helper functions (`classifyIntent`, an opportunity-scoring function) that generate exactly this shape of data (a `reasoning` string, a `factors` breakdown) — but grepped the codebase and confirmed **no code anywhere actually inserts rows into `keyword_intents` or `keyword_opportunities`**. This is the whole Phase 1 keyword-research/clustering/scoring pipeline being unbuilt/unwired end-to-end, not a live bug — matches the "coming soon" Keywords/Content/Analytics pages.
+   - `users.avatar_url`, `users.email_verified`, `users.oauth_id`, `users.oauth_provider` — grepped the codebase, confirmed none of these are referenced anywhere. Looks like leftover fields from whatever auth boilerplate this schema originated from (Google/OAuth login, profile pictures, email verification) — the actual app is plain email+password only. Not a bug, just unused DB surface area; relevant context if any of those features get built later.
+
+**Conclusion:** the `keyword_clusters.name` bug (§25) was an isolated incident, not a symptom of broader schema drift. Audit script is reusable — rerun `docs/manual-db-changes/2026-07-19-schema-drift-audit-READONLY.sql` (updating the expected column list if `db/schema.ts` changes) after any future migration to catch this class of bug before it causes a live 500 again.
+
+## 27. Full positive/negative test sweep — 43 cases, 40 clean, 3 low-risk findings (2026-07-19, later same session)
+
+Per Sri's explicit request to run comprehensive positive+negative tests on live production and document results, skipping anything requiring his own hands-on action (login, real purchase, account deletion). Full report saved at `docs/testing/2026-07-19-full-test-report.md`. Method: authenticated Chrome session + direct `fetch()` calls via `mcp__claude-in-chrome__javascript_tool` (bypasses UI to confirm server-side enforcement, not just cosmetic gating).
+
+**✅ CONFIRMED clean (40/43):** all 12 AI tool pages (badges, locked/free state, quota enforcement, optional-field fix holding up); daily-quota-exhaustion blocking; locked-tool gating enforced server-side (403 via direct API, not just hidden in UI); unauthenticated `/api/generate` → 401; unknown-tool/malformed-body → 400 (graceful); contact form (5 negative + 1 positive, including safe fallback on invalid `reason` enum); forgot-password anti-enumeration (identical response for registered/unregistered/malformed email, no user-enumeration leak); registration duplicate-email and weak-password rejection; admin API 403 gating on 3 endpoints for a non-admin account; billing-checkout invalid-plan/invalid-interval rejection; Stripe checkout reaching real `cs_live_` session (cancelled before payment, confirming live-mode Stripe still works end-to-end); account data-export now returns 200 (post §25 fix).
+
+**⚠️ Findings — low risk, not live-tested (would create permanent junk accounts in prod), confirmed via code read of `app/api/auth/register/route.ts` only:**
+1. No server-side password-confirmation check — `confirmPassword` is never read by the API at all, only checked client-side in `RegisterForm.tsx`. A user can only ever mismatch their own password (self-inflicted friction), not exploitable by a third party.
+2. No server-side email-format validation on registration — only a truthy check, unlike the Contact form which does validate format. Could let garbage email strings into the `users` table.
+3. Cosmetic only: `/api/generate` with a fully empty body returns `400 "Unknown tool: undefined"` — harmless wording nit.
+
+**Not tested, by design (needs Sri directly):** login (any password, real or fake, is off-limits under the credential-handling rule); real Stripe purchase completion; account deletion (destructive, only test account); admin panel's real data views (needs `is_admin=true` flipped on a test account, still not done).
+
+**Open decision for Sri:** whether findings #1/#2 above are worth a small fix (add server-side `confirmPassword` match check + basic email regex to `register/route.ts`) or acceptable as-is given the low risk.

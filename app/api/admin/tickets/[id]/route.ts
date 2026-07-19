@@ -4,6 +4,7 @@ import { users, supportTickets } from '@/db/schema';
 import { getSession } from '@/lib/auth';
 import { sendEmail, buildTicketResolvedEmail } from '@/lib/email';
 import { eq } from 'drizzle-orm';
+import { serverErrorResponse } from '@/lib/api/errors';
 
 export const runtime = 'nodejs';
 
@@ -68,7 +69,6 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
 
     return NextResponse.json({ ticket: updated });
   } catch (error) {
-    console.error('Admin ticket update error:', error);
-    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+    return serverErrorResponse('ADT2', 'Admin ticket update error', error, 'Could not update this ticket.');
   }
 }

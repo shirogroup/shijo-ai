@@ -3,6 +3,7 @@ import { db } from '@/db';
 import { users } from '@/db/schema';
 import { verifyPassword, signToken } from '@/lib/auth';
 import { eq } from 'drizzle-orm';
+import { serverErrorResponse } from '@/lib/api/errors';
 
 export const runtime = 'nodejs';
 
@@ -75,10 +76,6 @@ export async function POST(req: NextRequest) {
 
     return response;
   } catch (error) {
-    console.error('[LOGIN API] Error:', error);
-    return NextResponse.json(
-      { error: 'Internal server error' },
-      { status: 500 }
-    );
+    return serverErrorResponse('LGN', '[LOGIN API] Error', error, 'Could not sign you in right now.');
   }
 }

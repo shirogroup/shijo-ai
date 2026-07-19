@@ -5,6 +5,7 @@ import { getSession, clearSession, verifyPassword } from '@/lib/auth';
 import { getStripeClient } from '@/lib/stripe';
 import { sendEmail, buildAccountDeletedEmail } from '@/lib/email';
 import { eq } from 'drizzle-orm';
+import { serverErrorResponse } from '@/lib/api/errors';
 
 export const runtime = 'nodejs';
 
@@ -95,7 +96,6 @@ export async function DELETE(req: NextRequest) {
 
     return NextResponse.json({ success: true });
   } catch (error) {
-    console.error('Account deletion error:', error);
-    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+    return serverErrorResponse('DEL', 'Account deletion error', error, 'Could not delete your account right now.');
   }
 }

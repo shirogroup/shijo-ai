@@ -50,7 +50,8 @@ export interface UsageStats {
   used: number;
   limit: number;       // -1 = unlimited
   remaining: number;   // -1 = unlimited
-  resetLabel: string;  // e.g. "Resets at midnight" or "Resets Apr 1"
+  resetLabel: string;  // e.g. "Resets in 4h 12m" or "Resets Apr 1"
+  resetAt?: string;    // ISO timestamp of the next reset, for clients that want to render their own countdown
 }
 
 // ─── Free tool IDs (cached) ──────────────────────────────────────────
@@ -271,13 +272,15 @@ export async function getUsageStats(userId: string): Promise<UsageStats> {
       .limit(1);
 
     const used = row?.usageCount ?? 0;
+    const nextReset = getNextUTCMidnight();
     return {
       plan,
       period: 'day',
       used,
       limit: limits.dailyGenerations,
       remaining: limits.dailyGenerations - used,
-      resetLabel: 'Resets at midnight',
+      resetLabel: formatResetCountdown(nextReset),
+      resetAt: nextReset.toISOString(),
     };
   }
 
@@ -326,4 +329,28 @@ function getNextMonthLabel(): string {
   const now = new Date();
   const next = new Date(now.getFullYear(), now.getMonth() + 1, 1);
   return next.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+}
+
+// The daily free-plan counter (dailyLimits.date) is keyed off
+// `new Date().toISOString().split('T')[0]`, which is always the UTC
+// calendar date — this reset boundary is UTC midnight, not the visitor's
+// local midnight. For anyone outside UTC (e.g. IST, UTC+5:30), "midnight"
+// arrives 4-12+ hours off from what the old static "Resets at midnight"
+// label implied. Rather than track each user's timezone, we compute an
+// honest, timezone-agnostic countdown to the real (UTC) reset instant —
+// this is correct no matter where the visitor is, without needing to know
+// their timezone at all.
+function getNextUTCMidnight(): Date {
+  const now = new Date();
+  return new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate() + 1, 0, 0, 0));
+}
+
+function formatResetCountdown(resetAt: Date): string {
+  const ms = resetAt.getTime() - Date.now();
+  if (ms <= 0) return 'Resets shortly';
+  const totalMinutes = Math.ceil(ms / 60000);
+  const hours = Math.floor(totalMinutes / 60);
+  const minutes = totalMinutes % 60;
+  if (hours === 0) return `Resets in ${minutes}m`;
+  return `Resets in ${hours}h ${minutes}m`;
 }

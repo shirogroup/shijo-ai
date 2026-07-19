@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { getSession } from '@/lib/auth';
 import { getUsageStats } from '@/lib/tools/usage';
+import { serverErrorResponse } from '@/lib/api/errors';
 
 export async function GET() {
   try {
@@ -16,10 +17,6 @@ export async function GET() {
 
     return NextResponse.json({ success: true, usage: stats });
   } catch (error) {
-    console.error('Usage API error:', error);
-    return NextResponse.json(
-      { error: 'Failed to fetch usage stats' },
-      { status: 500 }
-    );
+    return serverErrorResponse('USG', 'Usage API error', error, 'Could not load your usage stats.');
   }
 }

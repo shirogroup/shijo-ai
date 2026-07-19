@@ -3,6 +3,7 @@ import { db } from '@/db';
 import { users, termsAcceptances } from '@/db/schema';
 import { getSession } from '@/lib/auth';
 import { eq, desc } from 'drizzle-orm';
+import { serverErrorResponse } from '@/lib/api/errors';
 
 export const runtime = 'nodejs';
 
@@ -32,7 +33,6 @@ export async function GET(req: NextRequest) {
 
     return NextResponse.json({ acceptances });
   } catch (error) {
-    console.error('Admin terms-acceptances error:', error);
-    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+    return serverErrorResponse('ADT3', 'Admin terms-acceptances error', error, 'Could not load terms acceptances.');
   }
 }

@@ -3,6 +3,7 @@ import { db } from '@/db';
 import { users } from '@/db/schema';
 import { getSession } from '@/lib/auth';
 import { eq } from 'drizzle-orm';
+import { serverErrorResponse } from '@/lib/api/errors';
 
 export const runtime = 'nodejs';
 
@@ -53,7 +54,6 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
       user: { id: updated.id, email: updated.email, name: updated.name, isAdmin: updated.isAdmin },
     });
   } catch (error) {
-    console.error('Admin user update error:', error);
-    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+    return serverErrorResponse('ADU2', 'Admin user update error', error, 'Could not update this user.');
   }
 }

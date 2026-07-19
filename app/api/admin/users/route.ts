@@ -3,6 +3,7 @@ import { db } from '@/db';
 import { users, usageLogs, supportTickets } from '@/db/schema';
 import { getSession } from '@/lib/auth';
 import { eq, desc, count, max } from 'drizzle-orm';
+import { serverErrorResponse } from '@/lib/api/errors';
 
 export const runtime = 'nodejs';
 
@@ -77,7 +78,6 @@ export async function GET(req: NextRequest) {
 
     return NextResponse.json({ users: enriched, summary });
   } catch (error) {
-    console.error('Admin users list error:', error);
-    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+    return serverErrorResponse('ADU', 'Admin users list error', error, 'Could not load users.');
   }
 }

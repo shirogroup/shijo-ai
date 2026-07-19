@@ -5,6 +5,7 @@ import { users } from '@/db/schema';
 import { getSession } from '@/lib/auth';
 import { eq } from 'drizzle-orm';
 import { STRIPE_PRICE_IDS } from '@/lib/stripe/products';
+import { refCode } from '@/lib/api/errors';
 
 export const runtime = 'nodejs';
 
@@ -143,9 +144,10 @@ export async function POST(req: NextRequest) {
     });
   } catch (error: unknown) {
     const message = error instanceof Error ? error.message : 'Unknown error';
-    console.error('[STRIPE CHECKOUT] Error:', message, error);
+    const ref = refCode('SCK');
+    console.error(`[${ref}] [STRIPE CHECKOUT] Error:`, message, error);
     return NextResponse.json(
-      { error: `Checkout failed: ${message}` },
+      { error: `Checkout failed: ${message} (Error ref: ${ref})`, errorRef: ref },
       { status: 500 }
     );
   }
