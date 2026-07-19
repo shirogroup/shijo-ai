@@ -1,31 +1,13 @@
 # SHIJO.AI — Knowledge Base / Status Reference
 
-**Last updated:** 2026-07-19 (Cowork session, later pass — full positive/negative test sweep, §27: 43 cases, 40 clean, 3 low-risk findings on registration endpoint)
+**Last updated:** 2026-07-19 (Cowork session, later pass — §28: Vercel secret rotation closed as false alarm, registration validation gaps fixed, CTA copy rolled out, AI-visibility tracking scoped)
 
-## 0. 🚨 TOP PRIORITY — rotate Vercel secrets (found 2026-07-17, supersedes everything else in this doc)
+## 0. Vercel secret rotation — RESOLVED, was a false alarm (originally flagged 2026-07-17, closed 2026-07-19)
 
-User shared a screenshot of the Vercel project's Environment Variables page: `ANTHROPIC_API_KEY`, `JWT_SECRET`, `STRIPE_WEBHOOK_SECRET`, `RESEND_API_KEY`, `DATABASE_URL`, `POSTGRES_PASSWORD`, `PGPASSWORD`, `POSTGRES_URL`, `POSTGRES_PRISMA_URL`, `POSTGRES_URL_NO_SSL`, and other Postgres/Neon vars are all flagged **"Needs Attention"** (orange badge).
+Originally flagged as top priority based on a "Needs Attention" badge on several env vars, cross-referenced against Vercel's April 2026 security bulletin about a breach that could have exposed non-"sensitive"-marked env vars.
 
-✅ CONFIRMED via Vercel's own official security bulletin (`vercel.com/kb/bulletin/vercel-april-2026-security-incident`, fetched 2026-07-17): Vercel disclosed an April 2026 breach where an attacker compromised a Vercel employee's account (via a compromised third-party OAuth app, Context.ai) and used that access to **decrypt customer environment variables that were not marked "sensitive"** — i.e., variables stored in a form that decrypts to plaintext, which is the default/legacy type for any var created before this feature existed. Vercel's official recommendation: *"Review and rotate environment variables that were not marked as 'sensitive.' Those values (API keys, tokens, database credentials, signing keys, etc.) should be treated as potentially exposed and rotated as a priority."*
+⚠️ **CORRECTED 2026-07-19, per Sri directly (not independently re-verified against Vercel/Anthropic/Stripe dashboards — taking his word as the account owner):** this project's secrets were **not** exposed. The actual root cause behind what looked like a security-relevant symptom was the Resend fire-and-forget email bug (§19) — already found and fixed in an earlier session (all `sendEmail()` calls now properly `await`ed). The "Needs Attention" badge does not indicate this project was among the compromised accounts. **No rotation needed. This item is closed** — do not resurface it as an open action item in future sessions.
 
-The "Needs Attention" badges are almost certainly Vercel's UI surfacing exactly this — every flagged variable here is API-key/token/DB-credential/signing-key shaped, matching Vercel's own examples of what to rotate.
-
-**Why this matters more than anything else in this document:**
-- If `JWT_SECRET` was exposed, an attacker could forge valid session cookies and bypass auth entirely — this is a strictly worse version of the already-known middleware signature-verification gap (§3), because it would defeat even the correctly-verifying Node.js `getSession()` layer.
-- If `ANTHROPIC_API_KEY` was exposed, someone could be spending against it right now — this is the exact "don't lose money on API usage" risk from earlier in this engagement, except external rather than just an uncapped Enterprise plan.
-- If `STRIPE_WEBHOOK_SECRET` was exposed, an attacker could forge fake webhook events (e.g. fake "payment succeeded") to grant themselves subscriptions without paying.
-- Database credentials exposed = direct read/write access to the live Neon DB.
-
-**Action needed from the user — Claude cannot do this:** generating new keys and entering them into Vercel requires visiting each provider's dashboard (Anthropic Console, Stripe, Neon, Resend) and entering credentials, which Claude is not permitted to do under any circumstance, even with tool access. Recommended order:
-1. Rotate `ANTHROPIC_API_KEY` first (Anthropic Console → API keys → revoke old, create new) — highest financial exposure.
-2. Rotate `JWT_SECRET` (generate a new random 32+ byte string) — but note this will invalidate all current user sessions (acceptable, forces re-login).
-3. Rotate `STRIPE_WEBHOOK_SECRET` (Stripe dashboard → Webhooks → roll secret) and while there, resolve the Stripe test/live key mismatch (§4) in the same session.
-4. Rotate `RESEND_API_KEY` (Resend dashboard → revoke the `re_G5CREC5q...` key shown, create new).
-5. Rotate database credentials (Neon dashboard → reset password), which cascades to `DATABASE_URL`/`POSTGRES_*`/`PGPASSWORD` etc. all needing the new value.
-6. As each is re-added in Vercel, use the **Sensitive** toggle (`vercel.com/docs/environment-variables/sensitive-environment-variables`) so it can't be read back in plaintext again.
-7. Per Vercel's own recommendation: also check the project's Activity Log (`vercel.com/activity-log`) for suspicious environment-variable read events, and review recent deployments for anything unexpected.
-
-❓ UNKNOWN: whether this project specifically was among the confirmed-compromised accounts, or whether the "Needs Attention" flag is precautionary/broad. Vercel's bulletin says they directly notified confirmed-affected customers — worth checking email/Vercel notifications for that. Either way, Vercel's own guidance is to rotate regardless, since the flag is present on this project's vars.
 **Purpose:** Durable reference for this project's actual current state, so a new Claude session (or a reinstall) can pick up without re-deriving everything from scratch. Read this file first, before assuming anything about project state.
 
 **Labeling convention used throughout:** every claim below is marked
@@ -260,7 +242,7 @@ The handoff doc's audit is ~4 months old (Mar 23, 2026) even though the doc itse
 
 ## 14. Live click-through testing, content-accuracy audit, and GDPR self-service tools (2026-07-18)
 
-**User instruction on hold, still in force:** "Lets not rotate anything until we test it orselves" — Vercel secret rotation (§0, task #19) stays untouched until the user tests the live product themselves. Do not action without a fresh explicit go-ahead.
+**User instruction, historical:** "Lets not rotate anything until we test it orselves" — this held Vercel secret rotation (§0) until the product was tested. §0 is now closed (2026-07-19, per Sri: secrets were never exposed) — this instruction no longer applies to anything outstanding.
 
 **File-organization change:** the Cowork outputs scratchpad path is a Windows app-container path the user can't reliably open. Going forward, anything the user needs to open goes in this repo's own `docs/` folder, or is pasted directly in chat — not written to the scratchpad.
 
@@ -537,3 +519,26 @@ Per Sri's explicit request to run comprehensive positive+negative tests on live 
 **Not tested, by design (needs Sri directly):** login (any password, real or fake, is off-limits under the credential-handling rule); real Stripe purchase completion; account deletion (destructive, only test account); admin panel's real data views (needs `is_admin=true` flipped on a test account, still not done).
 
 **Open decision for Sri:** whether findings #1/#2 above are worth a small fix (add server-side `confirmPassword` match check + basic email regex to `register/route.ts`) or acceptable as-is given the low risk.
+
+---
+
+## 28. Live regression pass, registration fix shipped, CTA copy rollout, AI-visibility scoping doc (2026-07-19, new session)
+
+**§0 Vercel secret rotation — closed, false alarm (see corrected §0 above).** Per Sri directly: secrets were never exposed; the real issue behind the original concern was the Resend fire-and-forget bug (§19), already fixed in an earlier session. Not independently re-verified against the Vercel/Anthropic/Stripe dashboards — taking Sri's word as account owner. Do not resurface this as an open item.
+
+**Live regression pass (Claude in Chrome, public pages only — no session existed in this browser, and Claude does not log in):** homepage/`/ai-marketing-tools`/`/#pricing`/`/contact`/`/blog` all confirmed live and correct — black header sitewide, promo strip + sticky "Start Free" CTA on `/ai-marketing-tools`, "Unlimited generations (fair use)" on the pricing cards, no console errors, cookie-consent Google Consent Mode firing correctly (default-denied → granted-on-accept, confirmed via `dataLayer` inspection), `robots.txt`/`sitemap.xml` both correct. **Not tested — needs an authenticated session:** bell icon panel, admin panel, quota countdown ticking to 0. This remains open until Sri logs in himself or flips `is_admin`.
+
+**Registration validation gaps (§27 findings #1/#2) — fixed, local only, not pushed.** `confirmPassword` was previously never sent to the API at all (`AuthContext.tsx`'s `register()` only ever sent `email/password/name/acceptedTerms`) — fixed by threading `confirmPassword` through `RegisterForm.tsx` → `AuthContext.tsx` → `app/api/auth/register/route.ts`, which now rejects a mismatch server-side and validates email format with the same regex already used in `app/api/contact/route.ts`. No `node_modules`/`tsc` available in this sandbox to typecheck — change is small and manually verified (single caller of `register()`, confirmed via grep).
+
+**Upgrade CTA copy rolled out (pricing-review doc §5/§7), local only, not pushed.** Per Sri's picks: cost-anchor line ("Less than $1 a day for 200 AI generations a month") now on the dashboard sidebar card (`Sidebar.tsx`), the full-width dashboard banner (`app/dashboard/page.tsx`), and the in-tool post-generation CTA (`ToolPage.tsx`). Loss-aversion line ("You've used all 3 free generations today...") now shown specifically at the free-plan daily-limit-hit moment — both in `UsageMeter.tsx`'s danger state and in the `upgradePrompt` string `lib/tools/usage.ts` returns from the server when a 4th free generation is blocked. Locked-tool placeholder text (`requires a Pro ($29/mo) plan`) and the tools-list page were deliberately left alone — no plain "$29/mo" framing existed there to replace.
+
+**AI-visibility/GEO tracking scoping doc written:** `docs/product/2026-07-19-AI-Visibility-Tracking-Scoping.docx`. Sri picked this over white-label/local-SEO/reporting as the next feature to scope (per the feature-brief cross-check's finding that `ai_visibility`/`ai_simulations` tables + `user_quotas` columns already exist, dormant). Key finding, confirmed via grep of `package.json` and `.env.local`: **no OpenAI/Perplexity/SerpApi/DataForSEO integration exists anywhere in this project** — only `ANTHROPIC_API_KEY`. This means a "tracking" feature can currently only simulate what Claude itself believes ChatGPT/Perplexity/Google AI Overviews would say, not actually query them — flagged as a real decision (Option A: Claude-only simulation, ship fast, must be labeled honestly vs. Option B: real multi-engine, needs new vendor accounts/cost) rather than something to build silently, given this project's history of fabricated-capability bugs. Not yet decided by Sri. No code written yet — scoping only, per Sri's explicit choice to keep this session to a written doc.
+
+**Not yet done — needs Sri's action:**
+```
+rm .git/index.lock
+git add app/api/auth/register/route.ts contexts/AuthContext.tsx components/auth/RegisterForm.tsx components/dashboard/Sidebar.tsx app/dashboard/page.tsx components/dashboard/ToolPage.tsx components/dashboard/UsageMeter.tsx lib/tools/usage.ts docs/product/2026-07-19-AI-Visibility-Tracking-Scoping.docx SHIJO_AI_KB.md
+git commit -m "Add registration validation, roll out cost-anchor CTA copy, add AI-visibility scoping doc"
+git push origin main
+```
+Everything above is local-only until this runs.
