@@ -29,12 +29,12 @@ export function Header() {
   };
 
   return (
-    <header className="bg-white border-b border-gray-200 sticky top-0 z-50">
+    <header className="bg-black/95 backdrop-blur-sm border-b border-gray-800 sticky top-0 z-50">
       <nav className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex justify-between items-center h-16">
           {/* Logo */}
           <div className="flex items-center">
-            <Logo />
+            <Logo textClassName="text-xl font-bold text-white" />
           </div>
 
           {/* Desktop Navigation */}
@@ -43,7 +43,7 @@ export function Header() {
               <Link
                 key={item.name}
                 href={item.href}
-                className={`text-gray-900 hover:text-shiro-red transition-colors font-medium ${
+                className={`text-white hover:text-shiro-red transition-colors font-medium ${
                   pathname === item.href ? 'text-shiro-red' : ''
                 }`}
               >
@@ -58,13 +58,13 @@ export function Header() {
               <>
                 <Link
                   href="/dashboard"
-                  className="text-gray-900 hover:text-shiro-red transition-colors font-medium"
+                  className="text-white hover:text-shiro-red transition-colors font-medium"
                 >
                   Dashboard
                 </Link>
                 <button
                   onClick={handleLogout}
-                  className="text-gray-600 hover:text-gray-900 transition-colors font-medium"
+                  className="text-gray-400 hover:text-white transition-colors font-medium"
                 >
                   Sign out
                 </button>
@@ -73,7 +73,7 @@ export function Header() {
               <>
                 <Link
                   href="/login"
-                  className="text-gray-900 hover:text-shiro-red transition-colors font-medium"
+                  className="text-white hover:text-shiro-red transition-colors font-medium"
                 >
                   Sign in
                 </Link>
@@ -91,7 +91,7 @@ export function Header() {
           <div className="md:hidden">
             <button
               onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-              className="text-gray-900 hover:text-shiro-red transition-colors"
+              className="text-white hover:text-shiro-red transition-colors"
             >
               <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 {mobileMenuOpen ? (
@@ -106,23 +106,23 @@ export function Header() {
 
         {/* Mobile Menu */}
         {mobileMenuOpen && (
-          <div className="md:hidden py-4 space-y-4 border-t border-gray-200">
+          <div className="md:hidden py-4 space-y-4 border-t border-gray-800">
             {navigation.map((item) => (
               <Link
                 key={item.name}
                 href={item.href}
-                className="block text-gray-900 hover:text-shiro-red transition-colors font-medium"
+                className="block text-white hover:text-shiro-red transition-colors font-medium"
                 onClick={() => setMobileMenuOpen(false)}
               >
                 {item.name}
               </Link>
             ))}
-            <div className="pt-4 border-t border-gray-200 space-y-3">
+            <div className="pt-4 border-t border-gray-800 space-y-3">
               {user ? (
                 <>
                   <Link
                     href="/dashboard"
-                    className="block text-gray-900 hover:text-shiro-red transition-colors font-medium"
+                    className="block text-white hover:text-shiro-red transition-colors font-medium"
                     onClick={() => setMobileMenuOpen(false)}
                   >
                     Dashboard
@@ -132,7 +132,7 @@ export function Header() {
                       handleLogout();
                       setMobileMenuOpen(false);
                     }}
-                    className="block w-full text-left text-gray-600 hover:text-gray-900 transition-colors font-medium"
+                    className="block w-full text-left text-gray-400 hover:text-white transition-colors font-medium"
                   >
                     Sign out
                   </button>
@@ -141,7 +141,7 @@ export function Header() {
                 <>
                   <Link
                     href="/login"
-                    className="block text-gray-900 hover:text-shiro-red transition-colors font-medium"
+                    className="block text-white hover:text-shiro-red transition-colors font-medium"
                     onClick={() => setMobileMenuOpen(false)}
                   >
                     Sign in

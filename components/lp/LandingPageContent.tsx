@@ -32,16 +32,26 @@ const faqs = [
 export function LandingPageContent() {
   return (
     <main className="min-h-screen bg-background">
-      {/* Minimal header — logo + sign in only, no nav links to click away on */}
-      <header className="border-b border-gray-800 bg-black">
+      {/* Minimal header — logo + sign in + a real Sign Up CTA, no nav links
+          to click away on. Sticky so the CTA stays reachable while
+          scrolling, matching the pattern used by Jasper/other AI-tool ad
+          landing pages. */}
+      <header className="sticky top-0 z-50 border-b border-gray-800 bg-black/95 backdrop-blur-sm">
         <div className="container mx-auto px-6 h-16 flex items-center justify-between">
           <div className="flex items-center gap-2">
             <LogoMark className="w-7 h-7" />
             <span className="text-xl font-bold text-primary">SHIJO.AI</span>
           </div>
-          <Link href="/login" className="text-sm font-medium text-gray-300 hover:text-primary transition-colors">
-            Sign In
-          </Link>
+          <div className="flex items-center gap-3 sm:gap-4">
+            <Link href="/login" className="text-sm font-medium text-gray-400 hover:text-white transition-colors">
+              Sign In
+            </Link>
+            <Link href="/register">
+              <Button size="sm" className="bg-primary hover:bg-primary/90 text-white font-semibold">
+                Start Free
+              </Button>
+            </Link>
+          </div>
         </div>
       </header>
 
