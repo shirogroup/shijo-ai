@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { Zap, TrendingUp, Infinity } from 'lucide-react';
+import { PLAN_DISPLAY_NAME } from '@/lib/stripe/products';
 
 interface UsageData {
   plan: string;
@@ -48,7 +49,7 @@ export default function UsageMeter() {
   const isWarning = !isUnlimited && percentage >= 80;
   const isDanger = !isUnlimited && usage.remaining <= 0;
 
-  const planLabel = usage.plan.charAt(0).toUpperCase() + usage.plan.slice(1);
+  const planLabel = PLAN_DISPLAY_NAME[usage.plan] || (usage.plan.charAt(0).toUpperCase() + usage.plan.slice(1));
   const periodLabel = usage.period === 'day' ? 'today' : 'this month';
 
   return (
