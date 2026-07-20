@@ -9,14 +9,19 @@ import { refCode } from '@/lib/api/errors';
 
 export const runtime = 'nodejs';
 
-const VALID_PLANS: Record<string, Record<'monthly' | 'annual', string>> = {
+// Enterprise is intentionally NOT in this map — paused as of 2026-07-19
+// (Free/Standard/Pro/Enterprise restructure, zero customers on any plan
+// at the time, confirmed via Stripe). A request for plan: 'enterprise'
+// is rejected below with the same "Invalid plan selected" error as any
+// other unrecognized plan name — this is the server-side enforcement,
+// independent of whatever the pricing page UI shows.
+const VALID_PLANS: Record<string, Partial<Record<'monthly' | 'annual', string>>> = {
   pro: {
-    monthly: STRIPE_PRICE_IDS.PRO_MONTHLY,
+    monthly: STRIPE_PRICE_IDS.PRO_MONTHLY, // displayed as "Standard"
     annual: STRIPE_PRICE_IDS.PRO_ANNUAL,
   },
-  enterprise: {
-    monthly: STRIPE_PRICE_IDS.ENTERPRISE_MONTHLY,
-    annual: STRIPE_PRICE_IDS.ENTERPRISE_ANNUAL,
+  growth: {
+    monthly: STRIPE_PRICE_IDS.GROWTH_MONTHLY, // displayed as "Pro" — no annual price yet
   },
 };
 
@@ -43,6 +48,15 @@ export async function POST(req: NextRequest) {
     if (!plan || !VALID_PLANS[plan]) {
       return NextResponse.json(
         { error: 'Invalid plan selected' },
+        { status: 400 }
+      );
+    }
+
+    // 'growth' (Pro) has no annual price yet — VALID_PLANS[plan] can be a
+    // partial map, so check the specific interval resolves before using it.
+    if (!VALID_PLANS[plan][interval as 'monthly' | 'annual']) {
+      return NextResponse.json(
+        { error: 'This plan is not available on that billing interval yet' },
         { status: 400 }
       );
     }

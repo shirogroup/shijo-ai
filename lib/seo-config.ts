@@ -43,7 +43,7 @@ export const seoConfig = {
     },
     pricing: {
       title: 'AI Marketing Tools Pricing | Free, Pro & Enterprise Plans - SHIJO.ai',
-      description: 'Simple pricing for AI-powered marketing tools. Free plan with 2 tools and 3 generations/day. Pro at $29/mo or Enterprise at $99/mo unlocks all 12 tools with advanced AI models.',
+      description: 'Simple pricing for AI-powered marketing tools. Free plan with 2 tools and 3 generations/day. Standard at $29/mo or Pro at $199/mo unlocks all 12 tools with advanced AI models.',
       keywords: ['AI marketing tools pricing', 'keyword research tool cost', 'affordable SEO software'],
       canonical: 'https://shijo.ai/pricing',
     },

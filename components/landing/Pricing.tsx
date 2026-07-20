@@ -15,7 +15,7 @@ export function Pricing() {
           </h2>
           <p className="text-xl text-muted-foreground">Start free, upgrade when ready</p>
         </div>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-8 max-w-6xl mx-auto">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 max-w-7xl mx-auto">
           {/* Free */}
           <Card className="p-8">
             <h3 className="text-2xl font-bold mb-2">Free</h3>
@@ -33,12 +33,9 @@ export function Pricing() {
             </Link>
           </Card>
 
-          {/* Pro */}
-          <Card className="p-8 border-2 border-primary relative">
-            <div className="text-xs font-semibold px-3 py-1 rounded-full bg-primary text-white inline-block mb-4">
-              Most Popular
-            </div>
-            <h3 className="text-2xl font-bold mb-2">Pro</h3>
+          {/* Standard */}
+          <Card className="p-8">
+            <h3 className="text-2xl font-bold mb-2">Standard</h3>
             <p className="text-muted-foreground mb-6">All 12 tools, advanced AI</p>
             <p className="text-4xl font-bold mb-2">
               $29<span className="text-base font-normal text-muted-foreground">/month</span>
@@ -52,27 +49,45 @@ export function Pricing() {
               <li className="flex items-center gap-2"><Check className="w-5 h-5 text-primary" /> 200 generations/month</li>
             </ul>
             <Link href="/register">
+              <Button className="w-full" variant="outline">Get Started with Standard</Button>
+            </Link>
+          </Card>
+
+          {/* Pro */}
+          <Card className="p-8 border-2 border-primary relative">
+            <div className="text-xs font-semibold px-3 py-1 rounded-full bg-primary text-white inline-block mb-4">
+              Most Popular
+            </div>
+            <h3 className="text-2xl font-bold mb-2">Pro</h3>
+            <p className="text-muted-foreground mb-6">For heavier, everyday use</p>
+            <p className="text-4xl font-bold mb-2">
+              $199<span className="text-base font-normal text-muted-foreground">/month</span>
+            </p>
+            <p className="text-sm text-muted-foreground mb-6">&nbsp;</p>
+            <ul className="space-y-3 mb-8">
+              <li className="flex items-center gap-2"><Check className="w-5 h-5 text-primary" /> All 12 AI tools</li>
+              <li className="flex items-center gap-2"><Check className="w-5 h-5 text-primary" /> Sonnet AI for complex tasks</li>
+              <li className="flex items-center gap-2"><Check className="w-5 h-5 text-primary" /> 1,500 generations/month</li>
+            </ul>
+            <Link href="/register">
               <Button className="w-full bg-primary hover:bg-primary/90 text-white">Get Started with Pro</Button>
             </Link>
           </Card>
 
-          {/* Enterprise */}
-          <Card className="p-8">
+          {/* Enterprise — paused, not purchasable */}
+          <Card className="p-8 opacity-80">
             <h3 className="text-2xl font-bold mb-2">Enterprise</h3>
             <p className="text-muted-foreground mb-6">For agencies and teams</p>
-            <p className="text-4xl font-bold mb-2">
-              $99<span className="text-base font-normal text-muted-foreground">/month</span>
-            </p>
-            <p className="text-sm text-muted-foreground mb-6">
-              or $950/year <span className="text-primary font-medium">(save 20%)</span>
+            <p className="text-4xl font-bold mb-6">
+              Coming Soon
             </p>
             <ul className="space-y-3 mb-8">
-              <li className="flex items-center gap-2"><Check className="w-5 h-5 text-primary" /> Everything in Pro</li>
-              <li className="flex items-center gap-2"><Check className="w-5 h-5 text-primary" /> Unlimited generations (fair use)</li>
+              <li className="flex items-center gap-2 text-muted-foreground"><Check className="w-5 h-5 text-primary" /> Everything in Pro</li>
+              <li className="flex items-center gap-2 text-muted-foreground"><Check className="w-5 h-5 text-primary" /> Custom volume &amp; pricing</li>
               <li className="flex items-center gap-2 text-muted-foreground"><Check className="w-5 h-5 text-primary" /> Team collaboration <span className="text-xs">(coming soon)</span></li>
             </ul>
-            <Link href="/register">
-              <Button className="w-full" variant="outline">Get Started with Enterprise</Button>
+            <Link href="/contact">
+              <Button className="w-full" variant="outline">Contact Us</Button>
             </Link>
           </Card>
         </div>

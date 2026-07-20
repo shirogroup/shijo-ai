@@ -1,0 +1,74 @@
+# SHIJO.AI — Long-Tail Keyword List for Google Keyword Planner
+# Grounded in the 12 tools actually live on shijo.ai as of 2026-07-19.
+# No search-volume figures included — not verified from this session, paste into
+# Keyword Planner for real current volume/competition data.
+# Paste the phrases below (one per line) directly into Keyword Planner's
+# "Discover new keywords" box.
+
+## General / brand-category
+AI marketing tools for small business
+AI marketing tools platform
+all in one AI marketing tool
+AI content generator for marketers
+AI copywriting tool for marketing teams
+best AI marketing tools 2026
+affordable AI marketing software
+AI marketing tools for agencies
+AI tools for digital marketing
+
+## Social (Post Caption Generator)
+AI social media caption generator
+AI Instagram caption generator
+AI LinkedIn post generator
+social media caption generator free
+AI caption generator for small business
+AI generated captions with hashtags
+
+## SEO (SEO Meta Generator, Keyword Research, SEO Content Brief, FAQ Generator, AI Overview Optimizer)
+AI SEO meta description generator
+AI title tag generator for SEO
+AI keyword research tool
+long tail keyword research tool
+AI keyword research for small business
+AI SEO content brief generator
+content brief generator for writers
+AI FAQ generator for SEO
+featured snippet FAQ generator
+AI Overview optimization tool
+how to optimize content for Google AI Overviews
+AI search visibility tool
+generative engine optimization tool
+GEO tool for content
+optimize content for ChatGPT citations
+optimize content for Perplexity AI
+
+## Ads & Copy (Ad Copy Generator, Ad Headline A/B Tester, Audience Targeting Profiles, Landing Page Copy Generator)
+AI ad copy generator
+AI Facebook ad copy generator
+AI Google ads copy generator
+AI ad headline generator
+ad headline A/B testing tool
+AI audience targeting tool
+AI buyer persona generator
+AI landing page copy generator
+AI landing page generator for ads
+PAS framework ad copy generator
+
+## Email (Email Sequence Generator, Newsletter Generator)
+AI email sequence generator
+AI drip campaign generator
+AI welcome email sequence generator
+AI newsletter generator
+AI email subject line generator
+AI email marketing tool for small business
+
+## Category-adjacent (from lib/seo-config.ts, already in use on the live site)
+AI SEO tools
+keyword research tool
+keyword research software
+SEO automation
+enterprise SEO tools
+keyword clustering tool
+search volume checker
+SERP analysis tool
+rank tracking software

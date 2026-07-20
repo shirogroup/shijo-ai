@@ -18,9 +18,10 @@ const toolCategories = [
 ];
 
 const plans = [
-  { name: 'Free', price: '$0', period: 'forever', features: ['2 AI tools', '3 generations per day', 'No credit card needed'], cta: 'Start Free', highlight: false },
-  { name: 'Pro', price: '$29', period: '/month', features: ['All 12 AI tools', 'Advanced AI for complex tasks', '200 generations/month'], cta: 'Get Started with Pro', highlight: true },
-  { name: 'Enterprise', price: '$99', period: '/month', features: ['Everything in Pro', 'Unlimited generations (fair use)', 'Team collaboration (coming soon)'], cta: 'Get Started with Enterprise', highlight: false },
+  { name: 'Free', price: '$0', period: 'forever', features: ['2 AI tools', '3 generations per day', 'No credit card needed'], cta: 'Start Free', highlight: false, href: '/register' },
+  { name: 'Standard', price: '$29', period: '/month', features: ['All 12 AI tools', 'Advanced AI for complex tasks', '200 generations/month'], cta: 'Get Started with Standard', highlight: false, href: '/register' },
+  { name: 'Pro', price: '$199', period: '/month', features: ['All 12 AI tools', 'Advanced AI for complex tasks', '1,500 generations/month'], cta: 'Get Started with Pro', highlight: true, href: '/register' },
+  { name: 'Enterprise', price: 'Coming Soon', period: '', features: ['Everything in Pro', 'Custom volume & pricing', 'Team collaboration (coming soon)'], cta: 'Contact Us', highlight: false, href: '/contact' },
 ];
 
 const faqs = [
@@ -183,7 +184,7 @@ export function LandingPageContent() {
         <div className="container mx-auto px-6">
           <h2 className="text-2xl md:text-3xl font-bold text-center mb-2">Simple Pricing</h2>
           <p className="text-center text-muted-foreground mb-10">Start free, upgrade when ready</p>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 max-w-5xl mx-auto">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 max-w-6xl mx-auto">
             {plans.map((plan) => (
               <div
                 key={plan.name}
@@ -201,7 +202,7 @@ export function LandingPageContent() {
                     </li>
                   ))}
                 </ul>
-                <Link href="/register">
+                <Link href={plan.href}>
                   <Button className="w-full" variant={plan.highlight ? 'default' : 'outline'}>
                     {plan.cta}
                   </Button>

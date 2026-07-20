@@ -4,6 +4,7 @@ import { useState, Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
 import { Check, Crown, Zap, Sparkles, Loader2, CheckCircle, XCircle, ExternalLink } from 'lucide-react';
+import { PLAN_DISPLAY_NAME } from '@/lib/stripe/products';
 
 const plans = [
   {
@@ -19,39 +20,58 @@ const plans = [
     ],
     highlight: false,
     tier: 'free',
+    comingSoon: false,
   },
   {
-    name: 'Pro',
+    name: 'Standard',
     price: 29,
     annualPrice: 278,
     interval: 'month',
     description: 'Unlock all tools with advanced AI',
-    badge: 'Most Popular',
+    badge: null,
     features: [
       'All 12 AI marketing tools',
       '200 generations per month',
       'Advanced AI',
       'Email sequence generator',
     ],
+    highlight: false,
+    tier: 'pro', // internal key stays 'pro' — displayed as "Standard", see lib/stripe/products.ts
+    comingSoon: false,
+  },
+  {
+    name: 'Pro',
+    price: 199,
+    annualPrice: undefined,
+    interval: 'month',
+    description: 'For heavier, everyday use',
+    badge: 'Most Popular',
+    features: [
+      'All 12 AI marketing tools',
+      '1,500 generations per month',
+      'Advanced AI',
+      'Email sequence generator',
+    ],
     highlight: true,
-    tier: 'pro',
+    tier: 'growth', // internal key 'growth' — displayed as "Pro", see lib/stripe/products.ts
+    comingSoon: false,
   },
   {
     name: 'Enterprise',
     price: 99,
     annualPrice: 950,
     interval: 'month',
-    description: 'Unlimited power for teams & agencies',
+    description: 'Custom volume & pricing for agencies and teams',
     badge: null,
     features: [
       'All 12 AI marketing tools',
-      'Unlimited generations (fair use)',
+      'Custom generation volume',
       'Advanced AI',
       'Team collaboration (coming soon)',
-      'Custom integrations (coming soon)',
     ],
     highlight: false,
     tier: 'enterprise',
+    comingSoon: true, // paused — no self-serve checkout, see app/api/stripe/create-checkout/route.ts
   },
 ];
 
@@ -126,7 +146,7 @@ function BillingContent() {
         <p className="text-gray-400">
           {userPlan === 'free'
             ? 'Upgrade your plan to unlock all 12 AI marketing tools.'
-            : `You're on the ${userPlan.charAt(0).toUpperCase() + userPlan.slice(1)} plan.`}
+            : `You're on the ${PLAN_DISPLAY_NAME[userPlan] || userPlan} plan.`}
         </p>
       </div>
 
@@ -136,7 +156,7 @@ function BillingContent() {
           <CheckCircle className="w-5 h-5 text-green-400 flex-shrink-0" />
           <div>
             <p className="text-green-300 font-medium">
-              Welcome to {upgradedPlan === 'enterprise' ? 'Enterprise' : 'Pro'}!
+              Welcome to {PLAN_DISPLAY_NAME[upgradedPlan || ''] || 'your new plan'}!
             </p>
             <p className="text-green-400/70 text-sm">
               Your subscription is active. All tools are now unlocked. It may take a moment to reflect.
@@ -174,11 +194,12 @@ function BillingContent() {
           </div>
           <div>
             <p className="text-sm font-semibold text-white">
-              Current Plan: {userPlan.charAt(0).toUpperCase() + userPlan.slice(1)}
+              Current Plan: {PLAN_DISPLAY_NAME[userPlan] || userPlan}
             </p>
             <p className="text-xs text-gray-500">
               {userPlan === 'free' ? '2 tools, 3 gens/day' :
                userPlan === 'pro' ? '12 tools, 200 gens/month' :
+               userPlan === 'growth' ? '12 tools, 1,500 gens/month' :
                '12 tools, unlimited'}
             </p>
           </div>
@@ -226,11 +247,14 @@ function BillingContent() {
       </div>
 
       {/* Pricing cards */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+        {/* Rank determines upgrade vs. downgrade — Enterprise is excluded
+            (paused, always shows Contact regardless of rank). */}
         {plans.map((plan) => {
+          const PLAN_RANK: Record<string, number> = { free: 0, pro: 1, growth: 2, enterprise: 3 };
           const isCurrent = plan.tier === userPlan;
-          const isDowngrade = plan.tier === 'free' && userPlan !== 'free';
-          const isUpgrade = !isCurrent && !isDowngrade && plan.tier !== 'free';
+          const isDowngrade = !isCurrent && plan.tier !== 'enterprise' && PLAN_RANK[plan.tier] < (PLAN_RANK[userPlan] ?? 0);
+          const isUpgrade = !isCurrent && !isDowngrade && !plan.comingSoon && plan.tier !== 'free';
 
           return (
             <div
@@ -252,28 +276,36 @@ function BillingContent() {
               <div className="mb-6">
                 <h3 className="text-lg font-bold text-white mb-1">{plan.name}</h3>
                 <p className="text-sm text-gray-400 mb-4">{plan.description}</p>
-                <div className="flex items-baseline gap-1">
-                  <span className="text-4xl font-bold text-white">
-                    ${billingInterval === 'annual' && plan.annualPrice ? plan.annualPrice : plan.price}
-                  </span>
-                  {plan.interval && (
-                    <span className="text-gray-500 text-sm">
-                      /{billingInterval === 'annual' && plan.annualPrice ? 'year' : plan.interval}
-                    </span>
-                  )}
-                  {!plan.interval && (
-                    <span className="text-gray-500 text-sm">forever</span>
-                  )}
-                </div>
-                {plan.annualPrice && billingInterval === 'monthly' && (
-                  <p className="text-xs text-green-400 mt-1">
-                    or ${plan.annualPrice}/year (save 20%)
-                  </p>
-                )}
-                {plan.annualPrice && billingInterval === 'annual' && (
-                  <p className="text-xs text-gray-500 mt-1">
-                    (${(plan.annualPrice / 12).toFixed(2)}/mo billed annually)
-                  </p>
+                {plan.comingSoon ? (
+                  <div className="flex items-baseline gap-1">
+                    <span className="text-3xl font-bold text-white">Coming Soon</span>
+                  </div>
+                ) : (
+                  <>
+                    <div className="flex items-baseline gap-1">
+                      <span className="text-4xl font-bold text-white">
+                        ${billingInterval === 'annual' && plan.annualPrice ? plan.annualPrice : plan.price}
+                      </span>
+                      {plan.interval && (
+                        <span className="text-gray-500 text-sm">
+                          /{billingInterval === 'annual' && plan.annualPrice ? 'year' : plan.interval}
+                        </span>
+                      )}
+                      {!plan.interval && (
+                        <span className="text-gray-500 text-sm">forever</span>
+                      )}
+                    </div>
+                    {plan.annualPrice && billingInterval === 'monthly' && (
+                      <p className="text-xs text-green-400 mt-1">
+                        or ${plan.annualPrice}/year (save 20%)
+                      </p>
+                    )}
+                    {plan.annualPrice && billingInterval === 'annual' && (
+                      <p className="text-xs text-gray-500 mt-1">
+                        (${(plan.annualPrice / 12).toFixed(2)}/mo billed annually)
+                      </p>
+                    )}
+                  </>
                 )}
               </div>
 
@@ -290,6 +322,13 @@ function BillingContent() {
                 <div className="w-full py-3 px-4 rounded-xl text-center bg-gray-700 text-gray-300 text-sm font-semibold">
                   Current Plan
                 </div>
+              ) : plan.comingSoon ? (
+                <a
+                  href="/contact"
+                  className="w-full py-3 px-4 rounded-xl text-center bg-gray-800 hover:bg-gray-700 text-white border border-gray-600 text-sm font-semibold transition-all block"
+                >
+                  Contact Us
+                </a>
               ) : isUpgrade ? (
                 <button
                   onClick={() => handleUpgrade(plan.tier)}

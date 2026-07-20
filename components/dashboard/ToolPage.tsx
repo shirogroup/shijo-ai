@@ -145,7 +145,7 @@ export default function ToolPage({
           {isLocked && (
             <span className="text-xs text-yellow-500 flex items-center gap-1">
               <Lock className="w-3 h-3" />
-              {minPlan === 'pro' ? 'Pro' : 'Enterprise'} required
+              {minPlan === 'pro' ? 'Standard' : 'Enterprise'} required
             </span>
           )}
         </div>
@@ -186,10 +186,10 @@ export default function ToolPage({
         <div className="bg-gray-900 rounded-xl border border-gray-800 p-12 text-center">
           <Lock className="w-12 h-12 text-gray-600 mx-auto mb-4" />
           <h2 className="text-xl font-bold text-white mb-2">
-            {minPlan === 'pro' ? 'Pro' : 'Enterprise'} Tool
+            {minPlan === 'pro' ? 'Standard' : 'Enterprise'} Tool
           </h2>
           <p className="text-gray-400 mb-6 max-w-md mx-auto">
-            {title} requires a {minPlan === 'pro' ? 'Pro ($29/mo)' : 'Enterprise ($99/mo)'} plan.
+            {title} requires a {minPlan === 'pro' ? 'Standard ($29/mo)' : 'Enterprise'} plan.
             Upgrade to unlock all 12 tools.
           </p>
           <Link
@@ -318,7 +318,7 @@ export default function ToolPage({
                       className="inline-flex items-center gap-1.5 bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white text-xs font-semibold px-4 py-2 rounded-lg transition-all"
                     >
                       <Sparkles className="w-3.5 h-3.5" />
-                      Upgrade to Pro
+                      Upgrade to Standard
                     </Link>
                   </div>
                 </div>

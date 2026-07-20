@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { Settings, User, Mail, Shield, Download, Trash2, AlertTriangle, X } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
+import { PLAN_DISPLAY_NAME } from '@/lib/stripe/products';
 
 export default function SettingsPage() {
   const { user, logout } = useAuth();
@@ -94,7 +95,7 @@ export default function SettingsPage() {
           </div>
           <div>
             <label className="block text-sm text-gray-400 mb-1">Plan</label>
-            <p className="text-white capitalize">{user?.planTier || 'Free'}</p>
+            <p className="text-white">{PLAN_DISPLAY_NAME[user?.planTier || 'free'] || 'Free'}</p>
           </div>
         </div>
       </div>

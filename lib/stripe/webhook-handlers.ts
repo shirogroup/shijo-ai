@@ -22,10 +22,24 @@ async function handleSubscriptionCreated(subscription: Stripe.Subscription) {
   }
   
   const priceId = subscription.items.data[0]?.price.id;
-  let planTier: 'pro' | 'enterprise' = 'pro';
-  
-  if (priceId === STRIPE_PRICE_IDS.ENTERPRISE_MONTHLY) {
+  // Must recognize every purchasable price ID and map it to the correct
+  // internal tier — see lib/stripe/products.ts for the naming convention
+  // (internal 'pro' = displayed "Standard", internal 'growth' = displayed
+  // "Pro"). Defaults to 'pro' (Standard) if nothing else matches.
+  let planTier: 'pro' | 'growth' | 'enterprise' = 'pro';
+
+  if (
+    priceId === STRIPE_PRICE_IDS.ENTERPRISE_MONTHLY ||
+    priceId === STRIPE_PRICE_IDS.ENTERPRISE_ANNUAL
+  ) {
     planTier = 'enterprise';
+  } else if (priceId === STRIPE_PRICE_IDS.GROWTH_MONTHLY) {
+    planTier = 'growth';
+  } else if (
+    priceId === STRIPE_PRICE_IDS.PRO_MONTHLY ||
+    priceId === STRIPE_PRICE_IDS.PRO_ANNUAL
+  ) {
+    planTier = 'pro';
   }
   
   await db

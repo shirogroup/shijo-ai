@@ -26,7 +26,7 @@ const promoCards = [
     icon: Tag,
     eyebrow: 'PRICING',
     title: 'Start Free, Upgrade Anytime',
-    bullets: ['2 tools free forever', 'Pro: $29/mo, all 12 tools', 'Enterprise: $99/mo, unlimited'],
+    bullets: ['2 tools free forever', 'Standard: $29/mo, all 12 tools', 'Pro: $199/mo, 1,500 gens/month'],
     cta: 'See pricing',
     href: '/#pricing',
     gradient: 'from-blue-600 to-cyan-600',

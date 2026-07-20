@@ -5,6 +5,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { Wand2, Sparkles, ArrowRight, Crown, Zap } from 'lucide-react';
 import UsageMeter from '@/components/dashboard/UsageMeter';
 import { TOOLS, CATEGORIES, type PlanAccess, type ToolCategory } from '@/lib/tools/registry';
+import { PLAN_DISPLAY_NAME } from '@/lib/stripe/products';
 
 const categoryOrder: ToolCategory[] = ['social', 'seo', 'ads', 'email'];
 
@@ -26,7 +27,9 @@ export default function DashboardOverview() {
             {userPlan === 'free'
               ? 'You have access to 2 free AI tools with 3 generations per day.'
               : userPlan === 'pro'
-              ? 'Pro plan — 12 tools, 200 generations/month.'
+              ? 'Standard plan — 12 tools, 200 generations/month.'
+              : userPlan === 'growth'
+              ? 'Pro plan — 12 tools, 1,500 generations/month.'
               : 'Enterprise — unlimited access to all tools.'}
           </p>
         </div>
@@ -68,9 +71,12 @@ export default function DashboardOverview() {
             <Crown className="w-4 h-4 text-yellow-400" />
             <span className="text-xs text-gray-500">Your Plan</span>
           </div>
-          <p className="text-2xl font-bold text-white capitalize">{userPlan}</p>
+          <p className="text-2xl font-bold text-white">{PLAN_DISPLAY_NAME[userPlan] || userPlan}</p>
           <p className="text-xs text-gray-500 mt-1">
-            {userPlan === 'free' ? '3 gens/day' : userPlan === 'pro' ? '200 gens/month' : 'Unlimited'}
+            {userPlan === 'free' ? '3 gens/day' :
+             userPlan === 'pro' ? '200 gens/month' :
+             userPlan === 'growth' ? '1,500 gens/month' :
+             'Unlimited'}
           </p>
         </div>
 

@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { ShieldAlert, Loader2, ShieldCheck, Search } from 'lucide-react';
+import { PLAN_DISPLAY_NAME } from '@/lib/stripe/products';
 
 interface AdminUser {
   id: string;
@@ -231,7 +232,7 @@ export default function AdminUsersPage() {
                           : 'bg-green-900/40 text-green-300 border-green-800'
                       }`}
                     >
-                      {u.planTier}
+                      {PLAN_DISPLAY_NAME[u.planTier] || u.planTier}
                     </span>
                     {u.subscriptionStatus && (
                       <span className="block text-[10px] text-gray-500 mt-1">{u.subscriptionStatus}</span>

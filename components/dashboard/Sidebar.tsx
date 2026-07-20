@@ -10,6 +10,7 @@ import {
   Search,
   FileText,
   BarChart3,
+  Eye,
   Settings,
   CreditCard,
   LogOut,
@@ -23,6 +24,7 @@ const navigation = [
   { name: 'Keywords', href: '/dashboard/keywords', icon: Search },
   { name: 'Content', href: '/dashboard/content', icon: FileText },
   { name: 'Analytics', href: '/dashboard/analytics', icon: BarChart3 },
+  { name: 'AI Visibility', href: '/dashboard/ai-visibility', icon: Eye },
   { name: 'Billing', href: '/dashboard/billing', icon: CreditCard },
   { name: 'Settings', href: '/dashboard/settings', icon: Settings },
 ];
@@ -117,7 +119,7 @@ export function Sidebar() {
             >
               <div className="flex items-center gap-2 mb-2">
                 <Crown className="w-4 h-4 text-yellow-400" />
-                <span className="text-sm font-semibold text-white">Upgrade to Pro</span>
+                <span className="text-sm font-semibold text-white">Upgrade to Standard</span>
               </div>
               <p className="text-xs text-gray-400">
                 Less than $1 a day for 200 AI generations a month

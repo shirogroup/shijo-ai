@@ -1,6 +1,17 @@
 /**
  * Stripe Products and Prices Configuration
- * Updated March 2026 — LIVE pricing for Pro/Enterprise
+ * Updated 2026-07-19 — Free/Standard/Pro/Enterprise restructure.
+ *
+ * Naming note (internal vs. customer-facing — read before touching plan
+ * logic elsewhere in the codebase): the $29/mo tier keeps its ORIGINAL
+ * internal identifier 'pro' everywhere in code (db.users.planTier,
+ * TOOL_LIMITS, checkToolAccess, etc.) to avoid rewriting every existing
+ * plan-gating check — it is now displayed to customers as "Standard".
+ * The new $199/mo tier uses the internal identifier 'growth' and is
+ * displayed to customers as "Pro". Enterprise is paused (not purchasable
+ * via self-serve checkout — see VALID_PLANS in
+ * app/api/stripe/create-checkout/route.ts) until there's real usage data
+ * from Standard/Pro customers to safely quote custom Enterprise deals.
  *
  * NOTE: Credit pack IDs below are SANDBOX values and will NOT work in production.
  * To enable credit packs, create LIVE products in the Stripe dashboard and
@@ -8,9 +19,10 @@
  */
 
 export const STRIPE_PRICE_IDS = {
-  PRO_MONTHLY: 'price_1TCQLpHTpiuftGGEZWt9UJ2Y',
+  PRO_MONTHLY: 'price_1TCQLpHTpiuftGGEZWt9UJ2Y', // displayed as "Standard" — see naming note above
   PRO_ANNUAL: 'price_1TuEaIHTpiuftGGEslehCB4Y',
-  ENTERPRISE_MONTHLY: 'price_1TCQNAHTpiuftGGEtIcqclbd',
+  GROWTH_MONTHLY: 'price_1Tv5SpHTpiuftGGEMu4TdOzs', // displayed as "Pro" — new 2026-07-19, no annual price yet
+  ENTERPRISE_MONTHLY: 'price_1TCQNAHTpiuftGGEtIcqclbd', // paused — not in VALID_PLANS, kept for when Enterprise relaunches
   ENTERPRISE_ANNUAL: 'price_1TuEaNHTpiuftGGE9r0fRkWI',
   // ⚠️ SANDBOX IDs — replace with LIVE IDs when created
   CREDITS_10: 'price_1SrTjgHF4DsT3nuc1a646JL5',
@@ -19,8 +31,9 @@ export const STRIPE_PRICE_IDS = {
 } as const;
 
 export const STRIPE_PRODUCT_IDS = {
-  PRO: 'prod_UAltLAeJGLVSqI',
-  ENTERPRISE: 'prod_UAluQCvL32SQ3k',
+  PRO: 'prod_UAltLAeJGLVSqI', // "Standard" — see naming note above
+  GROWTH: 'prod_UuvJvC2ZKysgfK', // "Pro" — new 2026-07-19
+  ENTERPRISE: 'prod_UAluQCvL32SQ3k', // paused
   // ⚠️ SANDBOX IDs — replace with LIVE IDs when created
   CREDITS_10: 'prod_Tp7zE0HT9iE7se',
   CREDITS_50: 'prod_Tp7zbxIWh3cjnu',
@@ -45,7 +58,7 @@ export const PLAN_FEATURES = {
     },
   },
   pro: {
-    name: 'Pro',
+    name: 'Standard', // internal key stays 'pro' — see naming note above
     price: 29,
     annualPrice: 278,     // 29 * 12 * 0.8
     interval: 'month',
@@ -57,20 +70,45 @@ export const PLAN_FEATURES = {
       aiModel: 'auto',         // Haiku or Sonnet per tool config
     },
   },
+  growth: {
+    name: 'Pro', // internal key 'growth' — see naming note above
+    price: 199,
+    annualPrice: undefined,  // no annual price yet
+    interval: 'month',
+    priceId: STRIPE_PRICE_IDS.GROWTH_MONTHLY,
+    annualPriceId: undefined,
+    features: {
+      aiToolsMonthly: 1500,    // 1,500 generations/month
+      aiToolsAccess: 12,       // All 12 tools
+      aiModel: 'auto',         // Haiku or Sonnet per tool config
+    },
+  },
   enterprise: {
     name: 'Enterprise',
     price: 99,
-    annualPrice: 950,     // 99 * 12 * 0.8 ≈ 950
+    annualPrice: 950,     // 99 * 12 * 0.8 ≈ 950 — kept for reference, not currently sold
     interval: 'month',
     priceId: STRIPE_PRICE_IDS.ENTERPRISE_MONTHLY,
     annualPriceId: STRIPE_PRICE_IDS.ENTERPRISE_ANNUAL,
+    comingSoon: true, // paused — not purchasable via self-serve checkout as of 2026-07-19
     features: {
-      aiToolsMonthly: -1,      // Unlimited
+      aiToolsMonthly: -1,      // Unlimited (fair-use capped server-side)
       aiToolsAccess: 12,       // All 12 tools
       aiModel: 'auto',         // Haiku or Sonnet per tool config
     },
   },
 } as const;
+
+// Shared display-name map — the internal tier key (db.users.planTier)
+// does NOT match the customer-facing name for 'pro'/'growth', see the
+// naming note at the top of this file. Import this anywhere a plan name
+// is shown as text instead of raw-capitalizing/rendering the internal key.
+export const PLAN_DISPLAY_NAME: Record<string, string> = {
+  free: 'Free',
+  pro: 'Standard',
+  growth: 'Pro',
+  enterprise: 'Enterprise',
+};
 
 export const CREDIT_PACKS = [
   {
@@ -101,5 +139,5 @@ export const CREDIT_PACKS = [
   },
 ] as const;
 
-export type PlanTier = 'free' | 'pro' | 'enterprise';
+export type PlanTier = 'free' | 'pro' | 'growth' | 'enterprise';
 export type CreditPackId = typeof STRIPE_PRICE_IDS[keyof typeof STRIPE_PRICE_IDS];

@@ -1,6 +1,6 @@
 # SHIJO.AI — Knowledge Base / Status Reference
 
-**Last updated:** 2026-07-19 (Cowork session, later pass — §28: Vercel secret rotation closed as false alarm, registration validation gaps fixed, CTA copy rolled out, AI-visibility tracking scoped)
+**Last updated:** 2026-07-19 (Cowork session, later pass — §29: 4-tier pricing restructure shipped to Stripe live mode + full codebase, Free/Standard $29/Pro $199/Enterprise paused)
 
 ## 0. Vercel secret rotation — RESOLVED, was a false alarm (originally flagged 2026-07-17, closed 2026-07-19)
 
@@ -541,4 +541,60 @@ git add app/api/auth/register/route.ts contexts/AuthContext.tsx components/auth/
 git commit -m "Add registration validation, roll out cost-anchor CTA copy, add AI-visibility scoping doc"
 git push origin main
 ```
-Everything above is local-only until this runs.
+Everything above is local-only until this runs. **Superseded by §29 below — use the combined push command at the end of §29 instead, it covers this batch too.**
+
+---
+
+## 29. Pricing restructure shipped — Free / Standard $29 / Pro $199 / Enterprise paused (2026-07-19, later same session)
+
+**Why:** Sri's explicit margin constraint — "keep 75-80% margin... I need money for ads as well." At the original config (Enterprise $99/mo, 3,000-generation/mo fair-use cap), worst-case Sonnet cost modeling put Enterprise's margin at ~13.6%, well under target, while Pro ($29/mo, 200 gens/mo) was already fine at ~80.3%. Sri considered cutting Enterprise's cap or raising its price, but explicitly chose caution instead: "I cannot test the enterprise usage before we get any customers." Verified via live Stripe query (`get_stripe_account_info` + subscription list on account `acct_1Sr24rHTpiuftGGE`) that **zero subscriptions exist on any plan** — nothing live to grandfather or break. That confirmation is what unblocked doing a structural restructure instead of guessing a number for Enterprise.
+
+**Decision (confirmed by Sri via direct Q&A):** rename the tier structure to Free / Standard / Pro / Enterprise. The existing $29/mo/200-gen plan becomes "Standard" (no price change). A new $199/mo/1,500-gen plan becomes "Pro". Enterprise is **removed from pricing and checkout entirely** and shows "Coming Soon" — not gated-but-visible, fully unpurchasable via self-serve until a real cost model exists for it.
+
+**Stripe objects created (live mode, confirmed via Stripe MCP):**
+- Product `prod_UuvJvC2ZKysgfK` — "Pro" (new)
+- Price `price_1Tv5SpHTpiuftGGEMu4TdOzs` — $199.00/month recurring, attached to the product above
+- No existing Stripe objects were deleted or archived — the old Enterprise product/prices (`prod_UAluQCvL32SQ3k`, `price_1TCQNAHTpiuftGGEtIcqclbd`, `price_1TuEaNHTpiuftGGE9r0fRkWI`) still exist in Stripe untouched, just no longer reachable through the app's checkout flow. They can be re-enabled later by adding them back to `VALID_PLANS` in `create-checkout/route.ts` once a real Enterprise cost model exists.
+
+**Naming convention — internal keys were kept stable, only display strings changed, to minimize blast radius across the existing gating code:**
+- Internal `'pro'` (unchanged since original build) → now **displayed as "Standard"**
+- Internal `'growth'` (new) → **displayed as "Pro"**
+- Internal `'enterprise'` (unchanged) → still **displayed as "Enterprise"**, now with `comingSoon: true`
+- Single source of truth: `PLAN_DISPLAY_NAME` in `lib/stripe/products.ts`. Any UI showing a plan name should read from this map, never render `planTier` raw.
+- `planTier` remains a plain `varchar(20)` in `db/schema.ts` (not a Postgres enum) — adding the `'growth'` value required zero DB migration.
+
+**Files touched — backend/plan logic:**
+- `lib/stripe/products.ts` — `STRIPE_PRICE_IDS`/`STRIPE_PRODUCT_IDS` gained `GROWTH_MONTHLY`/`GROWTH` entries; `PLAN_FEATURES.growth` added (1,500 gens/mo, all 12 tools, `aiModel: 'auto'`); `PlanTier` type extended; new `PLAN_DISPLAY_NAME` export.
+- `lib/tools/registry.ts` — `PlanAccess` type extended to include `'growth'`.
+- `lib/tools/usage.ts` — `TOOL_LIMITS.growth` added (1,500/mo). **Important existing footgun, handled correctly:** both `checkToolAccess()` and `getUsageStats()` use sequential `if` blocks with an *unconditional fallthrough* to Enterprise's fair-use logic for any unmatched plan value — inserted the new `growth` branches *before* that fallthrough in both functions (with an inline comment explaining why the order matters), otherwise Pro ($199) customers would have silently been treated as Enterprise.
+- `app/api/stripe/create-checkout/route.ts` — `VALID_PLANS` now maps `pro`→Standard's price IDs, `growth`→the new Pro price ID; `'enterprise'` entry removed entirely (server rejects it, not just hidden client-side); added a billing-interval guard so `growth` (monthly-only, no annual price yet) can't be requested with `interval=annual`.
+
+**Files touched — customer-facing UI (all three separate pricing surfaces found via grep, not just the obvious one):**
+- `components/landing/Pricing.tsx` — homepage `/#pricing` section, rebuilt 3→4 cards, Enterprise shows "Coming Soon" + "Contact Us" button linking to `/contact` instead of a checkout call.
+- `app/dashboard/billing/page.tsx` — authenticated billing page, same 4-card treatment, rank-based upgrade/downgrade button logic (`PLAN_RANK`), Enterprise excluded from rank comparison and always shows "Contact Us".
+- `components/lp/LandingPageContent.tsx` — the separate `/ai-marketing-tools` Google-Ads landing page has its *own* pricing card array, independent of the homepage — found late via a grep sweep, would have been missed and left showing old 3-tier pricing to ad traffic specifically.
+
+**Secondary copy sweep (naming-collision bugs caught before shipping, not reported by Sri — self-caught):** several UI strings said "Upgrade to Pro" while describing Standard's 200-gen quota (`Sidebar.tsx` free-plan CTA card, `ToolPage.tsx` post-generation CTA) — since "Pro" now means the new $199 tier, this would have actively misled users into upgrading to the wrong plan. Fixed to say "Upgrade to Standard." Also fixed: `UsageMeter.tsx` danger-state messaging (was showing "Upgrade to Enterprise for unlimited" to both Standard and Pro users), `app/contact/page.tsx` promo bullets, `lib/seo-config.ts`'s unused-but-stale pricing meta description, and `app/dashboard/page.tsx`'s plan-name displays.
+
+**Independently-discovered, pre-existing bug (unrelated to this restructure, found while grepping for stale `$29` references):** `lib/email.ts`'s welcome-email template said "Your 24 AI Marketing Tools" — stale count, should be 12. Fixed in the same pass. Also updated that email's upsell button text/link from "View Pro Plan" → `/dashboard` to "View Plans" → `/dashboard/billing` (the old text became ambiguous once "Pro" is a specific paid tier rather than a generic upsell target).
+
+**Final-audit fixes (found during a last read-through of files identified as unaudited, all now fixed and confirmed as real diffs via `git diff --stat --ignore-all-space`):**
+1. **`lib/stripe/webhook-handlers.ts` — real bug, would have mis-billed real Pro customers.** `handleSubscriptionCreated` did its own independent price-ID→tier mapping (only checked for the Enterprise price, defaulted everything else to `'pro'`). It had no knowledge the new `GROWTH_MONTHLY` price exists. A real $199 signup would have hit checkout successfully but the webhook would have set `planTier: 'pro'` (Standard, 200 gens/mo) instead of `'growth'` — charging $199 while granting Standard's entitlements. Fixed: now explicitly checks all four purchasable price IDs (`PRO_MONTHLY`/`PRO_ANNUAL`/`GROWTH_MONTHLY`/`ENTERPRISE_MONTHLY`/`ENTERPRISE_ANNUAL`) before falling back to `'pro'` as a last resort.
+2. **`app/dashboard/tools/page.tsx` — real bug, would have locked out real Pro customers.** `planOrder` (used to compute `isLocked` for gated tools) was `['free', 'pro', 'enterprise']` — missing `'growth'` entirely. `indexOf('growth')` returns `-1`, so a $199 Pro user's `userPlanIndex` would compute as `-1`, making every Standard-gated tool (`requiredPlanIndex: 1`) appear locked to them. Fixed by adding `'growth'` to the array in rank order. Also fixed the adjacent label bug (`tool.minPlan === 'pro' ? 'Pro' : 'Enterprise'` — always showed "Pro" for Standard-gated tools; now shows "Standard").
+3. **`app/dashboard/settings/page.tsx` — customer-facing display bug.** Profile section rendered raw `{user?.planTier}` with a `capitalize` CSS class — a Pro user would have literally seen "Growth" on their own settings page. Fixed to use `PLAN_DISPLAY_NAME`.
+4. **`app/admin/users/page.tsx` — internal-only, lower priority but fixed for consistency.** User list rendered raw `planTier` in the plan badge; now uses `PLAN_DISPLAY_NAME` so admin views match customer-facing naming.
+
+**Known remaining gap, deliberately left alone (documented, not fixed):** `app/api/billing/checkout/route.ts` is a legacy duplicate checkout route that accepts a raw `priceId` from the request body with no plan-name validation — it's a real authenticated-user-only risk (an already-signed-in user could POST an old Enterprise price ID directly and complete checkout, bypassing the "Coming Soon" gate on the two proper checkout surfaces). No UI element currently links to it — confirmed via grep of `.tsx`/`.ts` files, the only matches are stale `.next/types` build artifacts, not real app code. Left untouched this session (out of scope, matches an earlier-session decision to leave this route alone since nothing calls it) — worth deleting or locking down in a future session if Enterprise self-serve ever ships for real.
+
+**Verification performed:** `git diff --stat --ignore-all-space` run against every touched file this session to rule out CRLF/LF noise (a known issue on this sandbox mount) — confirmed all diffs listed above are real, scoped changes, not whitespace artifacts. **Not yet performed — requires a push + Vercel deploy first:** a live Chrome pass against `shijo.ai/#pricing` showing the new 4-card layout, and a live negative-checkout test (`POST /api/stripe/create-checkout` with `plan: 'enterprise'` expecting a 400). Both are blocked on Sri pushing this batch; nothing in this restructure has been deployed yet, everything below is still local-only.
+
+**Combined push — covers §28's registration/CTA batch plus this section's full pricing restructure (run in your own Git Bash, not this sandbox):**
+```
+rm .git/index.lock
+git add app/api/auth/register/route.ts contexts/AuthContext.tsx components/auth/RegisterForm.tsx components/dashboard/Sidebar.tsx components/dashboard/ToolPage.tsx components/dashboard/UsageMeter.tsx app/dashboard/page.tsx lib/tools/usage.ts lib/tools/registry.ts docs/product/2026-07-19-AI-Visibility-Tracking-Scoping.docx docs/product/2026-07-19-AI-Visibility-Cost-Model.xlsx docs/product/2026-07-19-AI-Visibility-Pricing-Strategy.docx docs/marketing/2026-07-19-keyword-planner-list.txt app/dashboard/ai-visibility/ app/api/dashboard/ai-visibility-waitlist/ lib/stripe/products.ts lib/stripe/webhook-handlers.ts app/api/stripe/create-checkout/route.ts app/dashboard/billing/page.tsx components/landing/Pricing.tsx components/lp/LandingPageContent.tsx app/contact/page.tsx lib/seo-config.ts lib/email.ts app/dashboard/tools/page.tsx app/dashboard/settings/page.tsx app/admin/users/page.tsx SHIJO_AI_KB.md
+git commit -m "Restructure pricing to Free/Standard/Pro/Enterprise(paused), fix registration validation, roll out CTA copy, add AI-visibility coming-soon page + scoping docs"
+git push origin main
+```
+Everything in §28 and §29 is local-only until this runs. After it's live, the deferred verification steps above (live Chrome pass, negative checkout test) should be run and logged as a follow-up §30.
+
+**Still open for a future session:** decide on `app/api/billing/checkout/route.ts` (delete vs. lock down); once real customers exist on Standard/Pro, re-run the margin model against actual usage (not worst-case estimates) to sanity-check Pro's 1,500-gen cap before ever re-enabling Enterprise.

@@ -14,7 +14,7 @@
 
 export type ToolCategory = 'social' | 'seo' | 'ads' | 'email';
 export type ModelTier = 'haiku' | 'sonnet';
-export type PlanAccess = 'free' | 'pro' | 'enterprise';
+export type PlanAccess = 'free' | 'pro' | 'growth' | 'enterprise';
 
 export interface FieldConfig {
   id: string;

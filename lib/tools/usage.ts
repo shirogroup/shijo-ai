@@ -3,9 +3,15 @@
  *
  * Handles plan-based access control and usage metering for the 12 AI tools.
  *
- * Free:       2 tools, 3 gens/day, Haiku only
- * Pro:        12 tools, 200 gens/month, Sonnet for complex tools
- * Enterprise: 12 tools, unlimited, Sonnet for complex tools
+ * Free:       2 tools, 3 gens/day, Haiku only          — displayed as "Free"
+ * Pro:        12 tools, 200 gens/month, Sonnet complex  — internal key 'pro', displayed as "Standard"
+ * Growth:     12 tools, 1,500 gens/month, Sonnet complex — internal key 'growth', displayed as "Pro"
+ * Enterprise: 12 tools, unlimited, Sonnet complex       — PAUSED as of 2026-07-19, not purchasable
+ *
+ * See the naming note at the top of lib/stripe/products.ts for why the
+ * internal keys ('pro'/'growth') don't match the customer-facing names
+ * ("Standard"/"Pro") — this was a deliberate choice to avoid rewriting
+ * every existing plan-gating check when the $199 tier was added.
  */
 
 import { db } from '@/db';
@@ -24,6 +30,11 @@ export const TOOL_LIMITS = {
   pro: {
     dailyGenerations: 0,      // not used; pro uses monthly
     monthlyGenerations: 200,
+    forcedModel: null,         // uses tool's configured model
+  },
+  growth: {
+    dailyGenerations: 0,      // not used; growth uses monthly
+    monthlyGenerations: 1500,
     forcedModel: null,         // uses tool's configured model
   },
   enterprise: {
@@ -102,14 +113,18 @@ export async function checkToolAccess(
     return {
       allowed: false,
       reason: 'This tool requires a paid plan',
-      upgradePrompt: `Upgrade to ${tool.minPlan === 'pro' ? 'Pro ($29/mo)' : 'Enterprise ($99/mo)'} to unlock ${tool.name}`,
+      upgradePrompt: `Upgrade to ${tool.minPlan === 'pro' ? 'Standard ($29/mo)' : 'Enterprise'} to unlock ${tool.name}`,
     };
   }
   if (plan === 'pro' && tool.minPlan === 'enterprise') {
+    // No tool currently has minPlan === 'enterprise', so this branch is
+    // presently unreachable — kept for forward compatibility. Enterprise
+    // itself is paused (not purchasable) as of 2026-07-19, so this
+    // intentionally doesn't quote a price.
     return {
       allowed: false,
       reason: 'This tool requires an Enterprise plan',
-      upgradePrompt: `Upgrade to Enterprise ($99/mo) to unlock ${tool.name}`,
+      upgradePrompt: `Contact us about Enterprise access to unlock ${tool.name}`,
     };
   }
 
@@ -178,7 +193,7 @@ export async function checkToolAccess(
         remaining: 0,
         limit,
         period: 'month',
-        upgradePrompt: 'Upgrade to Enterprise ($99/mo) for unlimited generations',
+        upgradePrompt: 'Upgrade to Pro ($199/mo) for 1,500 generations/month',
       };
     }
 
@@ -191,7 +206,54 @@ export async function checkToolAccess(
     };
   }
 
-  // Enterprise — displayed/marketed as unlimited, but backed by a hidden
+  if (plan === 'growth') {
+    // Monthly limit check — same shape as the 'pro' (Standard) block
+    // above, just against growth's own 1,500/mo limit. Must stay ABOVE
+    // the Enterprise fallthrough below: anything that isn't explicitly
+    // handled by an earlier `if` in this function falls through to the
+    // Enterprise fair-use logic, which would silently treat a Growth
+    // user as unlimited-with-a-3000-cap instead of capping at 1,500.
+    const monthStart = getMonthStart();
+    const [row] = await db
+      .select({ total: count() })
+      .from(usageLogs)
+      .where(
+        and(
+          eq(usageLogs.userId, userId),
+          eq(usageLogs.feature, 'ai-tools'),
+          sql`${usageLogs.createdAt} >= ${monthStart}`
+        )
+      );
+
+    const used = row?.total ?? 0;
+    const limit = limits.monthlyGenerations;
+
+    if (used >= limit) {
+      return {
+        allowed: false,
+        reason: 'Monthly limit reached',
+        remaining: 0,
+        limit,
+        period: 'month',
+        upgradePrompt: "You've hit your Pro plan's monthly limit. Enterprise is coming soon — contact us if you need more capacity now.",
+      };
+    }
+
+    return {
+      allowed: true,
+      remaining: limit - used,
+      limit,
+      period: 'month',
+      effectiveModel: tool.modelTier,
+    };
+  }
+
+  // Enterprise — PAUSED as of 2026-07-19 (not purchasable via self-serve
+  // checkout, see VALID_PLANS in app/api/stripe/create-checkout/route.ts).
+  // This branch only still runs for any pre-existing Enterprise account
+  // (none exist in production as of this change — confirmed via Stripe:
+  // zero active subscriptions on any plan). Displayed/marketed as
+  // unlimited, but backed by a hidden
   // fair-use ceiling (see ENTERPRISE_FAIR_USE_CAP above) so a runaway or
   // scripted account can't generate uncapped real API cost.
   const enterpriseMonthStart = getMonthStart();
@@ -350,7 +412,34 @@ export async function getUsageStats(userId: string): Promise<UsageStats> {
     };
   }
 
-  // Enterprise
+  if (plan === 'growth') {
+    // Same shape as 'pro' above, against growth's own limit. Must stay
+    // ABOVE the Enterprise fallthrough below for the same reason noted
+    // in checkToolAccess.
+    const monthStart = getMonthStart();
+    const [row] = await db
+      .select({ total: count() })
+      .from(usageLogs)
+      .where(
+        and(
+          eq(usageLogs.userId, userId),
+          eq(usageLogs.feature, 'ai-tools'),
+          sql`${usageLogs.createdAt} >= ${monthStart}`
+        )
+      );
+
+    const used = row?.total ?? 0;
+    return {
+      plan,
+      period: 'month',
+      used,
+      limit: limits.monthlyGenerations,
+      remaining: limits.monthlyGenerations - used,
+      resetLabel: `Resets ${getNextMonthLabel()}`,
+    };
+  }
+
+  // Enterprise — paused, see checkToolAccess above.
   return {
     plan,
     period: 'month',

@@ -146,7 +146,7 @@ export function buildWelcomeEmail(name: string): { subject: string; html: string
       <hr style="border: none; border-top: 1px solid #e5e7eb; margin: 32px 0;" />
 
       <!-- Tool Showcase -->
-      <h2 style="font-size: 20px; font-weight: 700; color: #111827; margin: 0 0 4px 0;">Your 24 AI Marketing Tools</h2>
+      <h2 style="font-size: 20px; font-weight: 700; color: #111827; margin: 0 0 4px 0;">Your 12 AI Marketing Tools</h2>
       <p style="font-size: 14px; color: #9ca3af; margin: 0 0 24px 0;">Tools marked FREE are available on your plan right now</p>
 
       ${toolSections}
@@ -154,7 +154,7 @@ export function buildWelcomeEmail(name: string): { subject: string; html: string
       <!-- Upgrade CTA -->
       <div style="background: #fef2f2; border: 1px solid #fecaca; border-radius: 12px; padding: 20px; text-align: center; margin-top: 32px;">
         <p style="font-size: 14px; color: #991b1b; margin: 0 0 12px 0; font-weight: 600;">Unlock all 12 tools for just $29/month</p>
-        <a href="https://shijo.ai/dashboard" style="display: inline-block; background: #111827; color: white; text-decoration: none; padding: 10px 24px; border-radius: 8px; font-size: 14px; font-weight: 600;">View Pro Plan</a>
+        <a href="https://shijo.ai/dashboard/billing" style="display: inline-block; background: #111827; color: white; text-decoration: none; padding: 10px 24px; border-radius: 8px; font-size: 14px; font-weight: 600;">View Plans</a>
       </div>
     </div>
 

@@ -11,7 +11,10 @@ const categoryOrder: ToolCategory[] = ['social', 'seo', 'ads', 'email'];
 export default function ToolsDirectory() {
   const { user } = useAuth();
   const userPlan = (user?.planTier || 'free') as PlanAccess;
-  const planOrder: PlanAccess[] = ['free', 'pro', 'enterprise'];
+  // Must list every PlanAccess value in rank order — missing 'growth' here
+  // previously made indexOf return -1 for Pro ($199) users, incorrectly
+  // locking them out of every Standard-gated tool.
+  const planOrder: PlanAccess[] = ['free', 'pro', 'growth', 'enterprise'];
   const userPlanIndex = planOrder.indexOf(userPlan);
 
   return (
@@ -68,12 +71,12 @@ export default function ToolsDirectory() {
                         ) : isLocked ? (
                           <span className="text-xs text-yellow-500 flex items-center gap-1">
                             <Lock className="w-3 h-3" />
-                            {tool.minPlan === 'pro' ? 'Pro' : 'Enterprise'}
+                            {tool.minPlan === 'pro' ? 'Standard' : 'Enterprise'}
                           </span>
                         ) : (
                           <span className="text-xs text-blue-400 flex items-center gap-1">
                             <Sparkles className="w-3 h-3" />
-                            {tool.minPlan === 'pro' ? 'Pro' : 'Enterprise'}
+                            {tool.minPlan === 'pro' ? 'Standard' : 'Enterprise'}
                           </span>
                         )}
                         <span className="text-xs text-gray-600">

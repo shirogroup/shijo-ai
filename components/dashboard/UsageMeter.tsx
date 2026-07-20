@@ -95,11 +95,13 @@ export default function UsageMeter() {
           {isDanger && (
             <div className="mt-3 text-xs text-red-400 flex items-center gap-1.5">
               <TrendingUp className="w-3 h-3" />
-              {usage.plan === 'free' && usage.period === 'day'
+              {usage.plan === 'free'
                 ? "You've used all 3 free generations today. Upgrade now so tomorrow isn't the only option."
-                : usage.plan === 'free'
-                ? 'Upgrade to Pro for 200/month'
-                : 'Upgrade to Enterprise for unlimited'}
+                : usage.plan === 'pro'
+                ? 'Upgrade to Pro for 1,500/month'
+                : usage.plan === 'growth'
+                ? 'Enterprise is coming soon — contact us for more capacity'
+                : 'Contact us for more capacity'}
             </div>
           )}
           {isWarning && !isDanger && (
