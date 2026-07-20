@@ -41,6 +41,7 @@ export async function GET(req: NextRequest) {
         subscriptionStatus: user.subscriptionStatus,
         isAdmin: user.isAdmin,
         createdAt: user.createdAt,
+        emailVerified: user.emailVerified,
       },
       quota: null,
     });

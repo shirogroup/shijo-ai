@@ -15,11 +15,23 @@ export const users = pgTable('users', {
   subscriptionId: varchar('subscription_id', { length: 255 }),
   subscriptionStatus: varchar('subscription_status', { length: 50 }),
   isAdmin: boolean('is_admin').default(false).notNull(),
+  // Soft email verification (2026-07-19) — a trust signal only, never gates
+  // login or tool access. emailVerificationToken is single-use and cleared
+  // on success; emailVerifiedIp captures the IP at confirmation time
+  // (separate from termsAcceptances.ipAddress, which is captured at signup)
+  // specifically so a mismatch between signup IP and confirm IP is visible
+  // for fraud review.
+  emailVerified: boolean('email_verified').default(false).notNull(),
+  emailVerificationToken: varchar('email_verification_token', { length: 255 }),
+  emailVerificationSentAt: timestamp('email_verification_sent_at'),
+  emailVerifiedAt: timestamp('email_verified_at'),
+  emailVerifiedIp: varchar('email_verified_ip', { length: 64 }),
   createdAt: timestamp('created_at').defaultNow().notNull(),
   updatedAt: timestamp('updated_at').defaultNow().notNull(),
 }, (table) => ({
   emailIdx: index('idx_users_email').on(table.email),
   stripeIdx: index('idx_users_stripe').on(table.stripeCustomerId),
+  emailVerificationTokenIdx: index('idx_users_email_verification_token').on(table.emailVerificationToken),
 }));
 
 // Audit log of Terms of Service / Privacy Policy acceptances.

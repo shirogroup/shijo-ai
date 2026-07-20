@@ -3,6 +3,7 @@ import { db } from '@/db';
 import { users, termsAcceptances } from '@/db/schema';
 import { hashPassword, signToken } from '@/lib/auth';
 import { eq } from 'drizzle-orm';
+import crypto from 'crypto';
 import { sendEmail, buildWelcomeEmail, buildTermsAcceptedEmail } from '@/lib/email';
 import { CURRENT_TERMS_VERSION, CURRENT_PRIVACY_VERSION } from '@/lib/legal';
 import { serverErrorResponse } from '@/lib/api/errors';
@@ -77,12 +78,22 @@ export async function POST(req: NextRequest) {
     // Hash password
     const passwordHash = await hashPassword(password);
 
+    // Soft email-verification token — same generation pattern as
+    // app/api/auth/forgot-password/route.ts. Verifying is optional and
+    // never blocks login or tool access (see lib/tools/usage.ts /
+    // app/api/auth/[...]/route.ts — nothing checks emailVerified). It's
+    // surfaced only as a dismissible-but-persistent notice in the
+    // dashboard bell icon (components/dashboard/TopBar.tsx).
+    const emailVerificationToken = crypto.randomBytes(32).toString('hex');
+
     // Create user
     const [newUser] = await db.insert(users).values({
       email: email.toLowerCase(),
       passwordHash,
       name: name || null,
       planTier: 'free',
+      emailVerificationToken,
+      emailVerificationSentAt: new Date(),
     }).returning();
 
     // Record Terms/Privacy acceptance — append-only audit row, captures
@@ -117,6 +128,7 @@ export async function POST(req: NextRequest) {
         email: newUser.email,
         name: newUser.name,
         planTier: newUser.planTier,
+        emailVerified: newUser.emailVerified,
       },
     });
 
@@ -128,14 +140,28 @@ export async function POST(req: NextRequest) {
       path: '/',
     });
 
-    // Send welcome + terms-acceptance emails. Awaited (via Promise.allSettled,
-    // each independently caught) rather than true fire-and-forget — on
-    // Vercel's serverless runtime, un-awaited promises can get cut off when
-    // the function returns its response, before the email's fetch() call to
-    // Resend ever actually goes out. Awaiting here doesn't block the cookie
-    // already being set above; it just makes sure both sends are genuinely
-    // attempted before this function ends.
-    const welcomeEmail = buildWelcomeEmail(name || email.split('@')[0]);
+    // Send ONE merged welcome email to the user (account confirmation +
+    // real tool list + terms/privacy acceptance record + soft email-verify
+    // CTA + password-reset link + company footer — see lib/email.ts for
+    // why this replaced the previous two separate, thinner emails), and
+    // keep a plain terms-acceptance record going to legal@ only, as a
+    // durable compliance copy independent of the termsAcceptances table.
+    // Awaited (via Promise.allSettled, each independently caught) rather
+    // than true fire-and-forget — on Vercel's serverless runtime, un-awaited
+    // promises can get cut off when the function returns its response,
+    // before the email's fetch() call to Resend ever actually goes out.
+    const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://www.shijo.ai';
+    const verifyUrl = `${baseUrl}/api/auth/verify-email?token=${emailVerificationToken}`;
+
+    const welcomeEmail = buildWelcomeEmail(name || email.split('@')[0], {
+      terms: {
+        termsVersion: CURRENT_TERMS_VERSION,
+        privacyVersion: CURRENT_PRIVACY_VERSION,
+        acceptedAt: acceptedAt.toISOString(),
+        ipAddress,
+      },
+      verifyUrl,
+    });
     const acceptanceEmail = buildTermsAcceptedEmail(name || email.split('@')[0], {
       termsVersion: CURRENT_TERMS_VERSION,
       privacyVersion: CURRENT_PRIVACY_VERSION,
@@ -151,12 +177,12 @@ export async function POST(req: NextRequest) {
       }).catch((err) => {
         console.error(`[REGISTER] Failed to send welcome email:`, err);
       }),
-      sendEmail({ to: email.toLowerCase(), cc: LEGAL_RECORDS_CC, ...acceptanceEmail }).then((sent) => {
+      sendEmail({ to: LEGAL_RECORDS_CC, ...acceptanceEmail }).then((sent) => {
         if (sent) {
-          console.log(`[REGISTER] Terms acceptance email sent to ${email} (cc ${LEGAL_RECORDS_CC})`);
+          console.log(`[REGISTER] Terms acceptance record sent to ${LEGAL_RECORDS_CC} for ${email}`);
         }
       }).catch((err) => {
-        console.error(`[REGISTER] Failed to send terms acceptance email:`, err);
+        console.error(`[REGISTER] Failed to send terms acceptance record:`, err);
       }),
     ]);
 

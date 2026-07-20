@@ -1,13 +1,49 @@
 'use client';
 
+import { Suspense } from 'react';
 import Link from 'next/link';
+import { useSearchParams } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
-import { Wand2, Sparkles, ArrowRight, Crown, Zap } from 'lucide-react';
+import { Wand2, Sparkles, ArrowRight, Crown, Zap, CheckCircle2, XCircle } from 'lucide-react';
 import UsageMeter from '@/components/dashboard/UsageMeter';
 import { TOOLS, CATEGORIES, type PlanAccess, type ToolCategory } from '@/lib/tools/registry';
 import { PLAN_DISPLAY_NAME } from '@/lib/stripe/products';
 
 const categoryOrder: ToolCategory[] = ['social', 'seo', 'ads', 'email'];
+
+// Banner shown after landing here from the verify-email link
+// (app/api/auth/verify-email/route.ts always redirects to
+// /dashboard?emailVerify=<result>). Split out so useSearchParams can sit
+// behind a Suspense boundary per Next.js App Router requirements.
+function EmailVerifyBanner() {
+  const searchParams = useSearchParams();
+  const result = searchParams.get('emailVerify');
+  if (!result) return null;
+
+  if (result === 'success') {
+    return (
+      <div className="bg-green-900/30 border border-green-700 rounded-xl p-4 mb-6 flex items-center gap-3">
+        <CheckCircle2 className="w-5 h-5 text-green-400 flex-shrink-0" />
+        <p className="text-green-300 text-sm">Email confirmed — thanks!</p>
+      </div>
+    );
+  }
+  if (result === 'already') {
+    return (
+      <div className="bg-gray-900 border border-gray-800 rounded-xl p-4 mb-6 flex items-center gap-3">
+        <CheckCircle2 className="w-5 h-5 text-gray-400 flex-shrink-0" />
+        <p className="text-gray-300 text-sm">This email was already confirmed.</p>
+      </div>
+    );
+  }
+  // expired / missing / anything else
+  return (
+    <div className="bg-yellow-900/30 border border-yellow-700 rounded-xl p-4 mb-6 flex items-center gap-3">
+      <XCircle className="w-5 h-5 text-yellow-400 flex-shrink-0" />
+      <p className="text-yellow-300 text-sm">That confirmation link is no longer valid — use the bell icon above to request a new one.</p>
+    </div>
+  );
+}
 
 export default function DashboardOverview() {
   const { user } = useAuth();
@@ -17,6 +53,10 @@ export default function DashboardOverview() {
 
   return (
     <div>
+      <Suspense fallback={null}>
+        <EmailVerifyBanner />
+      </Suspense>
+
       {/* Welcome header */}
       <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-6 mb-8">
         <div>

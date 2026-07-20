@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
-import { Bell, Search, User, Lightbulb, Send } from 'lucide-react';
+import { Bell, Search, User, Lightbulb, Send, MailWarning, CheckCircle2 } from 'lucide-react';
 
 const TIPS = [
   'Start with the 2 free tools (Post Caption & SEO Meta Generator) — no credit card needed.',
@@ -25,6 +25,31 @@ export function TopBar() {
   const [submitted, setSubmitted] = useState(false);
   const [error, setError] = useState('');
   const panelRef = useRef<HTMLDivElement>(null);
+
+  // Soft email-verification reminder — never blocks anything, just a
+  // dismissible-looking (but persistent until confirmed) notice.
+  const [resending, setResending] = useState(false);
+  const [resendSent, setResendSent] = useState(false);
+  const [resendError, setResendError] = useState('');
+  const needsEmailConfirm = !loading && user && user.emailVerified === false;
+
+  async function resendVerification() {
+    setResending(true);
+    setResendError('');
+    try {
+      const res = await fetch('/api/auth/resend-verification', { method: 'POST', credentials: 'include' });
+      const data = await res.json();
+      if (!res.ok || !data.success) {
+        setResendError(data.error || 'Could not send the confirmation email right now.');
+      } else {
+        setResendSent(true);
+      }
+    } catch {
+      setResendError('Could not send the confirmation email right now.');
+    } finally {
+      setResending(false);
+    }
+  }
 
   useEffect(() => {
     setSeen(typeof window !== 'undefined' && window.localStorage.getItem(SEEN_KEY) === '1');
@@ -92,11 +117,40 @@ export function TopBar() {
         <div className="relative" ref={panelRef}>
           <Button variant="ghost" size="sm" className="relative" onClick={toggleOpen}>
             <Bell className="h-5 w-5 text-gray-400" />
-            {!seen && <span className="absolute right-1 top-1 h-2 w-2 rounded-full bg-red-500" />}
+            {(!seen || needsEmailConfirm) && <span className="absolute right-1 top-1 h-2 w-2 rounded-full bg-red-500" />}
           </Button>
 
           {open && (
             <div className="absolute right-0 top-12 z-50 w-80 rounded-lg border border-gray-800 bg-gray-900 p-4 shadow-xl">
+              {needsEmailConfirm && (
+                <div className="mb-4 rounded-md border border-blue-900 bg-blue-950/40 p-3">
+                  <div className="mb-1 flex items-center gap-2">
+                    <MailWarning className="h-4 w-4 text-blue-400" />
+                    <span className="text-sm font-semibold text-white">Confirm your email</span>
+                  </div>
+                  <p className="mb-2 text-xs leading-relaxed text-gray-400">
+                    Doesn&apos;t affect your access — just helps us keep your account secure.
+                  </p>
+                  {resendSent ? (
+                    <div className="flex items-center gap-1.5 text-xs text-green-400">
+                      <CheckCircle2 className="h-3.5 w-3.5" />
+                      Confirmation email sent — check your inbox.
+                    </div>
+                  ) : (
+                    <>
+                      {resendError && <div className="mb-1.5 text-xs text-red-400">{resendError}</div>}
+                      <button
+                        onClick={resendVerification}
+                        disabled={resending}
+                        className="flex w-full items-center justify-center gap-1.5 rounded-md bg-blue-600 py-1.5 text-xs font-medium text-white hover:bg-blue-500 disabled:cursor-not-allowed disabled:opacity-50"
+                      >
+                        {resending ? 'Sending...' : 'Resend confirmation email'}
+                      </button>
+                    </>
+                  )}
+                </div>
+              )}
+
               <div className="mb-3 flex items-center gap-2">
                 <Lightbulb className="h-4 w-4 text-yellow-400" />
                 <span className="text-sm font-semibold text-white">Tips for getting the most out of Shijo.ai</span>

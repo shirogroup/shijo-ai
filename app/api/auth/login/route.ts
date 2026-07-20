@@ -63,6 +63,7 @@ export async function POST(req: NextRequest) {
         email: user.email,
         name: user.name,
         planTier: user.planTier,
+        emailVerified: user.emailVerified,
       },
     });
 

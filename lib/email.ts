@@ -54,24 +54,40 @@ export async function sendEmail({ to, subject, html, cc }: SendEmailOptions): Pr
 }
 
 // ─── Welcome email with tool showcase ─────────────────────────────────
+//
+// This is the ONLY email sent at registration as of 2026-07-19 — it used
+// to be two separate emails (a welcome email + a bare "Terms Accepted"
+// legal notice). Merged into one so a new user gets a single, complete,
+// good-looking message: account confirmation, the real tool list, the
+// terms/privacy acceptance record, a soft (non-blocking) email-confirm
+// link, a password-reset link, and a company/support signature.
+//
+// The `terms` and `verifyUrl` params are optional so this function still
+// works for any future caller that only wants the plain welcome content —
+// but app/api/auth/register/route.ts always passes both.
 
-export function buildWelcomeEmail(name: string): { subject: string; html: string } {
+export function buildWelcomeEmail(
+  name: string,
+  opts?: {
+    terms?: { termsVersion: string; privacyVersion: string; acceptedAt: string; ipAddress: string };
+    verifyUrl?: string;
+  }
+): { subject: string; html: string } {
   const firstName = name?.split(' ')[0] || 'there';
 
+  // Kept in sync by hand with lib/tools/registry.ts — this is the real,
+  // live tool list (12 tools, 4 categories). A previous version of this
+  // email listed 24 fabricated tool names that never existed in the
+  // product; fixed 2026-07-19. If tools are added/removed in the
+  // registry, update this list too.
   const tools = [
     { category: 'Social Media', color: '#db2777', items: [
       { name: 'Post Caption Generator', free: true },
-      { name: 'Social Content Planner', free: false },
-      { name: 'Hashtag Optimizer', free: true },
-      { name: 'Carousel & Reels Script', free: false },
-      { name: 'Content Repurposer', free: false },
-      { name: 'Social Bio Optimizer', free: true },
-      { name: 'LinkedIn Post Generator', free: true },
     ]},
     { category: 'SEO', color: '#2563eb', items: [
+      { name: 'SEO Meta Generator', free: true },
       { name: 'Keyword Research', free: false },
       { name: 'SEO Content Brief', free: false },
-      { name: 'SEO Meta Generator', free: true },
       { name: 'FAQ Generator', free: false },
       { name: 'AI Overview Optimizer', free: false },
     ]},
@@ -79,19 +95,11 @@ export function buildWelcomeEmail(name: string): { subject: string; html: string
       { name: 'Ad Copy Generator', free: false },
       { name: 'Ad Headline A/B Tester', free: false },
       { name: 'Audience Targeting Profiles', free: false },
-      { name: 'Pain-to-Hook Converter', free: false },
-      { name: 'Sales Angle Generator', free: false },
       { name: 'Landing Page Copy Generator', free: false },
     ]},
     { category: 'Email', color: '#16a34a', items: [
       { name: 'Email Sequence Generator', free: false },
-      { name: 'Subject Line Generator', free: false },
       { name: 'Newsletter Generator', free: false },
-    ]},
-    { category: 'Content', color: '#9333ea', items: [
-      { name: 'Content Idea Generator', free: false },
-      { name: 'Video Content Suite', free: false },
-      { name: 'Blog Post Outline', free: false },
     ]},
   ];
 
@@ -156,12 +164,35 @@ export function buildWelcomeEmail(name: string): { subject: string; html: string
         <p style="font-size: 14px; color: #991b1b; margin: 0 0 12px 0; font-weight: 600;">Unlock all 12 tools for just $29/month</p>
         <a href="https://shijo.ai/dashboard/billing" style="display: inline-block; background: #111827; color: white; text-decoration: none; padding: 10px 24px; border-radius: 8px; font-size: 14px; font-weight: 600;">View Plans</a>
       </div>
+
+      ${opts?.verifyUrl ? `
+      <!-- Confirm email (soft, optional — never blocks access) -->
+      <div style="background: #eff6ff; border: 1px solid #bfdbfe; border-radius: 12px; padding: 20px; text-align: center; margin-top: 16px;">
+        <p style="font-size: 14px; color: #1e40af; margin: 0 0 12px 0; font-weight: 600;">One last thing — confirm your email address</p>
+        <p style="font-size: 13px; color: #3b82f6; margin: 0 0 12px 0;">This just helps us keep your account secure. You can keep using SHIJO.AI right away either way.</p>
+        <a href="${opts.verifyUrl}" style="display: inline-block; background: #2563eb; color: white; text-decoration: none; padding: 10px 24px; border-radius: 8px; font-size: 14px; font-weight: 600;">Confirm Email Address</a>
+      </div>
+      ` : ''}
+
+      <!-- Account & terms record -->
+      <hr style="border: none; border-top: 1px solid #e5e7eb; margin: 32px 0 24px 0;" />
+      <h3 style="font-size: 13px; font-weight: 700; color: #6b7280; margin: 0 0 12px 0; text-transform: uppercase; letter-spacing: 0.5px;">Account Details</h3>
+      <div style="background: #f9fafb; border-radius: 8px; padding: 16px 20px;">
+        <p style="font-size: 13px; color: #374151; margin: 0 0 6px 0;">Your account was created just now with plan <strong>Free</strong>.</p>
+        ${opts?.terms ? `
+        <p style="font-size: 13px; color: #374151; margin: 0 0 6px 0;">You accepted the <a href="https://shijo.ai/terms" style="color: #CC0000;">Terms of Service</a> (v${opts.terms.termsVersion}) and <a href="https://shijo.ai/privacy" style="color: #CC0000;">Privacy Policy</a> (v${opts.terms.privacyVersion}) at ${opts.terms.acceptedAt} from IP ${opts.terms.ipAddress}.</p>
+        ` : ''}
+        <p style="font-size: 13px; color: #374151; margin: 0;">Forgot your password? <a href="https://shijo.ai/forgot-password" style="color: #CC0000;">Reset it here</a> any time.</p>
+      </div>
     </div>
 
     <!-- Footer -->
     <div style="text-align: center; margin-top: 32px; color: #9ca3af; font-size: 12px;">
-      <p>&copy; 2026 SHIJO.ai — AI-Powered Marketing Tools</p>
-      <p>You received this email because you created an account at shijo.ai</p>
+      <p style="margin: 0 0 4px 0;"><strong style="color: #6b7280;">SHIRO Technologies LLC</strong></p>
+      <p style="margin: 0 0 4px 0;">5080 Spectrum Drive, Suite 575E, Addison, TX 75001</p>
+      <p style="margin: 0 0 12px 0;">Questions? <a href="mailto:info@shijo.ai" style="color: #9ca3af;">info@shijo.ai</a> &nbsp;•&nbsp; <a href="https://shijo.ai/contact" style="color: #9ca3af;">Contact us</a></p>
+      <p style="margin: 0;">&copy; 2026 SHIJO.ai — AI-Powered Marketing Tools</p>
+      <p style="margin: 0;">You received this email because you created an account at shijo.ai</p>
     </div>
   </div>
 </body>
@@ -170,6 +201,49 @@ export function buildWelcomeEmail(name: string): { subject: string; html: string
 
   return {
     subject: `Welcome to SHIJO.AI — Your 2 free AI tools are ready, ${firstName}!`,
+    html,
+  };
+}
+
+// ─── Email-confirmation resend (from the dashboard bell icon) ─────────
+// Short and focused, unlike the full welcome email — this is a reminder,
+// not a re-introduction to the product.
+
+export function buildVerifyEmailReminder(name: string, verifyUrl: string): { subject: string; html: string } {
+  const firstName = name?.split(' ')[0] || 'there';
+  const html = `
+<!DOCTYPE html>
+<html>
+<head><meta charset="utf-8"></head>
+<body style="margin: 0; padding: 0; background: #f3f4f6; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;">
+  <div style="max-width: 560px; margin: 0 auto; padding: 40px 20px;">
+    <div style="text-align: center; margin-bottom: 32px;">
+      <div style="display: inline-block; background: linear-gradient(135deg, #CC0000, #990000); color: white; width: 48px; height: 48px; line-height: 48px; border-radius: 12px; font-size: 24px; font-weight: bold;">S</div>
+      <h1 style="margin: 12px 0 0 0; font-size: 24px; color: #111827;">SHIJO.AI</h1>
+    </div>
+
+    <div style="background: white; border-radius: 16px; padding: 40px 32px; box-shadow: 0 1px 3px rgba(0,0,0,0.1);">
+      <h2 style="font-size: 22px; font-weight: 700; color: #111827; margin: 0 0 16px 0;">Confirm your email address</h2>
+      <p style="font-size: 16px; color: #6b7280; margin: 0 0 24px 0;">Hi ${firstName}, just a reminder to confirm your email address for ${firstName === 'there' ? 'your' : `${firstName}'s`} SHIJO.AI account. This is optional and doesn't affect your access — it just helps us keep accounts secure.</p>
+
+      <div style="text-align: center; margin: 32px 0;">
+        <a href="${verifyUrl}" style="display: inline-block; background: linear-gradient(135deg, #CC0000, #990000); color: white; text-decoration: none; padding: 14px 32px; border-radius: 12px; font-size: 16px; font-weight: 600;">Confirm Email Address</a>
+      </div>
+
+      <p style="font-size: 14px; color: #9ca3af; margin: 0 0 8px 0;">If the button doesn't work, copy and paste this link into your browser:</p>
+      <p style="font-size: 13px; color: #6b7280; word-break: break-all; margin: 0;">${verifyUrl}</p>
+    </div>
+
+    <div style="text-align: center; margin-top: 32px; color: #9ca3af; font-size: 12px;">
+      <p>&copy; 2026 SHIJO.ai — SHIRO Technologies LLC</p>
+    </div>
+  </div>
+</body>
+</html>
+  `.trim();
+
+  return {
+    subject: 'Confirm your email address — SHIJO.AI',
     html,
   };
 }

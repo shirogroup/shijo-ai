@@ -1,6 +1,6 @@
 # SHIJO.AI — Knowledge Base / Status Reference
 
-**Last updated:** 2026-07-19 (Cowork session, later pass — §29: 4-tier pricing restructure shipped to Stripe live mode + full codebase, Free/Standard $29/Pro $199/Enterprise paused)
+**Last updated:** 2026-07-19 (Cowork session, later pass — §32: soft email verification + merged welcome email built, not yet pushed/migrated)
 
 ## 0. Vercel secret rotation — RESOLVED, was a false alarm (originally flagged 2026-07-17, closed 2026-07-19)
 
@@ -598,3 +598,121 @@ git push origin main
 Everything in §28 and §29 is local-only until this runs. After it's live, the deferred verification steps above (live Chrome pass, negative checkout test) should be run and logged as a follow-up §30.
 
 **Still open for a future session:** decide on `app/api/billing/checkout/route.ts` (delete vs. lock down); once real customers exist on Standard/Pro, re-run the margin model against actual usage (not worst-case estimates) to sanity-check Pro's 1,500-gen cap before ever re-enabling Enterprise.
+
+---
+
+## 30. Post-publish verification — confirmed live and correct, one more display bug found+fixed, paid-plan reset timing clarified (2026-07-19, later same session)
+
+Sri pushed §29's full restructure batch himself (commit `fcd06fa`, confirmed via `git log`). This section is the live, post-deploy verification pass.
+
+**Code review, second pass — clean:**
+- Grepped the entire live source tree for any remaining "24 tools"/"24 apps" string: **zero matches** outside historical KB/docs entries (which are intentionally left as a record). The only other `24`s in the codebase are SVG `viewBox` sizes, Tailwind `py-24` spacing classes, and cookie `maxAge` values — none are tool-count references.
+- Grepped for `$99` (old Enterprise price): **zero matches** anywhere in source.
+- Grepped for `$199`/`$29`: present everywhere expected (Pricing.tsx, LandingPageContent.tsx, billing page, contact page, seo-config, email template, usage.ts upgrade prompts), all consistent with the new Standard/Pro naming.
+- **New bug found: `components/dashboard/UsageMeter.tsx`.** The plan badge in the usage-meter widget (visible on the Tools directory page and elsewhere) rendered `usage.plan.charAt(0).toUpperCase() + usage.plan.slice(1)` — a naive capitalize of the *raw internal* plan value. This is the same class of bug as the settings-page and admin-panel ones fixed in §29: a Pro ($199) customer would see a badge that says "Growth", and a Standard customer would see "Pro". Fixed to use `PLAN_DISPLAY_NAME`, matching every other plan-name display in the app. **Not yet pushed — see push command below.**
+
+**Live verification via Chrome (public, unauthenticated — Claude does not log in with real credentials per this account's security rules):**
+- `shijo.ai/#pricing` (homepage) — confirmed **live and correct**: Free / Standard $29 / Pro $199 (Most Popular) / Enterprise "Coming Soon" + Contact Us. (First fetch attempt returned stale CDN-cached old pricing — a fresh reload showed the correct new content, so this was a cache artifact, not a deploy bug.)
+- `shijo.ai/ai-marketing-tools` (the separate Google-Ads landing page) — confirmed **live and correct**, same 4-tier layout, matches homepage exactly.
+- `shijo.ai/contact` — confirmed **live and correct**, promo card correctly says "Standard: $29/mo, all 12 tools" / "Pro: $199/mo, 1,500 gens/month".
+- No console errors on any of the above.
+- `shijo.ai/dashboard/billing` and `shijo.ai/dashboard/ai-visibility` (unauthenticated) — both correctly redirect to `/login?redirect=...`, confirming the coming-soon page and billing page are deployed and properly auth-gated.
+- Negative API tests (unauthenticated `fetch()` calls, no cookies/session): `POST /api/stripe/create-checkout` (both `plan: 'growth'` and `plan: 'enterprise'`), `POST /api/dashboard/ai-visibility-waitlist`, `GET /api/usage`, `POST /api/generate` — **all correctly return 401** before ever reaching plan-selection logic.
+- **Not live-tested, by design:** the actual plan-name rejection logic inside `create-checkout` (e.g. `plan: 'enterprise'` → 400 "Invalid plan selected") only runs *after* the auth check, so it can't be exercised without a real logged-in session. This was verified via code review only (§29) — Sri's planned real paid-signup test tonight will be the first live exercise of it.
+- **Not tested at all (needs Sri's own authenticated session):** the dashboard billing page's actual 4-card render for a real user, the tools directory page's lock/unlock state for a real Standard/Pro account, the settings-page plan display, and the admin panel — all fixed in code (§29/§30) and manually verified against the API responses (`getUsageStats`/`checkToolAccess`) they depend on, but not yet seen rendered live with a real authenticated session.
+
+**Important clarification for tonight's paid-account test — flagged before Sri runs it, not after:** Sri said the plan was to create a new paid test user tonight to see "if the reset happens." Per `lib/tools/usage.ts`: **only the Free plan resets nightly** (at UTC midnight, via `getNextUTCMidnight()`/`dailyLimits`). Standard and Pro reset **monthly** — their usage count is computed live as "generations since the 1st of the current calendar month" (`getMonthStart()`), with no explicit reset event at all; it just won't tick over until August 1. If tonight's test is on a **paid** account, there is no reset to observe until next month — that's expected behavior, not a bug. If the goal is to test the *daily* reset mechanic specifically, that only applies to a Free-tier account.
+
+**Push needed (one file, not yet in any pushed commit):**
+```
+git add components/dashboard/UsageMeter.tsx
+git commit -m "Fix plan badge in usage meter to show display name instead of raw internal tier"
+git push origin main
+```
+(If `.git/index.lock` blocks this, run `rm .git/index.lock` first — same sandbox limitation as before.)
+
+**Open for Sri, next time he's logged in / after tonight's paid-signup test:** visually confirm the dashboard billing page's 4-card layout, the tools page's unlock state, the settings-page plan name, and the usage-meter badge (the fix above) all render correctly for a real paid account — none of this could be verified live without a session.
+
+**Addendum, same evening — second re-verification pass, requested by Sri ("check everything else again except the paid subscriber"):**
+- Confirmed via `git log origin/main` that the UsageMeter.tsx badge fix above was **still NOT pushed** at the time Sri said "Published" (origin/main was still at `fcd06fa`) — flagged to him directly rather than assumed.
+- Re-ran the full public/unauthenticated regression: `/dashboard/tools`, `/admin/users` both correctly redirect to login; `/register` correctly shows the Confirm Password field; `sitemap.xml` is clean (no private/dashboard routes leaked); every pricing-card CTA on `/#pricing` correctly routes logged-out visitors to `/register` (Enterprise correctly routes to `/contact`) rather than attempting checkout directly.
+- Live-tested `POST /api/auth/register` with three real negative cases (invalid email format, password mismatch, weak password) using disposable/throwaway addresses — **all three correctly rejected with 400**, confirming §28's registration-validation fix is live and working, not just locally patched.
+- Checked Stripe for `srikanth@shiroapps.com` (Sri's own account, used to ask "will it reset tonight"): customer `cus_Uucczq9pW3vAzx` exists but has **zero subscriptions of any status** — this account is on Free, not paid. Per the daily-reset logic in `lib/tools/usage.ts` (`getNextUTCMidnight()`), this means it resets automatically every day at UTC midnight — no manual action or cron job needed, this is unrelated to and unaffected by the pricing-restructure work. Flagged the non-obvious part: UTC midnight is **not** midnight in most US timezones — e.g. for Central Time (this project's registered address, Addison TX) it lands around 7-8pm local (7pm CDT during daylight saving), so "tonight's" reset for a Central-time user already happens well before actual local midnight, not at it.
+
+**Third pass, same evening — UsageMeter.tsx fix confirmed actually pushed and deployed:** Sri hit the `.git/index.lock` issue exactly as expected on his first attempt; after running `rm .git/index.lock` the commit (`adbe7aa`, "Fix plan badge in usage meter to show display name instead of raw internal tier") went through. Confirmed via `git log origin/main` that `adbe7aa` is now on top of `fcd06fa` and matches local `HEAD` exactly — not just taking his word for "published successfully." Re-ran the negative unauthenticated API tests (`/api/usage`, `/api/stripe/create-checkout`) post-deploy to confirm nothing regressed — both still correctly return 401. Also spot-checked `/dashboard/tools/ai-overview-optimizer` (individual tool page, correctly login-gated), `/forgot-password` (renders correctly, footer clean, no Claude/Anthropic mentions), and a blog post page (renders correctly, no stale claims). **The actual visual fix (badge showing "Pro"/"Standard" instead of "Growth"/"pro") still cannot be confirmed live** — it only renders inside an authenticated dashboard page, which requires a real login this account doesn't perform. This is the one remaining item Sri or his test account needs to eyeball directly.
+
+**Fourth pass, same evening — full authenticated dashboard sweep, done in Sri's own already-logged-in Chrome session (`srikanth@shiroapps.com`, Free plan) — everything confirmed correct, no fresh issues found:**
+- `/dashboard` — "Your Plan: Free", usage widget shows "0 of 3 used today, Resets in 20h 59m" (live countdown working correctly, matches the UTC-midnight reset logic), CTA banner correctly says "View Plans" (not "Upgrade to Pro" — the naming-collision fix from §29 holding).
+- `/dashboard/tools` — every Standard-gated tool correctly shows a **"Standard"** badge (not "Pro") — this is the exact bug fixed in §29 (`app/dashboard/tools/page.tsx`), now visually confirmed live.
+- `/dashboard/tools/ai-overview-optimizer` (a locked tool's detail page) — correctly shows "Standard required" / "requires a Standard ($29/mo) plan" — the `ToolPage.tsx` naming fix confirmed live.
+- `/dashboard/billing` — all 4 cards render correctly: Free (marked "Current Plan"), Standard $29/mo ("Upgrade to Standard"), Pro $199/mo ("Upgrade to Pro", "Most Popular" badge), Enterprise ("Coming Soon", "Contact Us"). Exactly matches the intended design from §29.
+- `/dashboard/settings` — Profile section shows "Plan: Free" via `PLAN_DISPLAY_NAME`, confirming that code path renders without error (the settings-page bug fixed in §29).
+- `/dashboard/ai-visibility` — coming-soon page renders correctly with a working "Notify me when this launches" button (not clicked — would create a real support ticket + send a real email to the team inbox, so left untested rather than triggering a live side effect without asking first).
+- `/admin/users` — correctly shows "Access denied. You don't have admin access." (Sri's account is not flagged as admin, matches prior sessions' notes that this was never flipped for testing).
+- No console errors on any authenticated page.
+
+**Remaining gap, low priority:** since `srikanth@shiroapps.com` is on Free, the specific bug this session fixed (Growth/Pro users seeing a mislabeled badge in `UsageMeter.tsx`) still hasn't been visually observed on a real Pro or Standard account — Free's badge renders identically whether read from the raw value or `PLAN_DISPLAY_NAME`. This will get its first real visual confirmation once Sri's planned paid test account upgrades.
+
+---
+
+## 31. Full click-through pass (Sri's request: "click everything, don't leave any link unclicked") — one critical bug found and fixed live in Stripe (2026-07-19, later same evening)
+
+Per Sri's instruction to click through every reachable interaction (not just read pages) and produce a validated punch list, in his own authenticated session. Skipped only: "Delete my account" (destructive/irreversible, explicitly off-limits) and "Sign out" / "Logout" (would end the session he handed over). Real payment was never completed — every checkout flow was verified up to and including Stripe's hosted payment page, then abandoned before entering any card details, per this account's standing rule against executing financial transactions.
+
+**🚨 Critical bug found and fixed live: Stripe's own product name was never updated in the July 19 restructure.** Clicking "Upgrade to Standard" on the real billing page correctly reached Stripe's live checkout — but the page displayed **"Subscribe to Shijo Pro — $29.00/month"**, not "Standard." Root cause: `app/dashboard/billing/page.tsx` and `lib/stripe/products.ts` were updated to *display* "Standard" everywhere in the app's own UI, but the underlying Stripe **Product object** (`prod_UAltLAeJGLVSqI`, the original $29 product) still had its `name` field literally set to `"Shijo Pro"` from before the rename — nobody had touched the Stripe-side product record itself, only the app-side config. Since Stripe's hosted Checkout page renders the product name directly from Stripe's own record (not from anything in this codebase), every real customer clicking "Upgrade to Standard" would have landed on a checkout page that said "Pro" — the exact "discrepancy" and "messages must stay the same" failure mode Sri asked to be checked for, and it would have stayed invisible to code review alone since nothing in the git diff would ever surface it.
+
+Fixed immediately via the Stripe MCP (`stripe_api_write` → `PostProductsId`), authorized by Sri's earlier blanket approval this session to make Stripe changes directly:
+- `prod_UAltLAeJGLVSqI`: renamed `"Shijo Pro"` → `"SHIJO.AI Standard"`, added `description: "All 12 AI marketing tools, 200 generations/month, advanced AI models."` (matching the new Pro product's description format), added an `internal_note` metadata field documenting the fix and why.
+- `prod_UAluQCvL32SQ3k` (the paused Enterprise product): also renamed `"Shijo Enterprise"` → `"SHIJO.AI Enterprise"` proactively, for consistency, even though it's not currently reachable via checkout (flagged `status: paused` in metadata).
+- Re-tested immediately: `/dashboard/billing` → "Upgrade to Standard" (monthly) now shows **"Subscribe to SHIJO.AI Standard — $29.00/month"** with the correct description line. Also tested the **annual** interval specifically (toggled the Monthly/Annual switch, confirmed Standard correctly shows $278/year with no change to Pro, which correctly has no annual option yet) — annual checkout also shows **"Subscribe to SHIJO.AI Standard — $278.00/year, $23.17/month billed annually"**, correct.
+- The $199 Pro product (`prod_UuvJvC2ZKysgfK`, created fresh during this session) was already named correctly ("SHIJO.AI Pro") since it was created new rather than renamed — confirmed via its own checkout page: "Subscribe to SHIJO.AI Pro — $199.00/month, All 12 AI marketing tools, 1,500 generations/month, advanced AI models." No issue there.
+
+**Everything else clicked through, all confirmed working, no other issues found:**
+- **AI-visibility waitlist button** — clicked live, correctly flipped to "You're on the list — we'll email you when it launches." (creates a real support ticket + notification email, per the code reviewed earlier this session).
+- **Real tool generation** — ran the Post Caption Generator end-to-end with real inputs on the live Sonnet/Haiku pipeline. Quota correctly decremented 3→2 remaining, real AI-generated captions returned, and the post-generation upgrade CTA correctly read "Upgrade to Standard" with accurate Standard entitlements (200 gens/month) — confirms the naming-collision fix from §29 is live and correct, not just present in code.
+- **Locked tool detail page** (AI Overview Optimizer) — correctly shows "Standard required" and "requires a Standard ($29/mo) plan."
+- **Settings → Export my data** — confirmed via network log: `GET /api/account/export` → 200. Matches the known-fixed export bug from an earlier session, still holding.
+- **Contact form, full real submission** — filled and submitted for real (clearly marked "QA TEST — please ignore" in subject/message so it's obviously not a real customer inquiry if anyone checks the inbox), including the math captcha. Confirmed "Message sent" success state. This creates a real ticket + notification email like the waitlist button.
+- **Admin panel** — correctly denies access ("You don't have admin access.") since this account isn't flagged as admin.
+- Dashboard home, tools directory, and settings page all re-confirmed rendering correctly with a real session (already covered in §30's fourth pass).
+
+**Not tested, by design — Sri to do himself:** completing an actual payment (this account never entered card details on any Stripe checkout page, per the standing rule against executing financial transactions on the user's behalf). Sri's plan is to log out of this account and test the real paid flow with a separate new account.
+
+**One process note for future click-throughs:** `get_page_text` does not surface `<input>`/`<textarea>` values (only label text and `<select>` option text) — a mid-session read that looked like "the form reset to empty" was actually a false read; the form was still fully filled. Screenshots are the reliable way to verify form state, not `get_page_text`.
+
+---
+
+## 32. Soft email verification + merged welcome email (2026-07-19, later same evening) — built, NOT yet migrated/pushed
+
+**Trigger:** Sri registered a real second test account (`srikanth@shirotechnologies.com`) and reported two things: (1) registration goes straight to the dashboard with no verification step, and (2) the only email he noticed looked like a bare legal notice ("Terms & Privacy Policy Accepted") with no real welcome/account-creation content. He asked for a better-looking combined email (account creation + terms acceptance + password-reset link + company/support signature) and a **non-blocking** verification flow — no gate on using the product, just a persistent notice in the bell icon until confirmed, with the confirming IP captured for fraud review.
+
+**Real bug found during research, fixed as part of this work:** `buildWelcomeEmail()` in `lib/email.ts` listed **24 fabricated tool names across 5 categories** (Hashtag Optimizer, Carousel & Reels Script, Content Repurposer, Subject Line Generator, Video Content Suite, etc.) that never existed in the product — while the heading directly above them correctly said "Your 12 AI Marketing Tools." Real tool data (kept in sync by hand with `lib/tools/registry.ts`): 12 tools across 4 categories — Social (1: Post Caption Generator), SEO (5: SEO Meta Generator, Keyword Research, SEO Content Brief, FAQ Generator, AI Overview Optimizer), Ads & Copy (4), Email (2). Fixed. This is the same class of fabricated-content bug the project has been burned by before (per the KB's standing instruction #5) — worth being alert for elsewhere in older email/marketing copy that hasn't been touched recently.
+
+**Also found:** `contexts/AuthContext.tsx`'s `User` TypeScript type already declared `emailVerified: boolean` (non-optional!) and `avatarUrl: string | null` — but neither the `users` table nor `/api/auth/me` ever actually populated `emailVerified` (always silently `undefined` at runtime despite the type claiming it's always a real boolean). This looks like half-finished groundwork from an earlier, unrecorded pass. `avatarUrl` remains untouched/still fake — out of scope for this request.
+
+**What was built (all non-blocking — verified via grep that nothing in `lib/tools/usage.ts`, `getSession`, or any auth check reads `emailVerified` to gate access):**
+
+- **`db/schema.ts`** — added `emailVerified` (bool, default false), `emailVerificationToken`, `emailVerificationSentAt`, `emailVerifiedAt`, `emailVerifiedIp` to `users`, plus an index on the token column. **Migration NOT yet run** — see `docs/manual-db-changes/2026-07-19-email-verification-columns.sql`, needs Sri to run it in Neon's SQL Editor same as every prior schema change this project has made (no direct DB write access from this sandbox). Until that migration runs, the code below will error on any real registration/login, since it reads/writes columns that don't exist in the live DB yet — **do not push code before the migration runs, or push both together and run the migration first**.
+- **`lib/email.ts`** — `buildWelcomeEmail()` now takes optional `{ terms, verifyUrl }` and, when both are passed (always, from registration), renders one complete email: real 12-tool showcase, a terms/privacy acceptance record section (version, timestamp, IP — same data the old separate email had), a soft "Confirm Email Address" button, a "Forgot your password? Reset it here" link, and a proper company footer (SHIRO Technologies LLC address, support email, contact link). Added `buildVerifyEmailReminder()` — a short, separate template used only by the resend button (not the full welcome content again).
+- **`app/api/auth/register/route.ts`** — generates a `crypto.randomBytes(32)` token (same pattern as the existing `forgot-password` route) at signup, stores it, builds the verify URL, and now sends **one** email to the user (merged welcome+terms+verify) instead of two. The old separate `buildTermsAcceptedEmail` still gets sent, but now goes **only** to `legal@shijo.ai` as an internal compliance copy — the user no longer receives a second, thinner email.
+- **`app/api/auth/verify-email/route.ts`** (new) — `GET ?token=...`, no auth required (the token itself is the credential, since the person may click the link on a different device than they signed up on). Looks up by token, marks `emailVerified=true`, stamps `emailVerifiedAt` and `emailVerifiedIp` (captured the same way as the existing terms-acceptance IP capture — deliberately independent of the signup-time IP so a mismatch between the two is visible for fraud review, per Sri's explicit ask), clears the token (single-use), redirects to `/dashboard?emailVerify=success` (or `expired`/`already`/`missing`). Returns the same generic "expired" result for both "never valid" and "already used" tokens, so a guessed token can't be used to probe validity.
+- **`app/api/auth/resend-verification/route.ts`** (new) — `POST`, authenticated, 60-second resend throttle per account (to protect Resend's free-tier send quota from a stuck frontend or repeated clicking), regenerates the token and sends the short reminder email.
+- **`app/api/auth/me/route.ts`, `login/route.ts`, `register/route.ts`** — all three now actually return real `emailVerified` values (closing the AuthContext type/reality gap noted above).
+- **`components/dashboard/TopBar.tsx`** (the bell icon) — when `user.emailVerified === false`, shows a dismissible-looking-but-persistent notice at the top of the dropdown with a "Resend confirmation email" button, and the red dot on the bell now shows for this state too (in addition to the existing "have you opened this once" flag), so it keeps prompting until actually confirmed rather than disappearing after one open.
+- **`app/dashboard/page.tsx`** — added a banner (wrapped in `Suspense`, matching the existing pattern in `app/dashboard/billing/page.tsx` for `useSearchParams`) that reads `?emailVerify=` from the redirect and shows a success/already-confirmed/expired message, so clicking the email link has visible feedback instead of a silent redirect.
+
+**Verified via `git diff --stat --ignore-all-space`:** all diffs real and scoped, no CRLF noise — `app/api/auth/login/route.ts` (+1), `app/api/auth/me/route.ts` (+1), `app/api/auth/register/route.ts` (+48/-?), `app/dashboard/page.tsx` (+42), `components/dashboard/TopBar.tsx` (+58), `db/schema.ts` (+12), `lib/email.ts` (+112/-?), plus two new route files and one new migration SQL file.
+
+**Not yet done:**
+1. **Migration has not been run.** Nothing above works against the live DB until Sri runs `docs/manual-db-changes/2026-07-19-email-verification-columns.sql` in Neon.
+2. **Not pushed.** Local only, same as every other batch this session — needs `git add`/`commit`/`push` (see combined command below), and the migration should run either just before or immediately after the push (code checks columns that must exist — if migration lags behind a live deploy, any registration/login in that gap will 500).
+3. **Not live-tested at all** — this is Task 30 on the list, blocked on the migration + push first.
+
+**Combined push (run in your own Git Bash):**
+```
+rm .git/index.lock
+git add db/schema.ts lib/email.ts app/api/auth/register/route.ts app/api/auth/login/route.ts app/api/auth/me/route.ts app/api/auth/verify-email/ app/api/auth/resend-verification/ components/dashboard/TopBar.tsx app/dashboard/page.tsx docs/manual-db-changes/2026-07-19-email-verification-columns.sql SHIJO_AI_KB.md
+git commit -m "Add soft email verification (non-blocking) + merge welcome/terms emails, fix fabricated 24-tool list in welcome email"
+git push origin main
+```
+**Run the migration SQL in Neon before or immediately alongside this push** — the two need to land together, not the code first with the migration lagging.
