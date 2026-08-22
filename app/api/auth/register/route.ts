@@ -4,15 +4,22 @@ import { users, termsAcceptances } from '@/db/schema';
 import { hashPassword, signToken } from '@/lib/auth';
 import { eq } from 'drizzle-orm';
 import crypto from 'crypto';
-import { sendEmail, buildWelcomeEmail, buildTermsAcceptedEmail } from '@/lib/email';
+import { sendEmail, buildWelcomeEmail } from '@/lib/email';
+import { consumeRateLimit, clientIpFrom, pruneRateLimits } from '@/lib/rate-limit';
 import { CURRENT_TERMS_VERSION, CURRENT_PRIVACY_VERSION } from '@/lib/legal';
 import { serverErrorResponse } from '@/lib/api/errors';
 
 export const runtime = 'nodejs';
 
-// Address that receives a copy of every Terms/Privacy acceptance email, as
-// a durable record independent of the termsAcceptances table.
-const LEGAL_RECORDS_CC = 'legal@shijo.ai';
+// Abuse-throttle ceilings for this endpoint. Set deliberately generous —
+// the goal is to stop an abuse run, not to police normal traffic. Shared
+// office/NAT IPs can legitimately produce several signups in an hour, so
+// these sit well above any plausible human and well below what makes an
+// abuse run worthwhile. No real user will ever see a 429 from these.
+const REGISTER_IP_LIMIT = 10;
+const REGISTER_IP_WINDOW_MS = 60 * 60 * 1000;          // 10 signups / hour / IP
+const REGISTER_EMAIL_LIMIT = 3;
+const REGISTER_EMAIL_WINDOW_MS = 24 * 60 * 60 * 1000;  // 3 attempts / day / address
 
 // Same pattern used by app/api/contact/route.ts — kept in sync for
 // consistent server-side email validation across the app.
@@ -41,6 +48,33 @@ const NAME_CONTROL_CHARS = /[\u0000-\u001F\u007F]/;
 
 export async function POST(req: NextRequest) {
   try {
+    const ip = clientIpFrom(req.headers);
+
+    // ── Same-origin check. Invisible to real users. ──
+    // Browsers send an Origin header on every fetch() POST, including
+    // same-origin ones. A script POSTing this route directly usually sends
+    // none, or someone else's. Rejecting that costs a legitimate user
+    // nothing — no challenge, no extra field, no UI — while removing the
+    // laziest way to drive this endpoint. Spoofable by a determined
+    // attacker, which is why it is one layer of several rather than the
+    // defence. Escape hatch: set ALLOW_MISSING_ORIGIN=1 in Vercel if a
+    // legitimate non-browser client ever has to register.
+    const origin = req.headers.get('origin');
+    const allowedOrigins = [
+      process.env.NEXT_PUBLIC_APP_URL,
+      'https://www.shijo.ai',
+      'https://shijo.ai',
+    ].filter(Boolean) as string[];
+    const originOk = origin
+      ? allowedOrigins.includes(origin)
+      : process.env.ALLOW_MISSING_ORIGIN === '1' || process.env.NODE_ENV !== 'production';
+
+    if (!originOk) {
+      console.warn('[REGISTER][BLOCKED] Bad or missing Origin. origin=%s ip=%s', origin || '(none)', ip);
+      // Deliberately generic — don't tell an attacker which control tripped.
+      return NextResponse.json({ error: 'Registration failed' }, { status: 403 });
+    }
+
     const { email, password, confirmPassword, name, acceptedTerms } = await req.json();
 
     // Validation
@@ -113,6 +147,38 @@ export async function POST(req: NextRequest) {
       );
     }
 
+    // ── Abuse throttle. Invisible to real users. ──
+    // Placed deliberately HERE — after every field validation and after the
+    // duplicate-email check — so it counts only genuine new account
+    // creations. Earlier in the flow it would burn a real person's quota on
+    // their own typos (mismatched password, too-short password, an address
+    // they already registered), which is exactly the friction this work is
+    // meant to avoid. An abuse request, by contrast, IS a valid new
+    // registration every time, so it still counts every one of them.
+    //
+    // Keyed on both IP and email: IP alone misses a distributed run, email
+    // alone misses one attacker cycling through many addresses.
+    //
+    // Fails OPEN if the table is missing or the DB is unreachable — a
+    // throttle must never be able to take signups down (see lib/rate-limit.ts).
+    const ipThrottle = await consumeRateLimit(`register:ip:${ip}`, REGISTER_IP_LIMIT, REGISTER_IP_WINDOW_MS);
+    const emailThrottle = await consumeRateLimit(
+      `register:email:${email.toLowerCase()}`,
+      REGISTER_EMAIL_LIMIT,
+      REGISTER_EMAIL_WINDOW_MS
+    );
+
+    if (!ipThrottle.allowed || !emailThrottle.allowed) {
+      console.warn('[REGISTER][THROTTLED] ip=%s email=%s', ip, email.toLowerCase());
+      return NextResponse.json(
+        { error: 'Too many sign-up attempts from this location. Please try again later.' },
+        { status: 429 }
+      );
+    }
+
+    // Opportunistic cleanup on ~1% of requests so the table stays small.
+    if (Math.random() < 0.01) void pruneRateLimits();
+
     // Hash password
     const passwordHash = await hashPassword(password);
 
@@ -136,8 +202,7 @@ export async function POST(req: NextRequest) {
 
     // Record Terms/Privacy acceptance — append-only audit row, captures
     // the exact document versions in effect and best-effort IP/UA.
-    const forwardedFor = req.headers.get('x-forwarded-for');
-    const ipAddress = forwardedFor ? forwardedFor.split(',')[0].trim() : (req.headers.get('x-real-ip') || 'unknown');
+    const ipAddress = ip;
     const userAgent = req.headers.get('user-agent') || 'unknown';
     const acceptedAt = new Date();
 
@@ -178,16 +243,26 @@ export async function POST(req: NextRequest) {
       path: '/',
     });
 
-    // Send ONE merged welcome email to the user (account confirmation +
-    // real tool list + terms/privacy acceptance record + soft email-verify
-    // CTA + password-reset link + company footer — see lib/email.ts for
-    // why this replaced the previous two separate, thinner emails), and
-    // keep a plain terms-acceptance record going to legal@ only, as a
-    // durable compliance copy independent of the termsAcceptances table.
-    // Awaited (via Promise.allSettled, each independently caught) rather
-    // than true fire-and-forget — on Vercel's serverless runtime, un-awaited
-    // promises can get cut off when the function returns its response,
-    // before the email's fetch() call to Resend ever actually goes out.
+    // Send ONE email — the merged welcome (account confirmation, real tool
+    // list, terms/privacy acceptance record, soft email-verify CTA,
+    // password-reset link, company footer).
+    //
+    // The second email — a plain terms-acceptance copy to legal@shijo.ai —
+    // was REMOVED on 2026-08-22. It was never a legal or compliance
+    // requirement: KB §13 records it as a prior session's suggestion,
+    // explicitly flagged as needing confirmation, which never came. It also
+    // never worked — every send to that address bounced or failed (KB
+    // §38.3), so it doubled registration email volume, generated bounces
+    // that damage sender reputation, and delivered nothing to anyone.
+    //
+    // The durable record of acceptance is the append-only `termsAcceptances`
+    // row inserted above, surfaced in /admin/terms. That is stronger
+    // evidence than an email: queryable, tied to the user id, and it
+    // captures the user agent, which the email never did.
+    //
+    // Awaited rather than fire-and-forget — on Vercel's serverless runtime
+    // an un-awaited promise can be cut off when the function returns its
+    // response, before the fetch() to Resend ever goes out.
     const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://www.shijo.ai';
     const verifyUrl = `${baseUrl}/api/auth/verify-email?token=${emailVerificationToken}`;
 
@@ -200,29 +275,14 @@ export async function POST(req: NextRequest) {
       },
       verifyUrl,
     });
-    const acceptanceEmail = buildTermsAcceptedEmail(safeName || email.split('@')[0], {
-      termsVersion: CURRENT_TERMS_VERSION,
-      privacyVersion: CURRENT_PRIVACY_VERSION,
-      acceptedAt: acceptedAt.toISOString(),
-      ipAddress,
+    const sent = await sendEmail({ to: email.toLowerCase(), ...welcomeEmail }).catch((err) => {
+      console.error('[REGISTER] Failed to send welcome email:', err);
+      return false;
     });
 
-    await Promise.allSettled([
-      sendEmail({ to: email.toLowerCase(), ...welcomeEmail }).then((sent) => {
-        if (sent) {
-          console.log(`[REGISTER] Welcome email sent to ${email}`);
-        }
-      }).catch((err) => {
-        console.error(`[REGISTER] Failed to send welcome email:`, err);
-      }),
-      sendEmail({ to: LEGAL_RECORDS_CC, ...acceptanceEmail }).then((sent) => {
-        if (sent) {
-          console.log(`[REGISTER] Terms acceptance record sent to ${LEGAL_RECORDS_CC} for ${email}`);
-        }
-      }).catch((err) => {
-        console.error(`[REGISTER] Failed to send terms acceptance record:`, err);
-      }),
-    ]);
+    if (sent) {
+      console.log(`[REGISTER] Welcome email sent to ${email}`);
+    }
 
     return response;
   } catch (error) {

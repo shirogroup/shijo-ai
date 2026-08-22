@@ -1,6 +1,6 @@
 # SHIJO.AI — Knowledge Base / Status Reference
 
-**Last updated:** 2026-08-22 (§38 spam relay via /api/auth/register found; §39 FIX APPLIED LOCALLY — constant welcome subject, name validation, full template escaping — NOT YET PUSHED, relay stays open until it is; rate limiting + registration captcha still unbuilt)
+**Last updated:** 2026-08-22 (§39 spam-relay fix SHIPPED as 99cce4d; §40 zero-friction hardening edited locally NOT pushed — origin check, IP+email signup throttle (new table, migration pending), legal@ email removed as never-required, 429 visibility, JSON-LD $99→$199; Vercel WAF + DMARC still Sri's to do)
 
 ## 0. Vercel secret rotation — RESOLVED, was a false alarm (originally flagged 2026-07-17, closed 2026-07-19)
 
@@ -1057,3 +1057,86 @@ Vercel auto-deploys on push. **The relay stays open until this runs.**
 ### 39.6 New portable doc
 
 `docs/security/email-injection-spam-relay-playbook.md` — product-agnostic write-up of the scenario, detection, root cause, fix, an audit checklist for other products, and post-incident cleanup steps. Written at Sri's request so the other SHIRO products can be checked against the same class of bug. Also saved to the claude.ai project.
+
+---
+
+## 40. Full remediation, zero-friction constraint (2026-08-22, later same day)
+
+**§39 shipped.** Sri pushed it as `99cce4d` ("Fix spam relay: constant welcome subject, validate name, escape all email template input") — confirmed live on GitHub via `git ls-remote`. The relay is closed.
+
+**Brief for this pass, per Sri:** fix everything still outstanding **without adding a single step for a real paying user**. That constraint drove every choice below, including two things deliberately NOT done.
+
+### 40.1 What a real user experiences after all of this: nothing
+
+No captcha on registration, no email-verification gate, no extra field, no challenge screen, no changed flow. Every control added here is either invisible (header check, edge rules) or sits at a ceiling no human reaches.
+
+### 40.2 Changes made this pass — edited locally, NOT yet pushed
+
+**`app/api/auth/register/route.ts`**
+
+1. **Removed the `legal@shijo.ai` second email.** See 40.4 for why it was never required.
+2. **Same-origin check.** Browsers send an `Origin` header on every `fetch()` POST including same-origin ones; a script POSTing the API directly usually sends none or a wrong one. Rejects with a deliberately generic 403 so an attacker can't tell which control tripped. Escape hatch: `ALLOW_MISSING_ORIGIN=1` in Vercel. Spoofable — it is one layer, not the defence.
+3. **Abuse throttle**, keyed on **both** IP (10/hour) and email address (3/day). IP alone misses a distributed run; email alone misses one attacker cycling addresses.
+
+⚠️ **Throttle placement is load-bearing and was corrected mid-implementation.** It was first written before the password checks — which would have burned a *real user's* daily quota on their own typos (mismatched password, too-short password, an address they'd already registered) and locked them out for a day. It now sits **after every field validation and after the duplicate-email check**, so it counts only genuine new account creations. An abuse request is a valid new registration every time, so it still counts all of those. Do not move this earlier.
+
+**`db/schema.ts` + `lib/rate-limit.ts` (new) + `docs/manual-db-changes/2026-08-22-signup-throttle.sql` (new)**
+
+- New `signup_throttle` table. **The existing `rate_limits` table could not be used**: its `user_id` is `NOT NULL` and foreign-keyed to `users`, so it can only throttle someone who has already registered — useless against anonymous traffic, which is the whole problem. That is why it sat unused for so long.
+- **`lib/rate-limit.ts` fails OPEN by design.** If the migration hasn't run or the DB is briefly unreachable, the check logs `[RATE_LIMIT][DEGRADED]` and allows the request. This repo has been bitten twice by code shipping ahead of a manual migration (§13, §32); a throttle that takes signups down is worse than the abuse it prevents.
+- The SQL is safe to run before **or** after the deploy, for the same reason.
+
+**`lib/email.ts`**
+
+- **429s are now logged distinctly** as `[EMAIL][RATE_LIMITED]` with recipient and subject. Still **deliberately not retried** — during the incident this path was hit 231,239 times; any backoff-and-retry would have amplified the flood. Every 429 is a real user's email being dropped, so it needs to be greppable rather than buried in generic send failures.
+- **`reply_to` support added**, gated on a new `REPLY_TO_EMAIL` env var. While unset, no Reply-To header is sent — identical to today's behaviour, so this is safe to deploy before a monitored mailbox exists.
+- **Fixed a dead-end**: `buildTicketResolvedEmail` told customers to "just reply to this email", which went to `noreply@`. Now points at the contact form.
+
+**`app/page.tsx` + `app/ai-marketing-tools/page.tsx`**
+
+- `offers.highPrice` **`'99'` → `'199'`** — open since §36. It was advertising the retired Enterprise price to crawlers. 199 is the highest *purchasable* plan; Enterprise is "Coming Soon" and stays out of structured data.
+
+### 40.3 Deliberately NOT done, because it would cost real users
+
+- **No captcha on `/register`.** Would be friction for every signup, and this attacker POSTs the API directly and never loads the form — so it would buy little.
+- **No honeypot field.** Same reason: only catches bots that parse the HTML form. This one doesn't.
+- **No disposable/temp-email blocking.** Real paying customers use Apple's Hide My Email and similar relays. Blocking those loses genuine revenue to stop an attacker who was using ordinary Gmail addresses anyway.
+- **No email-verification gate before use.** Verification is soft and non-blocking by explicit product decision (§32); gating on it would be a real step for every new user.
+- **Attack Mode is NOT recommended as a default.** It challenges normal traffic. It is the emergency brake for the next incident, not a standing setting.
+
+### 40.4 Why the `legal@shijo.ai` email was never required — answered from the record
+
+Sri asked what rule we were complying with. **There wasn't one.** KB §13, from the session that built it (2026-07-17), states it plainly: the address was chosen because it already appeared on the legal pages, and the note explicitly said *"user should confirm or redirect this to wherever they actually want acceptance records to land."* That confirmation never came; two days later it hardened from a `cc` into a separate send.
+
+The real compliance goal — clickwrap enforceability, i.e. evidence of assent — is genuine, but the mechanism that satisfies it is the append-only **`termsAcceptances`** table plus `/admin/terms`, both built in that same session. That is *stronger* evidence than an email: queryable, tied to the user id, and it captures the user agent, which the email never did.
+
+And it never worked: **100% bounce/fail rate since inception** (§38.3). Removing it halves registration email volume and removes a standing bounce source that damages sender reputation. Nothing is lost, because nothing was ever delivered.
+
+### 40.5 Still requires Sri — cannot be done from code
+
+1. **Vercel WAF rate-limit rule** — the primary, edge-level defence. Blocks *before* the function runs: no compute, no junk DB row, no Resend call. Path `/api/auth/register`, ~10 requests / 10 min per IP, action Deny. Start in **Log** mode for a day. Note Vercel's caveat: **counters are per-region**, so distributed traffic can exceed the configured limit in aggregate.
+2. **Bot Protection managed ruleset** → Log, then Challenge. It specifically catches "requests that falsely claim to be from a browser such as a curl request identifying as Chrome" — this attacker's exact profile, and invisible to real browsers. Does not work behind a reverse proxy (don't put Cloudflare in front of Vercel).
+3. **Publish DMARC**: `_dmarc.shijo.ai` TXT → `v=DMARC1; p=none; rua=mailto:<real mailbox>;`, then tighten to `quarantine`, then `reject`.
+4. **Run the migration**: `docs/manual-db-changes/2026-08-22-signup-throttle.sql` in Neon.
+5. **Purge the abuse user rows** in Neon.
+6. **Resend bounce/complaint webhook** so a burst alerts someone instead of being found 19 hours later.
+7. **Decide `legal@shijo.ai`** — the `cc` on account-deletion emails (`app/api/account/delete/route.ts`) still points there and still bounces. Create the mailbox or remove that `cc` too.
+8. **Still awaiting Sri's call from §38.5:** `app/gdpr-compliance/page.tsx` naming the AI vendor in its Sub-Processors section — approve as a 4th disclosure location, or remove.
+
+### 40.6 Verification performed
+
+- TypeScript: **no syntax errors** across all five changed files plus the new one. Remaining standalone diagnostics (`TS7006` on drizzle `table` callbacks, `TS7026` on JSX) also appear on **pre-existing, currently-deploying lines** — they are artifacts of checking files outside the project tsconfig, where contextual types aren't available.
+- Confirmed no dangling references to the removed `LEGAL_RECORDS_CC` or `buildTermsAcceptedEmail` in the register route. `buildTermsAcceptedEmail` remains exported but unused in `lib/email.ts` — harmless, left in place deliberately in case the legal-record email is ever revived with a working mailbox.
+- Flow order re-checked after moving the throttle: origin → email format → name → password → terms → duplicate → throttle → hash → insert.
+
+### 40.7 Push command
+
+⚠️ A fresh `.git/index.lock` was created again during this session's reads and the sandbox cannot delete it. Clear it first, as always.
+
+```
+cd "/c/Users/AI Agent/projects/shiro-group-monorepo/my-turborepo/apps/shijo-ai"
+rm .git/index.lock
+git add lib/email.ts lib/rate-limit.ts app/api/auth/register/route.ts db/schema.ts app/page.tsx app/ai-marketing-tools/page.tsx SHIJO_AI_KB.md docs/security docs/manual-db-changes docs/product docs/testing
+git commit -m "Zero-friction abuse hardening: origin check, IP+email signup throttle, drop bouncing legal@ email, 429 visibility, fix retired JSON-LD price"
+git push origin main
+```

@@ -528,6 +528,23 @@ export const rateLimits = pgTable('rate_limits', {
   createdAt: timestamp('created_at').defaultNow().notNull(),
 });
 
+// Abuse throttle for UNAUTHENTICATED public endpoints (added 2026-08-22).
+//
+// Deliberately separate from `rate_limits` above: that table's `user_id` is
+// NOT NULL and foreign-keyed to `users`, so it can only throttle someone who
+// has already registered. That is exactly the gap that let the spam-relay
+// incident run for ~19 hours against /api/auth/register (KB §37/§38).
+// Keyed by an opaque namespaced string (`register:ip:…`, `register:email:…`)
+// so the same table can cover any public endpoint. See lib/rate-limit.ts.
+export const signupThrottle = pgTable('signup_throttle', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  key: varchar('key', { length: 255 }).notNull(),
+  count: integer('count').default(0).notNull(),
+  windowStart: timestamp('window_start').defaultNow().notNull(),
+}, (table) => ({
+  keyWindowIdx: index('idx_signup_throttle_key_window').on(table.key, table.windowStart),
+}));
+
 // ========================================
 // PASSWORD RESET TOKENS
 // ========================================

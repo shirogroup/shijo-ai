@@ -19,7 +19,10 @@ const jsonLd = {
   offers: {
     '@type': 'AggregateOffer',
     lowPrice: '0',
-    highPrice: '99',
+    // Highest PURCHASABLE plan. Was '99' (retired Enterprise price) until
+    // 2026-08-22 — it kept advertising a price nobody could buy. Enterprise
+    // is "Coming Soon" and deliberately absent from structured data.
+    highPrice: '199',
     priceCurrency: 'USD',
   },
   description: 'AI-powered SEO and marketing toolkit with 12 tools for social media, SEO, ads, and email.',

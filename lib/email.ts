@@ -12,15 +12,22 @@
 
 const RESEND_API_KEY = process.env.RESEND_API_KEY;
 const FROM_EMAIL = process.env.FROM_EMAIL || 'SHIJO.AI <noreply@shijo.ai>';
+// Optional Reply-To. Resend flags no-reply senders as a deliverability and
+// trust negative, and several of our templates invite a reply. Set
+// REPLY_TO_EMAIL in Vercel to a MONITORED mailbox to switch this on; while
+// unset no Reply-To header is sent, which is exactly today's behaviour, so
+// this is safe to deploy before the mailbox exists.
+const REPLY_TO_EMAIL = process.env.REPLY_TO_EMAIL;
 
 interface SendEmailOptions {
   to: string;
   subject: string;
   html: string;
   cc?: string | string[];
+  replyTo?: string;
 }
 
-export async function sendEmail({ to, subject, html, cc }: SendEmailOptions): Promise<boolean> {
+export async function sendEmail({ to, subject, html, cc, replyTo }: SendEmailOptions): Promise<boolean> {
   if (!RESEND_API_KEY) {
     console.warn('[EMAIL] RESEND_API_KEY not set — skipping email send');
     return false;
@@ -37,6 +44,7 @@ export async function sendEmail({ to, subject, html, cc }: SendEmailOptions): Pr
         from: FROM_EMAIL,
         to: [to],
         ...(cc ? { cc: Array.isArray(cc) ? cc : [cc] } : {}),
+        ...(replyTo || REPLY_TO_EMAIL ? { reply_to: replyTo || REPLY_TO_EMAIL } : {}),
         subject,
         html,
       }),
@@ -44,7 +52,20 @@ export async function sendEmail({ to, subject, html, cc }: SendEmailOptions): Pr
 
     if (!response.ok) {
       const error = await response.text();
-      console.error('[EMAIL] Send failed:', error);
+
+      // 429 is Resend's 10 req/s ceiling, NOT the monthly/daily quota.
+      // Deliberately NOT retried: during the 2026-08-20 spam-relay incident
+      // (KB §37/§38) this path was hit 231,239 times in 19 hours, and any
+      // backoff-and-retry here would have amplified the flood rather than
+      // relieved it. Logged distinctly so a burst is greppable in Vercel
+      // logs instead of hiding inside generic send failures — every 429 is
+      // a REAL user's email being dropped.
+      if (response.status === 429) {
+        console.error('[EMAIL][RATE_LIMITED] Resend returned 429 — email DROPPED, not retried. to=%s subject=%s', to, subject);
+        return false;
+      }
+
+      console.error('[EMAIL] Send failed (status %s):', response.status, error);
       return false;
     }
 
@@ -566,7 +587,7 @@ export function buildTicketResolvedEmail(
       <h2 style="font-size: 22px; font-weight: 700; color: #111827; margin: 0 0 16px 0;">Your request has been resolved</h2>
       <p style="font-size: 16px; color: #6b7280; margin: 0 0 16px 0;">Hi ${firstName}, we've marked your message about "${escapeHtml(opts.subject)}" as resolved.</p>
       ${opts.adminNotes ? `<div style="background: #f9fafb; border-radius: 8px; padding: 20px;"><p style="font-size: 13px; color: #374151; margin: 0; white-space: pre-wrap;">${escapeHtml(opts.adminNotes)}</p></div>` : ''}
-      <p style="font-size: 14px; color: #9ca3af; margin: 16px 0 0 0;">If this didn't fully resolve your issue, just reply to this email or use the <a href="https://shijo.ai/contact" style="color: #CC0000;">contact form</a> again.</p>
+      <p style="font-size: 14px; color: #9ca3af; margin: 16px 0 0 0;">If this didn't fully resolve your issue, please use the <a href="https://shijo.ai/contact" style="color: #CC0000;">contact form</a> again and reference the subject above.</p>
 
       ${supportSignature()}
     </div>
