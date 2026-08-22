@@ -4,7 +4,9 @@
  * Setup: npm install resend
  * Env: RESEND_API_KEY=re_xxxxx
  *
- * Free tier: 100 emails/day, 3000/month — plenty for a SaaS launch.
+ * Plan (verified in the Resend dashboard 2026-08-22): Free — 3,000 emails/month,
+ * 100/day, and a 10 req/s API rate limit. The rate limit is a separate,
+ * per-second ceiling: bursting past it returns 429 without touching the quota.
  * Sign up at https://resend.com and add your API key to Vercel env vars.
  */
 
@@ -53,6 +55,42 @@ export async function sendEmail({ to, subject, html, cc }: SendEmailOptions): Pr
   }
 }
 
+// ─── Input-safety helpers ───────────────────────────────────────
+//
+// Added 2026-08-22 after /api/auth/register was found being used as a spam
+// relay. An attacker POSTed a victim's address with the `name` field set to
+// advertising copy; buildWelcomeEmail interpolated that name straight into
+// the SUBJECT line, so the advert went out from a verified, DKIM-signed,
+// SPF-passing shijo.ai. See SHIJO_AI_KB.md §38 and
+// docs/security/email-injection-spam-relay-playbook.md.
+//
+// Two rules now apply to every template in this file:
+//   1. Never put attacker-controllable free text into a subject line.
+//   2. HTML-escape every user-supplied value before it enters a template.
+
+export function escapeHtml(value: unknown): string {
+  return String(value == null ? '' : value)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
+// For the few subjects that legitimately need user text — support tickets,
+// which are captcha-gated (see app/api/contact/route.ts) and whose subject
+// the team needs in order to triage. Strips anything that could forge a
+// mail header or carry a payload, and caps the length. NOT a substitute for
+// rule 1: the registration/welcome path takes no user text in its subject.
+export function sanitizeSubject(value: unknown, maxLength: number = 120): string {
+  return String(value == null ? '' : value)
+    .replace(/[\r\n\t]+/g, ' ')
+    // eslint-disable-next-line no-control-regex
+    .replace(/[\u0000-\u001F\u007F]/g, '')
+    .trim()
+    .slice(0, maxLength);
+}
+
 // ─── Welcome email with tool showcase ─────────────────────────────────
 //
 // This is the ONLY email sent at registration as of 2026-07-19 — it used
@@ -73,7 +111,7 @@ export function buildWelcomeEmail(
     verifyUrl?: string;
   }
 ): { subject: string; html: string } {
-  const firstName = name?.split(' ')[0] || 'there';
+  const firstName = escapeHtml(name?.split(' ')[0] || 'there');
 
   // Kept in sync by hand with lib/tools/registry.ts — this is the real,
   // live tool list (12 tools, 4 categories). A previous version of this
@@ -180,7 +218,7 @@ export function buildWelcomeEmail(
       <div style="background: #f9fafb; border-radius: 8px; padding: 16px 20px;">
         <p style="font-size: 13px; color: #374151; margin: 0 0 6px 0;">Your account was created just now with plan <strong>Free</strong>.</p>
         ${opts?.terms ? `
-        <p style="font-size: 13px; color: #374151; margin: 0 0 6px 0;">You accepted the <a href="https://shijo.ai/terms" style="color: #CC0000;">Terms of Service</a> (v${opts.terms.termsVersion}) and <a href="https://shijo.ai/privacy" style="color: #CC0000;">Privacy Policy</a> (v${opts.terms.privacyVersion}) at ${opts.terms.acceptedAt} from IP ${opts.terms.ipAddress}.</p>
+        <p style="font-size: 13px; color: #374151; margin: 0 0 6px 0;">You accepted the <a href="https://shijo.ai/terms" style="color: #CC0000;">Terms of Service</a> (v${escapeHtml(opts.terms.termsVersion)}) and <a href="https://shijo.ai/privacy" style="color: #CC0000;">Privacy Policy</a> (v${escapeHtml(opts.terms.privacyVersion)}) at ${escapeHtml(opts.terms.acceptedAt)} from IP ${escapeHtml(opts.terms.ipAddress)}.</p>
         ` : ''}
         <p style="font-size: 13px; color: #374151; margin: 0;">Forgot your password? <a href="https://shijo.ai/forgot-password" style="color: #CC0000;">Reset it here</a> any time.</p>
       </div>
@@ -200,7 +238,9 @@ export function buildWelcomeEmail(
   `.trim();
 
   return {
-    subject: `Welcome to SHIJO.AI — Your 2 free AI tools are ready, ${firstName}!`,
+    // Deliberately constant. The registrant's name is attacker-controlled
+    // and MUST NOT reach a subject line (spam-relay incident, 2026-08-22).
+    subject: 'Welcome to SHIJO.AI — Your 2 free AI tools are ready!',
     html,
   };
 }
@@ -210,7 +250,7 @@ export function buildWelcomeEmail(
 // not a re-introduction to the product.
 
 export function buildVerifyEmailReminder(name: string, verifyUrl: string): { subject: string; html: string } {
-  const firstName = name?.split(' ')[0] || 'there';
+  const firstName = escapeHtml(name?.split(' ')[0] || 'there');
   const html = `
 <!DOCTYPE html>
 <html>
@@ -251,7 +291,7 @@ export function buildVerifyEmailReminder(name: string, verifyUrl: string): { sub
 // ─── Password reset email ──────────────────────────────────────────────
 
 export function buildPasswordResetEmail(name: string, resetUrl: string): { subject: string; html: string } {
-  const firstName = name?.split(' ')[0] || 'there';
+  const firstName = escapeHtml(name?.split(' ')[0] || 'there');
 
   const html = `
 <!DOCTYPE html>
@@ -308,7 +348,7 @@ export function buildTermsAcceptedEmail(
   name: string,
   opts: { termsVersion: string; privacyVersion: string; acceptedAt: string; ipAddress: string }
 ): { subject: string; html: string } {
-  const firstName = name?.split(' ')[0] || 'there';
+  const firstName = escapeHtml(name?.split(' ')[0] || 'there');
   const html = `
 <!DOCTYPE html>
 <html>
@@ -325,10 +365,10 @@ export function buildTermsAcceptedEmail(
       <p style="font-size: 16px; color: #6b7280; margin: 0 0 24px 0;">Hi ${firstName}, this confirms you accepted the SHIJO.AI Terms of Service and Privacy Policy when you created your account.</p>
 
       <div style="background: #f9fafb; border-radius: 8px; padding: 20px; margin-bottom: 24px;">
-        <p style="font-size: 13px; color: #374151; margin: 0 0 8px 0;"><strong>Terms of Service version:</strong> ${opts.termsVersion}</p>
-        <p style="font-size: 13px; color: #374151; margin: 0 0 8px 0;"><strong>Privacy Policy version:</strong> ${opts.privacyVersion}</p>
-        <p style="font-size: 13px; color: #374151; margin: 0 0 8px 0;"><strong>Accepted at:</strong> ${opts.acceptedAt}</p>
-        <p style="font-size: 13px; color: #374151; margin: 0;"><strong>IP address on record:</strong> ${opts.ipAddress}</p>
+        <p style="font-size: 13px; color: #374151; margin: 0 0 8px 0;"><strong>Terms of Service version:</strong> ${escapeHtml(opts.termsVersion)}</p>
+        <p style="font-size: 13px; color: #374151; margin: 0 0 8px 0;"><strong>Privacy Policy version:</strong> ${escapeHtml(opts.privacyVersion)}</p>
+        <p style="font-size: 13px; color: #374151; margin: 0 0 8px 0;"><strong>Accepted at:</strong> ${escapeHtml(opts.acceptedAt)}</p>
+        <p style="font-size: 13px; color: #374151; margin: 0;"><strong>IP address on record:</strong> ${escapeHtml(opts.ipAddress)}</p>
       </div>
 
       <p style="font-size: 14px; color: #9ca3af; margin: 0 0 8px 0;">You can review these documents any time:</p>
@@ -362,7 +402,7 @@ export function buildAccountDeletedEmail(
   name: string,
   opts: { email: string; deletedAt: string }
 ): { subject: string; html: string } {
-  const firstName = name?.split(' ')[0] || 'there';
+  const firstName = escapeHtml(name?.split(' ')[0] || 'there');
   const html = `
 <!DOCTYPE html>
 <html>
@@ -376,7 +416,7 @@ export function buildAccountDeletedEmail(
 
     <div style="background: white; border-radius: 16px; padding: 40px 32px; box-shadow: 0 1px 3px rgba(0,0,0,0.1);">
       <h2 style="font-size: 22px; font-weight: 700; color: #111827; margin: 0 0 16px 0;">Your Account Has Been Deleted</h2>
-      <p style="font-size: 16px; color: #6b7280; margin: 0 0 24px 0;">Hi ${firstName}, this confirms that the SHIJO.AI account associated with <strong>${opts.email}</strong> was deleted on ${opts.deletedAt}, at your request.</p>
+      <p style="font-size: 16px; color: #6b7280; margin: 0 0 24px 0;">Hi ${firstName}, this confirms that the SHIJO.AI account associated with <strong>${escapeHtml(opts.email)}</strong> was deleted on ${escapeHtml(opts.deletedAt)}, at your request.</p>
 
       <div style="background: #f9fafb; border-radius: 8px; padding: 20px; margin-bottom: 24px;">
         <p style="font-size: 13px; color: #374151; margin: 0 0 8px 0;">What happened:</p>
@@ -422,7 +462,7 @@ function supportSignature(): string {
 // priority color-coding (kept deliberately simple per product decision).
 function reasonBadge(reasonLabel?: string): string {
   if (!reasonLabel) return '';
-  return `<span style="display: inline-block; background: #e5e7eb; color: #374151; font-size: 11px; font-weight: 600; padding: 3px 10px; border-radius: 9999px; margin-bottom: 10px;">${reasonLabel}</span>`;
+  return `<span style="display: inline-block; background: #e5e7eb; color: #374151; font-size: 11px; font-weight: 600; padding: 3px 10px; border-radius: 9999px; margin-bottom: 10px;">${escapeHtml(reasonLabel)}</span>`;
 }
 
 // ─── Support ticket: confirmation to the submitter ─────────────────────
@@ -431,7 +471,7 @@ export function buildTicketReceivedEmail(
   name: string,
   opts: { subject: string; message: string; ticketId: string; reasonLabel?: string }
 ): { subject: string; html: string } {
-  const firstName = name?.split(' ')[0] || 'there';
+  const firstName = escapeHtml(name?.split(' ')[0] || 'there');
   const html = `
 <!DOCTYPE html>
 <html>
@@ -449,10 +489,10 @@ export function buildTicketReceivedEmail(
 
       <div style="background: #f9fafb; border-radius: 8px; padding: 20px; margin-bottom: 8px;">
         ${reasonBadge(opts.reasonLabel)}
-        <p style="font-size: 13px; color: #374151; margin: 0 0 8px 0;"><strong>Subject:</strong> ${opts.subject}</p>
-        <p style="font-size: 13px; color: #374151; margin: 0; white-space: pre-wrap;">${opts.message}</p>
+        <p style="font-size: 13px; color: #374151; margin: 0 0 8px 0;"><strong>Subject:</strong> ${escapeHtml(opts.subject)}</p>
+        <p style="font-size: 13px; color: #374151; margin: 0; white-space: pre-wrap;">${escapeHtml(opts.message)}</p>
       </div>
-      <p style="font-size: 12px; color: #9ca3af; margin: 8px 0 0 0;">Reference: ${opts.ticketId}</p>
+      <p style="font-size: 12px; color: #9ca3af; margin: 8px 0 0 0;">Reference: ${escapeHtml(opts.ticketId)}</p>
 
       ${supportSignature()}
     </div>
@@ -466,7 +506,7 @@ export function buildTicketReceivedEmail(
   `.trim();
 
   return {
-    subject: `We received your message — ${opts.subject}`,
+    subject: `We received your message — ${sanitizeSubject(opts.subject, 80)}`,
     html,
   };
 }
@@ -486,10 +526,10 @@ export function buildTicketNotificationEmail(
       <h2 style="font-size: 20px; font-weight: 700; color: #111827; margin: 0 0 16px 0;">New contact form submission</h2>
       <div style="background: #f9fafb; border-radius: 8px; padding: 20px;">
         ${reasonBadge(opts.reasonLabel)}
-        <p style="font-size: 13px; color: #374151; margin: 0 0 8px 0;"><strong>From:</strong> ${opts.name} &lt;${opts.email}&gt;</p>
-        <p style="font-size: 13px; color: #374151; margin: 0 0 8px 0;"><strong>Subject:</strong> ${opts.subject}</p>
-        <p style="font-size: 13px; color: #374151; margin: 0 0 8px 0; white-space: pre-wrap;"><strong>Message:</strong>\n${opts.message}</p>
-        <p style="font-size: 12px; color: #9ca3af; margin: 8px 0 0 0;">Ticket ID: ${opts.ticketId}</p>
+        <p style="font-size: 13px; color: #374151; margin: 0 0 8px 0;"><strong>From:</strong> ${escapeHtml(opts.name)} &lt;${escapeHtml(opts.email)}&gt;</p>
+        <p style="font-size: 13px; color: #374151; margin: 0 0 8px 0;"><strong>Subject:</strong> ${escapeHtml(opts.subject)}</p>
+        <p style="font-size: 13px; color: #374151; margin: 0 0 8px 0; white-space: pre-wrap;"><strong>Message:</strong>\n${escapeHtml(opts.message)}</p>
+        <p style="font-size: 12px; color: #9ca3af; margin: 8px 0 0 0;">Ticket ID: ${escapeHtml(opts.ticketId)}</p>
       </div>
       <p style="font-size: 13px; color: #6b7280; margin: 16px 0 0 0;">Manage this in the admin panel at /admin/tickets.</p>
     </div>
@@ -499,7 +539,7 @@ export function buildTicketNotificationEmail(
   `.trim();
 
   return {
-    subject: `[Contact form] ${opts.subject}`,
+    subject: `[Contact form] ${sanitizeSubject(opts.subject, 80)}`,
     html,
   };
 }
@@ -510,7 +550,7 @@ export function buildTicketResolvedEmail(
   name: string,
   opts: { subject: string; adminNotes?: string | null }
 ): { subject: string; html: string } {
-  const firstName = name?.split(' ')[0] || 'there';
+  const firstName = escapeHtml(name?.split(' ')[0] || 'there');
   const html = `
 <!DOCTYPE html>
 <html>
@@ -524,8 +564,8 @@ export function buildTicketResolvedEmail(
 
     <div style="background: white; border-radius: 16px; padding: 40px 32px; box-shadow: 0 1px 3px rgba(0,0,0,0.1);">
       <h2 style="font-size: 22px; font-weight: 700; color: #111827; margin: 0 0 16px 0;">Your request has been resolved</h2>
-      <p style="font-size: 16px; color: #6b7280; margin: 0 0 16px 0;">Hi ${firstName}, we've marked your message about "${opts.subject}" as resolved.</p>
-      ${opts.adminNotes ? `<div style="background: #f9fafb; border-radius: 8px; padding: 20px;"><p style="font-size: 13px; color: #374151; margin: 0; white-space: pre-wrap;">${opts.adminNotes}</p></div>` : ''}
+      <p style="font-size: 16px; color: #6b7280; margin: 0 0 16px 0;">Hi ${firstName}, we've marked your message about "${escapeHtml(opts.subject)}" as resolved.</p>
+      ${opts.adminNotes ? `<div style="background: #f9fafb; border-radius: 8px; padding: 20px;"><p style="font-size: 13px; color: #374151; margin: 0; white-space: pre-wrap;">${escapeHtml(opts.adminNotes)}</p></div>` : ''}
       <p style="font-size: 14px; color: #9ca3af; margin: 16px 0 0 0;">If this didn't fully resolve your issue, just reply to this email or use the <a href="https://shijo.ai/contact" style="color: #CC0000;">contact form</a> again.</p>
 
       ${supportSignature()}
@@ -540,7 +580,7 @@ export function buildTicketResolvedEmail(
   `.trim();
 
   return {
-    subject: `Resolved: ${opts.subject}`,
+    subject: `Resolved: ${sanitizeSubject(opts.subject, 80)}`,
     html,
   };
 }

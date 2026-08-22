@@ -18,6 +18,27 @@ const LEGAL_RECORDS_CC = 'legal@shijo.ai';
 // consistent server-side email validation across the app.
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
+// ─── `name` validation (added 2026-08-22) ──────────────────────────────
+//
+// `name` previously had NO server-side validation at all, while email,
+// password and terms-acceptance each had their own check. It was written
+// straight to the users table AND interpolated into the welcome email's
+// subject line, which let an attacker POST a victim's address with the
+// name set to advertising copy and have SHIJO.AI deliver it — a spam
+// relay running off our own verified sending domain. See SHIJO_AI_KB.md
+// §38 and docs/security/email-injection-spam-relay-playbook.md.
+//
+// Deliberately a BLOCKLIST, not an allowlist: an allowlist of Latin
+// letters would reject legitimate Arabic, Chinese, Cyrillic and Indic
+// names. This rejects the things a real name never contains — markup,
+// control characters, and URLs (the payload the attacker needs) — while
+// leaving genuine international names alone.
+const NAME_MAX_LENGTH = 60;
+const NAME_BLOCKLIST = /(https?:\/\/|www\.|[<>]|[a-z0-9-]+\.(?:com|net|org|io|co|ly|me|ru|xyz|link|info|top|club|site|online|shop|app)(?:\/|\s|$))/i;
+// eslint-disable-next-line no-control-regex
+const NAME_CONTROL_CHARS = /[\u0000-\u001F\u007F]/;
+
+
 export async function POST(req: NextRequest) {
   try {
     const { email, password, confirmPassword, name, acceptedTerms } = await req.json();
@@ -33,6 +54,23 @@ export async function POST(req: NextRequest) {
     if (!EMAIL_RE.test(email)) {
       return NextResponse.json(
         { error: 'Please enter a valid email address' },
+        { status: 400 }
+      );
+    }
+
+    // Validate `name` before it reaches the database or any email template.
+    const safeName = typeof name === 'string' ? name.trim() : '';
+
+    if (safeName.length > NAME_MAX_LENGTH) {
+      return NextResponse.json(
+        { error: `Name is too long (${NAME_MAX_LENGTH} character maximum)` },
+        { status: 400 }
+      );
+    }
+
+    if (safeName && (NAME_BLOCKLIST.test(safeName) || NAME_CONTROL_CHARS.test(safeName))) {
+      return NextResponse.json(
+        { error: 'Please enter a valid name' },
         { status: 400 }
       );
     }
@@ -90,7 +128,7 @@ export async function POST(req: NextRequest) {
     const [newUser] = await db.insert(users).values({
       email: email.toLowerCase(),
       passwordHash,
-      name: name || null,
+      name: safeName || null,
       planTier: 'free',
       emailVerificationToken,
       emailVerificationSentAt: new Date(),
@@ -153,7 +191,7 @@ export async function POST(req: NextRequest) {
     const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://www.shijo.ai';
     const verifyUrl = `${baseUrl}/api/auth/verify-email?token=${emailVerificationToken}`;
 
-    const welcomeEmail = buildWelcomeEmail(name || email.split('@')[0], {
+    const welcomeEmail = buildWelcomeEmail(safeName || email.split('@')[0], {
       terms: {
         termsVersion: CURRENT_TERMS_VERSION,
         privacyVersion: CURRENT_PRIVACY_VERSION,
@@ -162,7 +200,7 @@ export async function POST(req: NextRequest) {
       },
       verifyUrl,
     });
-    const acceptanceEmail = buildTermsAcceptedEmail(name || email.split('@')[0], {
+    const acceptanceEmail = buildTermsAcceptedEmail(safeName || email.split('@')[0], {
       termsVersion: CURRENT_TERMS_VERSION,
       privacyVersion: CURRENT_PRIVACY_VERSION,
       acceptedAt: acceptedAt.toISOString(),

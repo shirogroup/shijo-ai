@@ -1,6 +1,6 @@
 # SHIJO.AI — Knowledge Base / Status Reference
 
-**Last updated:** 2026-07-19 (Cowork session, later pass — §32: soft email verification + merged welcome email built, not yet pushed/migrated)
+**Last updated:** 2026-08-22 (§38 spam relay via /api/auth/register found; §39 FIX APPLIED LOCALLY — constant welcome subject, name validation, full template escaping — NOT YET PUSHED, relay stays open until it is; rate limiting + registration captcha still unbuilt)
 
 ## 0. Vercel secret rotation — RESOLVED, was a false alarm (originally flagged 2026-07-17, closed 2026-07-19)
 
@@ -703,10 +703,12 @@ Fixed immediately via the Stripe MCP (`stripe_api_write` → `PostProductsId`), 
 
 **Verified via `git diff --stat --ignore-all-space`:** all diffs real and scoped, no CRLF noise — `app/api/auth/login/route.ts` (+1), `app/api/auth/me/route.ts` (+1), `app/api/auth/register/route.ts` (+48/-?), `app/dashboard/page.tsx` (+42), `components/dashboard/TopBar.tsx` (+58), `db/schema.ts` (+12), `lib/email.ts` (+112/-?), plus two new route files and one new migration SQL file.
 
+**✅ UPDATE (2026-07-19, later same evening) — migration + push both confirmed:** Sri ran the migration in Neon ("Data abse is run"). Push confirmed independently via `git fetch origin main` + `git log`: local `HEAD` and `origin/main` both sit at `765afda` ("Add soft email verification..."), zero commits ahead/behind — this is live, not just claimed. (Working tree still shows ~40 files as "modified" under `git status` — re-confirmed this is the pre-existing CRLF-vs-LF cosmetic issue from §2, not real uncommitted work: `git diff --stat` shows identical insertion/deletion counts per file, e.g. `package-lock.json 17266 changes, 8633+/8633-`.)
+
 **Not yet done:**
-1. **Migration has not been run.** Nothing above works against the live DB until Sri runs `docs/manual-db-changes/2026-07-19-email-verification-columns.sql` in Neon.
-2. **Not pushed.** Local only, same as every other batch this session — needs `git add`/`commit`/`push` (see combined command below), and the migration should run either just before or immediately after the push (code checks columns that must exist — if migration lags behind a live deploy, any registration/login in that gap will 500).
-3. **Not live-tested at all** — this is Task 30 on the list, blocked on the migration + push first.
+1. ~~Migration has not been run.~~ Done, confirmed above.
+2. ~~Not pushed.~~ Done, confirmed above.
+3. **Not live-tested end to end yet** — this is still Task 30 on the list (welcome email content, verify-email link, bell notice, resend-throttle, all against the live site with the migration actually in place). Not started this pass.
 
 **Combined push (run in your own Git Bash):**
 ```
@@ -716,3 +718,342 @@ git commit -m "Add soft email verification (non-blocking) + merge welcome/terms 
 git push origin main
 ```
 **Run the migration SQL in Neon before or immediately alongside this push** — the two need to land together, not the code first with the migration lagging.
+
+---
+
+## 34. Scheduled regression run, 2026-07-21 — ⚠️ CRITICAL, still open: /ai-marketing-tools stale pricing, day 2 unfixed
+
+**✅ CONFIRMED (this run, live fetch + source diff):** `https://www.shijo.ai/ai-marketing-tools` — the Google Ads Final URL page — is STILL showing pre-restructure pricing: "Pro" at $29/month and "Enterprise" at $99/month with an active "Get Started with Enterprise" CTA. First caught by the 2026-07-20 scheduled run, and it has NOT been fixed since — this is now day 2 of paid-ad traffic potentially landing on a page with a retired price and a non-existent purchasable Enterprise tier. Source code (`components/lp/LandingPageContent.tsx`, at `origin/main` HEAD `765afda`, confirmed zero commits ahead/behind) is correct — Standard $29 / Pro $199 / Enterprise "Coming Soon". The live homepage and `/contact` both correctly render the fixed copy. Only `/ai-marketing-tools` is stale. Root cause still not diagnosed — this looks like a Vercel build/deploy or CDN-cache issue isolated to that one route, not a code bug, but that's a guess; only Vercel deployment access (not available in this sandbox) could confirm. **Needs Sri to check the Vercel dashboard directly** — a redeploy or cache purge of that route is the likely fix.
+
+**New finding this run:** `app/page.tsx` (homepage) and `app/ai-marketing-tools/page.tsx` both hardcode `offers.highPrice: '99'` in their JSON-LD `SoftwareApplication` structured data — the retired Enterprise price surviving in metadata that isn't visible page text (so it was missed by a literal `grep '\$99'`, since there's no dollar sign in the code). This tells Google/AI crawlers a $99 offer is currently available, which isn't true (Enterprise is "Coming Soon," not purchasable at any price right now). Not yet fixed — worth cleaning up alongside the `/ai-marketing-tools` deploy issue.
+
+**Also still open, unchanged since 2026-07-20:** `app/gdpr-compliance/page.tsx` renders visible text "Anthropic — AI model infrastructure powering platform features" — a 4th public disclosure location beyond the 3 explicitly approved (Privacy Policy, /security, /ai-compliance). Needs Sri's call: approve it as a 4th location, or remove the explicit name to match the other three.
+
+**Sandbox network limitation, worth knowing for future sessions:** this Cowork sandbox's outbound proxy now blocks ALL direct requests (GET and POST) to `www.shijo.ai` at the network layer (`403 blocked-by-allowlist`, confirmed via curl). The only working path to the live site is the `web_fetch` tool, which is GET-only (can't POST, so can't test registration validation or any POST API route) and also enforces a "provenance" restriction — it refuses to fetch a URL that hasn't already appeared in a prior message or fetch result, with no retry. This blocked AUTO-005/006/007 (registration POST tests) and AUTO-009 (POST auth checks) entirely, and partially blocked AUTO-008 (only `/dashboard` itself was fetchable; `/admin/users`, `/dashboard/tools`, `/dashboard/ai-visibility` were not). Full coverage of these tests needs either a Chrome browser session or the network allowlist widened — not something the scheduled task can fix on its own.
+
+Full details (per-test-case results, all 14 automated tests run this session) logged in `docs/testing/Automated-Regression-Test-Suite.xlsx`, "Run Log" sheet, rows dated 2026-07-21.
+
+---
+
+## 35. Scheduled regression run, 2026-07-22 — ⚠️ CRITICAL, still open: /ai-marketing-tools stale pricing, day 3 unfixed
+
+**✅ RECONFIRMED (this run, live fetch):** `https://www.shijo.ai/ai-marketing-tools` is STILL showing the pre-restructure pricing — "Pro" $29/month, "Enterprise" $99/month, active "Get Started with Enterprise" CTA — unchanged since first caught 2026-07-20. This is now day 3 of paid-ad traffic (Google Ads Final URL) landing on a page with a retired price and a non-purchasable plan name. Source (`components/lp/LandingPageContent.tsx` at `origin/main` HEAD `765afda`, confirmed zero commits ahead/behind — no new commits have landed since 2026-07-19) remains correct. Homepage and `/contact` both still render the correct Standard $29/Pro $199/Enterprise-Coming-Soon copy. Root cause still not diagnosed from this sandbox (no Vercel deployment/cache access) — **this needs Sri to check the Vercel dashboard directly** (redeploy or purge cache for that one route).
+
+**Also reconfirmed, unchanged:** `app/page.tsx` and `app/ai-marketing-tools/page.tsx` still hardcode JSON-LD `offers.highPrice: '99'` — the retired Enterprise price surviving in structured data. Not fixed since first flagged 2026-07-21.
+
+**Also reconfirmed, unchanged:** `app/gdpr-compliance/page.tsx` still renders visible "Anthropic — AI model infrastructure powering platform features" — the 4th public AI-vendor-disclosure location beyond the 3 explicitly approved. Still awaiting Sri's call (approve as 4th location, or remove the name).
+
+**Sandbox network limitation, unchanged:** direct curl (GET or POST) to `www.shijo.ai` still fails outright (connection error, not even reaching a 403 this time) — confirmed via curl this run. `web_fetch` remains the only live-site path: GET-only, and blocked by its provenance restriction for any URL not already referenced this session (`/admin/users`, `/dashboard/tools`, `/api/usage` all blocked this way; `/dashboard/billing` fetched but returned an inconclusive empty body). This again fully blocked AUTO-005/006/007/009 and partially blocked AUTO-008 — same gap as 2026-07-20 and 2026-07-21, not something this scheduled task can fix on its own.
+
+Full per-test-case results (14 tests run, 6 pass / 3 fail / 5 blocked) logged in `docs/testing/Automated-Regression-Test-Suite.xlsx`, "Run Log" sheet, rows dated 2026-07-22.
+
+---
+
+## 33. Regression test suite (code/schema/DB/website) + daily scheduled automated check (2026-07-19, later same evening)
+
+**Trigger:** Sri asked for a standing regression test-case document — covering code, schema, database, and website — updated daily, with a scheduled automated run, plus a separate manual document (with full step-by-step instructions) for anything that genuinely can't be automated. Explicit driver: prevent the fabricated "24 apps/tools" class of bug (§32) from resurfacing later, especially once ad spend is live.
+
+**Built, both saved to `docs/testing/` (not yet pushed — untracked in git as of this writing):**
+
+- **`docs/testing/Automated-Regression-Test-Suite.xlsx`** — 3 sheets. "Read Me" explains the automated/manual split and what the daily run actually covers (some tests are Chrome-required or DB-access-required and are periodic/on-demand, not literally daily — flagged explicitly so nobody assumes 100% daily coverage). "Test Cases": 16 rows (`AUTO-001`–`AUTO-016`), columns Test ID / Category / Priority / Test Name / What It Catches / Method / Added / Status. Critical-priority rows are red-highlighted: `AUTO-001` (fabricated tool-count anywhere in repo or live pages), `AUTO-002` (stale pricing), `AUTO-003` (plan-name consistency, raw internal keys leaking), `AUTO-004` (Stripe product `name` field matches display name — this is the class of bug that bit us with "Shijo Pro" staying live in Stripe after the code-side rename), `AUTO-010` (checkout route rejects non-purchasable plans server-side), `AUTO-015` (welcome-email tool list matches the real 12-tool registry). "Run Log": dated rows, color-coded Pass/Fail, seeded with the real bugs found and fixed live this session (plan-name bug, Stripe product-name bug, fabricated tool-list bug) as the first entries, so the log's history starts accurate rather than empty.
+- **`docs/testing/Manual-Test-Cases.xlsx`** — 2 sheets, `MAN-001`–`MAN-008`. Covers everything that requires a real payment, a real inbox, or admin credentials — i.e. everything Claude is barred from doing directly (real Stripe payment for Standard/Pro, cancellation, welcome-email delivery/content check, resend-verification check, billing-page visual check, admin panel — flagged as blocked on `is_admin` sign-off per the auth-sensitive-code rule — refund/dispute flow). Every row has full numbered steps, not a one-liner, per Sri's explicit instruction. Last-run columns intentionally blank for Sri to fill in.
+
+**Scheduled task created:** `shijo-ai-daily-regression`, cron `0 6 * * *` (6:05am local), `notifyOnCompletion: true`. Since each scheduled run starts with zero memory of this conversation, its prompt is fully self-contained: it re-reads the "Test Cases" sheet first (so newly added rows get picked up automatically, not just the list as of today), runs everything except the two tests explicitly marked Chrome-required/DB-required, and appends dated rows to the "Run Log" sheet — matching existing formatting, never deleting history. It's instructed to lead its summary with any Critical-priority failure, separated from everything else, before any pass/fail tally. First run: tomorrow morning (2026-07-20 ~6:05am). Task 30 (full live re-test of the email-verification flow, §32) and the manual-doc's Last Run columns are still Sri's/a separate pass's to do — this scheduled task does not cover either.
+
+**Not yet done:** both xlsx files are untracked in git — need to be added/committed/pushed like everything else this session (see combined command below, or add them to the next push).
+
+**Push command for the two new test docs (run in your own Git Bash):**
+```
+git add docs/testing/Automated-Regression-Test-Suite.xlsx docs/testing/Manual-Test-Cases.xlsx SHIJO_AI_KB.md
+git commit -m "Add regression test suite (automated + manual) and daily scheduled check"
+git push origin main
+```
+(Two other untracked files also showed up in `git status` — `docs/product/2026-07-19-Feature-Brief-CodeCheck.docx` and `docs/product/Shijo_AI_Business_Feature_Brief.docx` — not part of this task, left alone; mentioning so they don't get lost or mistaken for something this pass created.)
+
+---
+
+## 36. Full KB reconciliation against disk + live site (2026-08-22)
+
+**Trigger:** Sri asked for the KB to be reconciled against what is actually on disk and actually live, after a one-month gap with no session (previous entry §35 was 2026-07-22). Every claim below was re-derived this session, not carried over.
+
+### 36.1 Git state — ✅ CONFIRMED against the real remote, today
+
+- `git ls-remote https://github.com/shirogroup/shijo-ai.git refs/heads/main` returns `765afda230d4b4e8720eb1a2f8294fa454d8c2c1` **as of 2026-08-22**. Local `HEAD` is the same commit. **Zero commits have landed on `origin/main` in the month since 2026-07-19.** This is a live remote read, not a stale `.git/FETCH_HEAD` (which was dated 2026-08-12).
+- Working tree shows 41 files as modified, but `git diff --stat --ignore-all-space` reduces to **exactly one real change: `SHIJO_AI_KB.md` (+57 / -4)** — the §34 and §35 entries appended by the scheduled regression runs, never committed. All other 40 files are the CRLF/LF cosmetic churn described in §2/§10. `.gitattributes` still does not exist.
+- **5 untracked files, still uncommitted:** `docs/product/2026-07-19-Feature-Brief-CodeCheck.docx`, `docs/product/Shijo_AI_Business_Feature_Brief.docx`, `docs/testing/Automated-Regression-Test-Suite.xlsx`, `docs/testing/Manual-Test-Cases.xlsx`, `docs/testing/SHIJO-AI-Full-Manual-Test-Guide.docx`. (§33 listed only the first four — the manual test guide is a fifth, also untracked.)
+- **A stale `.git/index.lock` dated 2026-07-21 is still sitting in `.git/`.** Any git write operation will fail until it is removed. Same known issue as §2/§10.
+
+### 36.2 The §34/§35 critical bug — ✅ RESOLVED
+
+`https://www.shijo.ai/ai-marketing-tools` now renders **Free $0 / Standard $29 per month / Pro $199 per month / Enterprise "Coming Soon" → "Contact Us"** — verified by live fetch this session. This matches `components/lp/LandingPageContent.tsx` exactly. The stale pre-restructure pricing (Pro $29, Enterprise $99, active Enterprise CTA) that was open for three consecutive days as of §35 is **gone**.
+
+❓ **UNKNOWN what fixed it.** Since no commits landed after 2026-07-19, it cannot have been a code change — it was a Vercel redeploy, a cache purge, or natural cache expiry. Not recorded anywhere. Worth knowing only because the root cause was never diagnosed, so the same class of stale-route issue could recur.
+
+Live homepage re-verified the same session: headline reads **"12 AI-Powered Marketing Tools"**, pricing reads Free $0 / Standard $29 per month (or $278/year, save 20%) / Pro $199 per month / Enterprise "Coming Soon". No fabricated tool count, no retired price in visible copy.
+
+### 36.3 Still open, re-confirmed on disk this session
+
+- ✅ **JSON-LD retired price** — `app/page.tsx:22` and `app/ai-marketing-tools/page.tsx:37` both still contain `highPrice: '99'`. Unfixed since first flagged 2026-07-21. (Live rendering of the JSON-LD block was not independently verified — the fetch tool strips script tags — but since local matches `origin/main` and `origin/main` is what is deployed, it is live.)
+- ✅ **AI-vendor disclosure, 4th location** — `app/gdpr-compliance/page.tsx:76` renders "Anthropic — AI model infrastructure powering platform features." **Important context that earlier entries did not record:** live fetch confirms this sits inside **Section 5, "Sub-Processors"** — i.e. it is the same *kind* of disclosure as the approved Privacy Policy sub-processor list, not marketing copy. That makes "approve it as a 4th legally-required location" the more defensible of the two options, but it is still Sri's call, not Claude's.
+- ✅ **No leakage elsewhere.** Grep of `app/` and `components/` found vendor names in only two other places, both non-public: code comments in `app/layout.tsx` (not rendered) and the crawler user-agent string `'Claude-Web'` in `app/robots.ts` (a robots directive, not copy). Live homepage confirmed to contain neither name in visible text.
+
+### 36.4 Claims re-verified as still accurate (no change)
+
+- **§1 tool count:** `lib/tools/registry.ts` defines exactly **12** tools. Matches live homepage copy.
+- **§4 Stripe:** `.env.local` **and** `.env` both carry `sk_test_` / `pk_test_` keys against live-mode price IDs in `lib/stripe/products.ts`. Credit-pack price IDs (`CREDITS_10/50/100`) still use a different Stripe account prefix than the plan price IDs — consistent with the KB's "sandbox placeholders" note. **This remains the highest-priority unresolved item and is unchanged after a month.**
+- **§5 Resend:** neither `RESEND_API_KEY` nor `FROM_EMAIL` is present in `.env.local` or `.env`. Unchanged.
+- **§3 auth gap:** `middleware.ts` still uses its own `decodeJWTPayload()` with no signature verification; `lib/auth.ts` still uses `jsonwebtoken` and throws in production when `JWT_SECRET` is unset. Gap unchanged, still on hold per standing instruction — not touched.
+- **§9 item 3 / rate limiting:** `rateLimits` appears exactly once in the entire repo — its own table definition at `db/schema.ts:522`. Still zero call sites. Still unbuilt.
+- **§7 DB:** `db/migrations/` still contains only `0000_flowery_colonel_america.sql`. `docs/manual-db-changes/` contains 6 hand-run SQL files. Whether the live Neon DB matches `schema.ts` is still ❓ UNKNOWN.
+- **§9 item 7:** `components/landing/TrustBadges.tsx` still on disk with zero imports anywhere. Still orphaned.
+- **§16:** `app/lp/page.tsx` still present as the redirect safety net; `next.config.ts` redirect to `/ai-marketing-tools` intact.
+- Misc: GA measurement ID `G-8SSXDRYL30` confirmed in `lib/analytics.ts`; `shiro-red` / `shiro-red-dark` / `shiro-black` confirmed defined in `tailwind.config.ts`; all of `/privacy`, `/terms`, `/cookies`, `/security`, `/gdpr-compliance`, `/ai-compliance`, `/contact`, `/blog`, `/register`, `/login`, `/dashboard`, `/admin` present as routes.
+
+### 36.5 Stale KB claim, now corrected
+
+**§9 item 6 said `app/robots.ts` and `app/sitemap.ts` fixes were "not yet pushed."** That is no longer true and should not be carried forward — both files are byte-identical to `HEAD` (they show only CRLF churn under `git diff`, nothing under `--ignore-all-space`), and `HEAD` equals the real `origin/main`. **Item 6 is closed.**
+
+### 36.6 ⚠️ NEW — credential exposure found outside this repo
+
+The **parent monorepo** (`shiro-group-monorepo`, the folder one level up that contains `my-turborepo/`) has a **GitHub personal access token embedded in plaintext in its `origin` remote URL** — visible to anything that runs `git remote -v` in that directory, and included in this session's tool output. It is a different repo from `shijo-ai` (whose own remote is clean, no token). Nothing was changed — per the standing auth/security sign-off rule. **Recommendation: treat that token as compromised, revoke it in GitHub settings, and reset the monorepo's remote to a token-free HTTPS or SSH URL.** Sri's decision and Sri's action.
+
+### 36.7 Environment capability notes for future sessions
+
+The picture has changed from §34/§35 and is worth recording, because those entries' limitations no longer all apply:
+
+- **The device bridge (`device_bash`, runs on Sri's own Windows machine via the mounted folder) has NO network access.** `git fetch`/`pull`/`push` cannot be run from it at all. It is for reading and editing local files only.
+- **The cloud container CAN reach `github.com`** — `git ls-remote` against the public repo works, which is enough to confirm the true state of `origin/main` without touching Sri's machine. Use this instead of trusting a stale `FETCH_HEAD`.
+- **The cloud container CANNOT reach `www.shijo.ai`** — direct `curl` returns nothing (blocked at the network layer), same as §34/§35 reported.
+- **The web-fetch tool DOES work against the live site**, and this session hit **no provenance restriction** — pages were fetched directly by URL without needing to appear in a prior message. That was a hard blocker in §34/§35; it was not one here. Still GET-only, so POST-based tests (registration validation, auth API checks — AUTO-005/006/007/009) remain un-runnable this way.
+
+### 36.8 Unchanged ❓ UNKNOWNs — only Sri can close these
+
+1. Vercel production env vars: `STRIPE_SECRET_KEY` / `NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY` live-vs-test, and whether `RESEND_API_KEY` is set. No connector has env-var access. **If production carries the same test-key/live-price mismatch as local, all checkout is broken and has been for a month.**
+2. Whether the live Neon DB matches `db/schema.ts`, including whether the 2026-07-19 email-verification columns migration actually ran (§32 records Sri confirming he ran it; not independently re-verified).
+3. Task 30 — full live end-to-end test of the email-verification flow. Still never run.
+4. Live end-to-end tool-generation test (costs real API credit). Still never run.
+5. What actually fixed the `/ai-marketing-tools` stale-pricing bug (see 36.2).
+
+### 36.9 Nothing was changed this session
+
+This was a read-and-verify pass only. **No code was edited, nothing was committed, nothing was pushed.** The only file modified is this KB — and that edit is itself uncommitted, on top of the already-uncommitted §34/§35 entries.
+
+**To commit the KB plus the 5 untracked docs (run in your own Git Bash):**
+```
+cd "/c/Users/AI Agent/projects/shiro-group-monorepo/my-turborepo/apps/shijo-ai"
+rm .git/index.lock
+git add SHIJO_AI_KB.md docs/product docs/testing
+git commit -m "Update KB: full reconciliation against disk and live site (2026-08-22)"
+git push origin main
+```
+
+---
+
+## 37. Resend abuse incident — 19-hour request flood, 2026-08-20/21 (analyzed 2026-08-22)
+
+**Source:** Resend API request log exported by Sri (`logs1787405561605.csv`, 231,675 rows, covering 2026-08-10 13:22 UTC → 2026-08-22 08:34 UTC). Analyzed this session. The export contains **only** request metadata — id, timestamp, api_key_id, user_agent, method, endpoint, status. **No recipients, no subjects, no source IPs.** Any claim about *who* was emailed or *which app route* was hit cannot come from this file.
+
+### 37.1 What the log actually shows — ✅ CONFIRMED
+
+All 231,675 rows are `POST /emails`, all from a **single** `api_key_id` (`41bda944-0285-4bdc-a92d-4f327488f567`), all user-agent `node`. No OAuth grants.
+
+| Status | Count | Meaning |
+|---|---|---|
+| 429 | 231,239 | rate-limited — **rejected, never sent** |
+| 200 | 433 | accepted |
+| 422 | 3 | invalid payload |
+
+**99.8% of the flood never became email.** Resend's own rate limiter absorbed it. Framing matters here: this was **not** mass spam going out from the platform — it was a request flood that Resend blocked. The damage was to the daily send allowance, not to recipients.
+
+### 37.2 Timeline — ✅ CONFIRMED
+
+- **Aug 10–13:** normal, low volume. 25 successful sends across four days, **zero** 429s.
+- **Aug 14–19:** total silence. Not a single request in the log.
+- **Aug 20 14:08:41 UTC → Aug 21 09:38:34 UTC — the flood.** ~19.5 hours continuous, sustained 12,000–16,000 requests/hour, peak **568 requests in one minute** (2026-08-20 14:09 UTC). 1,079 separate minutes exceeded 100 requests.
+- **Aug 21 09:38 onward:** stopped as abruptly as it began. Aug 22 shows 2 normal sends. **Quiet at time of analysis.** ❓ UNKNOWN why it stopped — nothing in the codebase changed (no commits since 2026-07-19), so it stopped on its own or the source went away. It could resume.
+
+### 37.3 The quota-drain pattern — ✅ CONFIRMED
+
+Exactly **203 sends succeeded on Aug 20** and exactly **203 on Aug 21**, and on Aug 21 all 203 landed inside the `00:00` UTC hour. The daily allowance is consumed within minutes of its UTC reset and everything for the rest of the day bounces as 429. **This is the mechanism behind "emails are being used up"** — real transactional email (welcome, password reset, contact confirmations) would have been silently failing all day on both days.
+
+### 37.4 Diagnosis — code ruled out, external source suspected
+
+✅ **CONFIRMED by grep:** there is **no retry loop, no cron, no `setInterval`, no batch job, and no `vercel.json` cron config** anywhere in the repo. Every `sendEmail()` call site fires exactly once per HTTP request. **The app was not looping** — 231k inbound requests reached the API routes.
+
+✅ **CONFIRMED:** two public, unauthenticated routes send **two** Resend calls per single inbound request — `app/api/auth/register/route.ts` (welcome + legal-records CC) and `app/api/contact/route.ts` (confirmation + support notification). 231,239 ÷ 2 ≈ **115,600 inbound requests**. Normal traffic in the log also arrives in pairs milliseconds apart, matching this shape.
+
+⚠️ **HYPOTHESIS, NOT CONFIRMED:** a bot hammering one unprotected public form endpoint for 19 hours. Consistent with every number above, but the log cannot identify the route or the source. **Confirming requires Vercel function logs for 2026-08-20/21** — that is the next diagnostic step, not something this log can settle.
+
+**Directly relevant standing gap — see §9 item 3 and §11:** rate limiting is **still unbuilt**. `rateLimits` appears exactly once in the whole repo, as its own table definition at `db/schema.ts:522`, with zero call sites. `/api/contact`, `/api/auth/register` and `/api/auth/forgot-password` are public, unauthenticated and unthrottled. Whatever the source turns out to be, this is the gap that let 19 hours of it through.
+
+### 37.5 ⚠️ CORRECTION — §5 is now wrong, Resend IS live in production
+
+§5 recorded "strong evidence it's not wired up in production," based on a Resend dashboard screenshot showing the "SHIJO AI" key at **0 total uses**. **That is no longer true and must not be carried forward.** A production key made 231,675 authenticated calls through the Resend Node SDK, and local `.env.local` contains **no** `RESEND_API_KEY` — so the key can only be set in Vercel's production environment. **`RESEND_API_KEY` is set in Vercel and email is wired up and working.** §9 outstanding item 4 ("Resend API key presence in production") is **CLOSED**.
+
+(❓ Still UNKNOWN: whether the key in Vercel is the same `re_G5CREC5q...` key from the §5 screenshot — the log identifies keys by internal UUID, which cannot be matched to a token prefix.)
+
+### 37.6 Account identities — what is verified and what is not
+
+| System | Identity | Status |
+|---|---|---|
+| Git commit author (Git Bash pushes) | `shiroapps <srikanth@shiroapps.com>` | ✅ CONFIRMED — all of the last 20 commits, author and committer |
+| GitHub repo | `github.com/shirogroup/shijo-ai` | ✅ CONFIRMED from the remote |
+| GitHub account | `merianda@shirotechnologies.com` | ❓ Sri's statement in an earlier session, never independently verified |
+| Vercel | team `shiro-technologies`, project `shijo-ai` | ✅ project path CONFIRMED; **login email ❓ UNKNOWN, never verified** |
+| Resend | "SHIJO AI" key created by `merianda@shirotechnologies.com` | ❓ from the §5 screenshot, not re-verified |
+
+**Note the split:** commits are authored as `srikanth@shiroapps.com`, while the services are recorded under `merianda@shirotechnologies.com`. The repo-local git config has **no** `user.name`/`user.email` set — the identity comes from the Windows global `~/.gitconfig`, which sits outside the folder mounted to this session and could not be read directly.
+
+### 37.7 Local vs live — are they the same code?
+
+- ✅ **PROVEN: local `HEAD` = real `origin/main` = `765afda`**, via a live `git ls-remote` against GitHub on 2026-08-22. Only one real (non-CRLF) working-tree change exists: this KB file.
+- ⚠️ **NOT PROVEN: that Vercel is serving `765afda`.** Everything publicly observable matches source exactly — `/ai-marketing-tools` and the homepage both render Free $0 / Standard $29 / Pro $199 / Enterprise "Coming Soon", the homepage headline reads "12 AI-Powered Marketing Tools", and `/gdpr-compliance` renders the sub-processor text found at `app/gdpr-compliance/page.tsx:76`. That proves live is **at or after** `fcd06fa` (the pricing restructure). The final commit `765afda` touched **only** auth-gated surfaces (`/api/auth/*`, `/dashboard`, `TopBar`), so no external probe can distinguish it. `/api/auth/verify-email` — the one public marker — could not be fetched: `robots.txt` disallows `/api/`, and the fetch tool honours it.
+- ⚠️ **Standing caveat, learned the hard way (§34/§35):** on this project "pushed" has **not** reliably meant "live." `/ai-marketing-tools` served stale pre-restructure pricing for at least three days while source was correct. **Confirming the deployed commit SHA requires the Vercel dashboard** — it is the only authoritative answer, and no connector currently has it.
+
+### 37.8 Nothing was changed
+
+Read-and-analyze only, at Sri's explicit instruction ("read the log and don't do anything"). No code edited, no email settings touched, no keys rotated, nothing committed or pushed. The only modified file is this KB.
+
+---
+
+## 38. Resend dashboard audit — spam-relay abuse found, plan/limits confirmed (2026-08-22)
+
+Verified directly in the Resend dashboard via the Chrome extension, logged in as the account below. Supersedes the inference-only analysis in §37 where the two disagree.
+
+### 38.1 The Resend account — ✅ CONFIRMED, use this one
+
+**`merianda@shirotechnologies.com`, team `shirotechnologies`.** This is the account that owns `shijo.ai` and the only one relevant to this project.
+
+- Domain: `shijo.ai`, **Verified**, created 5mo ago, DNS provider **Vercel**, region **North Virginia (us-east-1)**.
+- API key: **one** key, `SHIJO AI` / `re_G5CREC5q...`, **Full access**, created 5mo ago, **last used 9 minutes before this check**.
+
+⚠️ **This definitively closes §5.** The §5 screenshot showing this key at "0 total uses" is obsolete — the key is live, in constant use, and `RESEND_API_KEY` is set in Vercel production. Do not resurface §5's "probably not wired up" claim.
+
+**Ignore the other Resend login.** A second account exists — `srikanth@shiroapps.com`, team `shiroapps`, holding only `aicreatorgen.com`. It has nothing to do with SHIJO.AI. Per Sri directly (2026-08-22): focus only on `merianda@shirotechnologies.com`. Noted here so a future session doesn't waste a pass on the wrong workspace.
+
+### 38.2 ⚠️ ROOT CAUSE FOUND — `/api/auth/register` is being abused as a spam relay
+
+The Resend **Emails** view shows the payload the API log (§37) could not. Delivered subject lines read:
+
+> `Welcome to SHIJO.AI — Your 2 free AI tools are ready, ✨70.000TL✨bonus✨seni✨bekler✨<bit.ly link>✨!`
+
+**Mechanism, ✅ CONFIRMED against the code:** `buildWelcomeEmail()` in `lib/email.ts` interpolates the registrant's name straight into the **subject line** (`const firstName = name?.split(' ')[0] || 'there'` → `subject: \`Welcome to SHIJO.AI — ... ${firstName}!\``). An attacker POSTs to `/api/auth/register` with a victim's Gmail address and the `name` field set to Turkish gambling-spam text containing a shortened link. The app creates the account and emails the victim — so the spam is delivered **from a verified, DKIM-signed, SPF-passing `shijo.ai`**.
+
+**This is not theoretical.** Multiple such emails show status **Delivered** to Gmail recipients. This was the §37 flood: not a generic bot hitting a form, but a deliberate spam relay using SHIJO.AI's sending reputation as the carrier. It was **still active** at the time of this check (fresh registrations 9 minutes and 5 hours prior).
+
+**Consequences beyond email:** every abuse registration also writes a real row to the `users` table in Neon. The user table needs an audit and cleanup.
+
+**Fix priority (all in the auth path — require Sri's sign-off per the standing rule, NOT yet applied):**
+1. **Stop interpolating user input into subject lines.** Single change that ends the relay.
+2. Validate/sanitize the `name` field — length cap, reject URLs and control characters.
+3. Rate-limit `/api/auth/register` — the `rateLimits` table (`db/schema.ts:522`, still zero call sites).
+4. Audit and purge the abuse-created user rows.
+
+### 38.3 ⚠️ SECOND BUG — `legal@shijo.ai` does not receive mail
+
+In the Emails view, **every single** terms-acceptance email to `legal@shijo.ai` shows **Delivery Delayed**, **Failed**, or **Bounced**. No exceptions across the visible history.
+
+Two consequences:
+- **Half of all registration email volume is wasted** on an address that cannot accept it (registration sends 2 emails: welcome → user, acceptance record → `legal@`).
+- **The compliance archive described in `app/api/auth/register/route.ts` does not exist.** The code comment claims a "durable compliance copy independent of the `termsAcceptances` table" — nothing has ever landed there. The DB table is the only actual record.
+
+Decision needed from Sri: create a real mailbox for `legal@shijo.ai`, or drop that second email entirely (see §37.1 — `bcc` on the welcome email is the cheaper alternative, but pointless until the address works).
+
+### 38.4 Plan and limits — ✅ CONFIRMED, and the quota was never the problem
+
+**Plan: Free.** Read from Settings → Usage on 2026-08-22:
+
+| Metric | Value |
+|---|---|
+| Transactional — monthly | **432 / 3,000** |
+| Transactional — daily | **4 / 100** |
+| Rate limit | **10 req/s** |
+| Marketing — contacts | 0 / 1,000 |
+| Marketing — segments | 1 / 3 |
+| Marketing — broadcasts | Unlimited |
+| AI credits | 0 / 5 |
+| Automations | 0 / 1,000 |
+| Domains | 1 / 3 |
+| Pay-as-you-go | **OFF** (both transactional and automations toggles) |
+
+⚠️ **CORRECTION to §37.3.** §37 stated the daily allowance was "consumed within minutes of its UTC reset" and framed the incident as quota drain. **That framing is wrong.** The account has used only **432 of 3,000** emails this month and **4 of 100** today. The quota was never the binding constraint.
+
+**What the 231,239 rejections actually were: the 10 req/s burst rate limit** — a per-second ceiling entirely separate from the monthly/daily quotas. Rejected requests never became emails, so they never touched the quota. That is also why no overage was ever charged: pay-as-you-go is switched off.
+
+❓ **UNRESOLVED discrepancy, flagged not settled:** §37's CSV analysis counted exactly 203 accepted (HTTP 200) sends on 2026-08-20 and 203 on 2026-08-21, both above the stated 100/day cap. The monthly counter (432) closely matches the CSV's total 200-count (433), so the counter clearly tracks accepted sends. The most likely explanation is that Resend's daily window is not aligned to UTC midnight, so UTC-day buckets straddle two Resend days — **but this is a hypothesis, not verified.** Do not treat the 100/day figure as a hard observed ceiling until someone confirms it.
+
+**"AI credits: 0 / 5"** is a Resend dashboard feature (AI assistance for composing emails in their UI). It is unrelated to transactional sending and has no bearing on this project's email volume.
+
+### 38.5 DNS / deliverability state — ✅ CONFIRMED from the domain's Records tab
+
+| Record | Name | Status |
+|---|---|---|
+| DKIM (TXT) | `resend._domainkey` | **Auto Verified** |
+| SPF (MX) | `send` → `feedback-smtp…us-east-1.amazonses.com` | **Verified** |
+| SPF (TXT) | `send` → `v=spf1 include:…amazonses.com ~all` | **Verified** |
+| DMARC (TXT) | `_dmarc` → `v=DMARC1; p=none;` | **blank — not published** |
+
+The DMARC row is shown by Resend as the *suggested* record with no verified status, which is what drives the "Include valid DMARC record" warning. Note the suggested value has **no `rua=`** tag — Resend's own docs recommend including a reporting address, otherwise no aggregate reports are ever received.
+
+Also still open from §37.1 (unchanged, dashboard confirms nothing was altered):
+- `FROM_EMAIL` defaults to `SHIJO.AI <noreply@shijo.ai>` (`lib/email.ts:12`). Resend flags no-reply as a trust/deliverability negative — and `buildTicketResolvedEmail()` literally instructs customers to "just reply to this email," which lands nowhere. `sendEmail()` has no `reply_to` support at all.
+- Sending is from the root domain, not a subdomain. Resend recommends a subdomain so a reputation hit stays contained.
+- **Reputation risk is now concrete, not hypothetical:** spam was Delivered to Gmail from this domain (38.2). Domain reputation damage and possible Resend account action are live risks until the relay is closed.
+
+### 38.6 Nothing was changed
+
+Dashboard read-only. No Resend settings, DNS records, keys, or code were modified. No emails sent. The only file changed is this KB.
+
+---
+
+## 39. Spam-relay fix APPLIED — edited locally, NOT yet pushed (2026-08-22)
+
+Sri gave explicit sign-off to fix the §38 spam relay. Changes below are **written to disk and verified, but not committed and not pushed** — they are NOT live until the push in 39.5 runs.
+
+### 39.1 `lib/email.ts`
+
+- **Added `escapeHtml()` and `sanitizeSubject()`** (both exported), with a header comment explaining the incident so the reason survives.
+- **`buildWelcomeEmail` subject is now a constant** — `'Welcome to SHIJO.AI — Your 2 free AI tools are ready!'`. The registrant's name no longer reaches the subject line at all. **This is the change that closes the relay.**
+- **All 7 `firstName` derivations now escaped** across every builder (welcome, verify reminder, password reset, terms accepted, account deleted, ticket received, ticket resolved).
+- **Every user-supplied value HTML-escaped in template bodies:** ticket subject/message/ID, contact name+email, admin notes, reason badge, deleted-account email, and the terms record's `acceptedAt` / `ipAddress` / version strings. `ipAddress` matters — it derives from the client-settable `x-forwarded-for` header, so it was attacker-controlled.
+- **Support-ticket subjects now use `sanitizeSubject(..., 80)`** (strips CR/LF/tab and control chars, caps length) rather than raw interpolation. Kept as user text rather than made constant because `/api/contact` is captcha-gated and the team needs the subject to triage — a deliberate, narrower choice than the welcome path.
+- **Corrected the stale plan comment** at the top of the file to the dashboard-verified figures (Free, 3,000/mo, 100/day, 10 req/s).
+
+### 39.2 `app/api/auth/register/route.ts`
+
+- **Added server-side `name` validation** — previously the only request field with **no check at all**. 60-character cap, plus a rejection of markup, control characters, and URLs (`https?://`, `www.`, and bare `domain.tld/` forms across common spam TLDs).
+- **Deliberately a blocklist, not an allowlist.** An allowlist of Latin letters would reject legitimate Arabic, Chinese, Cyrillic and Indic names — real customers. Documented in the code comment so nobody "tightens" it later into a regression.
+- `safeName` (trimmed, validated) now replaces raw `name` at all three downstream uses: the `users` insert, `buildWelcomeEmail`, and `buildTermsAcceptedEmail`.
+
+### 39.3 Verification actually performed
+
+- **TypeScript:** both files compiled standalone with `tsc --strict`. **Zero syntax errors** (TS1xxx). Remaining diagnostics are only missing-module / missing-`@types/node` artifacts of checking files outside the project tsconfig — none point at the new code.
+- **Runtime smoke test** of the two helpers and the blocklist:
+  - Blocked: the real payload from the logs, a bare `bit.ly/…` link, a `www.` form, `<a href=…>` markup, and a `\r\n Bcc:` header-forge attempt.
+  - Allowed: `Srikanth`, `Mary-Jane O'Brien`, `José Álvarez`, `张伟`, `محمد علي`, `Владимир`, `Ravi Kumar`, `Anne Marie de la Cruz`.
+  - `sanitizeSubject` collapsed a CRLF+tab payload to a single safe line; `escapeHtml` neutralised an `<img onerror=…>` payload.
+- **Diff reviewed** — 3 files touched, no unintended edits, no unrelated files modified.
+
+### 39.4 Deliberately NOT done in this pass
+
+- **Rate limiting** (`rateLimits`, `db/schema.ts:522`, still zero call sites) — a real build, not a patch. Still the top remaining gap.
+- **No captcha on `/api/auth/register`.** `/api/contact` has one (`lib/captcha.ts`); registration does not. **That asymmetry is exactly why the attacker used registration.**
+- **Junk user rows not purged** — every abuse signup wrote a real row to Neon. Needs DB access; Sri's to run.
+- **`legal@shijo.ai` still bounces** (§38.3) — unchanged, still burning half of registration email volume.
+- **DMARC still unpublished**, `FROM_EMAIL` still `noreply@`, still sending from the root domain (§38.5).
+
+### 39.5 Push command (run in your own Git Bash)
+
+```
+cd "/c/Users/AI Agent/projects/shiro-group-monorepo/my-turborepo/apps/shijo-ai"
+rm .git/index.lock
+git add lib/email.ts app/api/auth/register/route.ts SHIJO_AI_KB.md docs/security docs/product docs/testing
+git commit -m "Fix spam relay: constant welcome subject, validate name, escape all email template input"
+git push origin main
+```
+
+Vercel auto-deploys on push. **The relay stays open until this runs.**
+
+### 39.6 New portable doc
+
+`docs/security/email-injection-spam-relay-playbook.md` — product-agnostic write-up of the scenario, detection, root cause, fix, an audit checklist for other products, and post-incident cleanup steps. Written at Sri's request so the other SHIRO products can be checked against the same class of bug. Also saved to the claude.ai project.
