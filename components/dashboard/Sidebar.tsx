@@ -17,6 +17,7 @@ import {
   User,
   Crown,
 } from 'lucide-react';
+import { PLAN_DISPLAY_NAME } from '@/lib/stripe/products';
 
 const navigation = [
   { name: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
@@ -48,11 +49,19 @@ export function Sidebar() {
   }
 
   const userPlan = user?.planTier || 'free';
-  const planDisplay = userPlan === 'free' ? 'Free Plan' :
-                      userPlan === 'pro' ? 'Pro Plan' :
-                      userPlan === 'enterprise' ? 'Enterprise' : 'Free Plan';
+  // Was a hand-rolled ternary chain that got this wrong in two ways at once:
+  // it rendered internal 'pro' as "Pro Plan" (the customer-facing name for
+  // internal 'growth', i.e. the $199 tier) and had **no case for 'growth' at
+  // all**, so a paying $199 customer fell through the else and was told they
+  // were on the "Free Plan". Caught live 2026-08-23: a freshly-upgraded $29
+  // Standard account showed "Standard plan — 12 tools" in the header and
+  // "Pro Plan" in the sidebar on the same screen. Always route plan tiers
+  // through PLAN_DISPLAY_NAME — the internal keys do not match the names
+  // customers see, and duplicating that mapping is how they drift.
+  const planDisplay = `${PLAN_DISPLAY_NAME[userPlan] ?? 'Free'} Plan`;
   const planColor = userPlan === 'free' ? 'text-gray-400' :
                     userPlan === 'pro' ? 'text-blue-400' :
+                    userPlan === 'growth' ? 'text-indigo-400' :
                     userPlan === 'enterprise' ? 'text-purple-400' : 'text-gray-400';
 
   return (

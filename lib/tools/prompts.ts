@@ -33,7 +33,12 @@ Provide:
 4. 3 LOCAL keywords (if applicable)
 5. Content gap opportunities
 
-For each keyword: estimated intent (informational/commercial/transactional), competition level (low/medium/high), content idea.`,
+For each keyword: estimated intent (informational/commercial/transactional), estimated competition (low/medium/high), content idea.
+
+Open the output with this exact line, on its own:
+> Note: intent and competition below are estimates based on the phrasing and the market, not measured search data. For real search volume and competition scores, check these terms in Google Keyword Planner or a keyword tool with live data.
+
+Never present the competition estimate as a measured figure, and never state a search volume number.`,
 
   'seo-content-brief': (i) => `You are an SEO content strategist. Create a detailed content brief.
 

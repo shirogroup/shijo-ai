@@ -33,9 +33,34 @@ function unwrap(line: string): string {
 }
 
 /**
+ * Tools whose output has a real, hard character budget worth stating.
+ *
+ * Scoped deliberately. When this ran over every tool, the arithmetic was right
+ * 61 times out of 61 — but in the Ad Headline A/B tester it was measuring the
+ * WRONG STRING. That tool writes the label between the headline and its
+ * rationale:
+ *
+ *     **Headline 1: The Yoga Secret Dallas Beginners Won't Tell**
+ *     (130 characters)
+ *     Why it works: Creates intrigue by positioning yoga as ...
+ *
+ * "the next non-empty line" is the rationale, so a 43-character headline was
+ * labelled 130 — over every platform's headline cap. A correct number attached
+ * to the wrong thing is worse than no number: before this feature existed that
+ * tool simply didn't claim a length. Title tags and meta descriptions have one
+ * unambiguous format and a genuine SERP limit; ad headlines vary per platform
+ * and have no stable format here. So the mechanism lives where it is safe, and
+ * ACCURACY_GUARD tells every other tool not to state lengths at all.
+ */
+const COUNTED_TOOLS = new Set(['seo-meta-generator']);
+
+export function toolStatesCharacterCounts(toolId: string): boolean {
+  return COUNTED_TOOLS.has(toolId);
+}
+
+/**
  * Rewrite every "(N characters)" claim so N is the true length of the line
- * that follows it. Lines that carry no such claim are returned untouched, so
- * this is safe to run over the output of any tool.
+ * that follows it. Only called for tools in COUNTED_TOOLS.
  */
 export function correctCharacterCounts(text: string): string {
   const lines = text.split('\n');
@@ -73,9 +98,21 @@ IMPORTANT — factual constraints:
   qualifications, awards, ratings, review counts, years in business, customer
   numbers, or guarantees that were not supplied.
 - Do not state scarcity ("limited spots", "filling fast") unless the input says so.
-- Where you label a length, keep the exact form "(N characters)" on the line
-  immediately BEFORE the text it describes. The number is recomputed from the
-  real string after generation, so do not labour over it — but do keep the
-  label, because it is what the recount attaches to.
+- Do NOT state character counts, word counts or any other measurement of your
+  own output. Any number you write would be an estimate presented as a fact,
+  and language models cannot count characters reliably.
 - Where a detail would strengthen the copy but was not provided, leave a clearly
   marked placeholder such as [YOUR CREDENTIAL] rather than inventing one.`;
+
+
+/**
+ * Only for tools in COUNTED_TOOLS. Keeps the "(N characters)" label so the
+ * recount has an anchor, and names what is being measured so the number can't
+ * drift onto an adjacent line.
+ */
+export const LENGTH_LABEL_GUARD = `
+- Label each length as "Title Tag (N characters):" or
+  "Meta Description (N characters):" on the line immediately BEFORE the text it
+  describes, with the text alone on the next line. The number is recomputed from
+  the real string after generation, so do not labour over it — but keep the
+  label and keep the measured text on its own line.`;

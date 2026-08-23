@@ -5,7 +5,7 @@ import { PROMPTS } from '@/lib/tools/prompts';
 import { getSession } from '@/lib/auth';
 import { checkToolAccess, recordToolUsage } from '@/lib/tools/usage';
 import { serverErrorResponse } from '@/lib/api/errors';
-import { correctCharacterCounts, ACCURACY_GUARD } from '@/lib/tools/output';
+import { correctCharacterCounts, toolStatesCharacterCounts, ACCURACY_GUARD, LENGTH_LABEL_GUARD } from '@/lib/tools/output';
 
 const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
 
@@ -146,7 +146,11 @@ export async function POST(req: NextRequest) {
     const maxTokens = MAX_TOKENS_MAP[effectiveModelTier];
 
     // ── Build prompt ────────────────────────────────────────────────
-    const userPrompt = promptBuilder(inputs || {}) + ACCURACY_GUARD;
+    // Only the tools with a real, unambiguous length budget are asked to state
+    // one; everything else is told not to measure its own output at all.
+    const statesCounts = toolStatesCharacterCounts(toolId);
+    const userPrompt =
+      promptBuilder(inputs || {}) + ACCURACY_GUARD + (statesCounts ? LENGTH_LABEL_GUARD : '');
 
     // ── Call Claude API ─────────────────────────────────────────────
     const message = await client.messages.create({
@@ -161,16 +165,18 @@ export async function POST(req: NextRequest) {
       .map((b) => (b as { type: 'text'; text: string }).text)
       .join('\n');
 
-    // Replace any "(N characters)" the model wrote with the real count.
-    const result = correctCharacterCounts(rawResult);
+    // Replace any "(N characters)" the model wrote with the real count — but
+    // only for tools whose output format makes the target unambiguous.
+    const result = statesCounts ? correctCharacterCounts(rawResult) : rawResult;
 
     // ── Record usage (after successful generation) ──────────────────
-    await recordToolUsage(
-      session.userId,
-      toolId,
-      model,
-      message.usage?.output_tokens || 0
-    );
+    // Both counts. input_tokens was previously read and thrown away, which is
+    // what made spend impossible to reconstruct — input and output bill at
+    // different rates.
+    const inputTokens = message.usage?.input_tokens || 0;
+    const outputTokens = message.usage?.output_tokens || 0;
+
+    await recordToolUsage(session.userId, toolId, model, inputTokens, outputTokens);
 
     return NextResponse.json({
       success: true,
@@ -178,7 +184,8 @@ export async function POST(req: NextRequest) {
       meta: {
         model: effectiveModelTier,
         toolId: tool.id,
-        tokensUsed: message.usage?.output_tokens || 0,
+        tokensUsed: outputTokens,
+        inputTokens,
         remaining: access.remaining !== undefined
           ? (access.remaining === -1 ? -1 : access.remaining - 1)
           : undefined,

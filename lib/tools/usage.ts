@@ -18,6 +18,7 @@ import { db } from '@/db';
 import { users, usageLogs, dailyLimits } from '@/db/schema';
 import { eq, and, sql, count } from 'drizzle-orm';
 import { getToolById, getFreeTools } from '@/lib/tools/registry';
+import { calculateCostUsd } from '@/lib/ai/pricing';
 import type { PlanAccess, ModelTier } from '@/lib/tools/registry';
 
 // ─── Plan limits ──────────────────────────────────────────────────────
@@ -295,7 +296,8 @@ export async function recordToolUsage(
   userId: string,
   toolId: string,
   model: string,
-  tokensUsed: number
+  inputTokens: number,
+  outputTokens: number
 ): Promise<void> {
   const [user] = await db
     .select({ planTier: users.planTier })
@@ -305,13 +307,27 @@ export async function recordToolUsage(
 
   const plan = user?.planTier || 'free';
 
-  // Log to usageLogs (all plans)
+  // Log to usageLogs (all plans).
+  // api_cost_usd was in the schema from the start and never written — every
+  // row read 0.0000 — and only output_tokens was kept, so real spend could not
+  // be reconstructed. Both counts are now stored raw AND priced at the rate in
+  // force at the time of the call, so historical rows survive a rate change.
+  const costUsd = calculateCostUsd(model, inputTokens, outputTokens);
+
   await db.insert(usageLogs).values({
     userId,
     feature: 'ai-tools',
     action: toolId,
     creditsUsed: 0,
-    metadata: { model, tokensUsed },
+    apiCostUsd: costUsd.toFixed(4),
+    metadata: {
+      model,
+      inputTokens,
+      outputTokens,
+      // kept so older rows and dashboards that read `tokensUsed` don't break
+      tokensUsed: outputTokens,
+      costUsd,
+    },
   });
 
   // Increment daily counter (free plan)
