@@ -286,6 +286,12 @@ Two rules that keep the scale honest:
   it is wrong.
 - **Downgrade in writing** when live evidence contradicts a code-read severity, and say that you
   did.
+- **Get a third data point before filing.** Two observations are enough to see a pattern and not
+  enough to test it. In the first run this rule was broken twice: a finding was called S1 from code
+  reading and had to be downgraded to S3 after a live bundle scan, and a dashboard figure was
+  flagged as a stale query on two readings when a third reading plus the arithmetic showed it was
+  simply *correct and constant*. Both were caught, but only because they were re-checked before
+  being fixed. **A retracted finding costs a paragraph; a "fixed" non-bug costs a deploy.**
 
 ---
 

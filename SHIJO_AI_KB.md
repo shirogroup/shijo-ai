@@ -2414,3 +2414,63 @@ already produced one confirmed arithmetic defect (D-31), so treat it as a suspec
 callouts/lead form/call asset, the sandbox `CREDITS_*` ids, and the §54.6 discrepancy.
 
 **Scenario 2 (B2B SaaS persona for shiroapps.com) still not started.**
+
+---
+
+## §55 — Second re-verification pass + a RETRACTION (2026-08-23)
+
+### §55.1 D-34 / D-35 confirmed on 6 further verticals — CONFIRMED
+
+Re-ran on a completely fresh set to check the first pass wasn't lucky: family dentist (Phoenix),
+freelancer invoicing SaaS, mobile dog grooming (Seattle), online guitar lessons, storm-damage roof
+inspection (Tampa), plus a brand-supplied control (`brand = "Cactus Ridge Dental"`).
+
+**All 6: 0 "Shijo" occurrences · 0 `"not specified"` leaks · 10 labels each · 10/10 counts exact ·
+0 fabrication hits.** Control used "Cactus Ridge Dental" 6×.
+
+**Running totals across both passes: 12 runs · 12 distinct verticals · 120/120 counts exact ·
+0 brand injections · 0 fabrications.** D-34 and D-35 are solidly LIVE.
+
+### §55.2 ⚠️ RETRACTION — the §54.6 /admin/usage "discrepancy" was MY error, not a defect
+
+`rowsWithoutCostData: 33` was flagged as suspect because it read 33 at three totals (42 → 50 → 56).
+**A third data point settled it in the banner's favour.** At 56 total generations:
+
+| | Rows | Priced? |
+|---|---|---|
+| Today, before cost tracking deployed | 16 | ✗ |
+| Today, after cost tracking deployed | 23 | ✓ |
+| 2026-08-12 → 08-22 (all pre-tracking) | 17 | ✗ |
+| **Total** | **56** | **33 unpriced / 23 priced** |
+
+16 + 17 = **33.** The banner is correct. **No defect. No D-36.**
+
+Two errors of mine:
+
+1. **Assumed every row dated *today* was priced.** It isn't — cost tracking deployed partway through
+   the day, so today's 39 rows split 16 unpriced / 23 priced. That produced the bogus "at most 17
+   untracked" ceiling.
+2. **Treated the number staying constant as evidence of a stale query.** It is the opposite: no new
+   unpriced rows are ever created, so a *correct* implementation must report a constant. The
+   inference was exactly backwards.
+
+Filing it as DISCREPANCY rather than a defect is what kept this from becoming a wasted deploy.
+
+### §55.3 NEW METHOD RULE — get a third data point before filing
+
+Second validity correction in this engagement (first: D-7, downgraded S1 → S3 after a live bundle
+scan showed zero price ids in the client). Both had the same cause and the same cure.
+
+> **Two observations are enough to see a pattern and not enough to test it.**
+> **A retracted finding costs a paragraph; a "fixed" non-bug costs a deploy.**
+
+Added to `docs/testing/2026-08-23-real-user-audit-methodology.md` §3.
+
+### §55.4 ⚠️ Push state at time of writing
+
+`5ba4993` (docs only — KB §54, case study, register) **did NOT reach origin**. Verified with
+`git ls-remote origin refs/heads/main` → `52cc9bf`. Local was 1 ahead, 0 behind. Another stale
+`.git/HEAD.lock` was present and is the likely cause; moved aside.
+
+**No product impact** — `5ba4993` and this commit are documentation only. Everything running in
+production is `52cc9bf`, which carries the D-34/D-35 fixes and is confirmed deployed.

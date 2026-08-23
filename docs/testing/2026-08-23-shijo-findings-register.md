@@ -338,16 +338,50 @@ The `Title Tag:` / `Meta Description:` prefixes are present on every label —
 Fabrication scan across all 6 outputs (certified / accredited / award-winning / star ratings /
 review counts / "voted" / "#1" / guarantee): **0 hits.**
 
-### ⚠️ DISCREPANCY — `/admin/usage` unpriced-row count needs a direct DB check
+### Second re-verification pass — 6 further verticals, none previously used
 
-`rowsWithoutCostData` has reported **33** at three different totals (42 generations, then 50). The
-figure has not moved while the underlying data has, and it cannot be reconciled from the endpoint's
-own output: 50 total generations with 33 rows recorded today (all with tokens) implies at most 17
-untracked, not 33.
+Re-ran on a completely fresh set to make sure the first pass wasn't lucky:
+family dentist (Phoenix), freelancer invoicing SaaS, mobile dog grooming (Seattle), online guitar
+lessons, storm-damage roof inspection (Tampa), and a brand-supplied control
+(`brand = "Cactus Ridge Dental"`).
 
-**This is recorded as a DISCREPANCY, not a defect — it is not confirmed.** The API-side arithmetic
-is ambiguous because `byTool` aggregates mixed priced/unpriced rows under one tool, so it cannot be
-used to derive the true count. Settle it with a direct query before filing anything:
+**All 6: 0 "Shijo" occurrences · 0 `"not specified"` leaks · 10 labels each · 10/10 counts exact ·
+0 fabrication hits.** The brand-supplied control used "Cactus Ridge Dental" 6 times.
+
+**Running totals across both passes: 12 runs · 12 distinct verticals · 120/120 counts exact ·
+0 brand injections · 0 fabrications.**
+
+### ✅ DISCREPANCY RETRACTED — the `/admin/usage` banner was right; my arithmetic was wrong
+
+Recorded here rather than deleted, because the register's own rules require corrections to be
+visible.
+
+I flagged `rowsWithoutCostData: 33` as suspect because it read **33** at three different totals
+(42 → 50 → 56 generations) and I could not reconcile it. **A third data point settled it — in the
+banner's favour.**
+
+At 56 total generations:
+
+| | Rows | Priced? |
+|---|---|---|
+| Today, before cost tracking deployed | 16 | ✗ |
+| Today, after cost tracking deployed | 23 | ✓ |
+| 2026-08-12 → 08-22 (all pre-tracking) | 17 | ✗ |
+| **Total** | **56** | **33 unpriced, 23 priced** |
+
+16 + 17 = **33.** The banner is correct.
+
+**Two errors of mine, both worth naming:**
+
+1. I assumed every row dated *today* was priced. It isn't — cost tracking deployed partway through
+   the day, so today's 39 rows split 16 unpriced / 23 priced. That assumption produced the bogus
+   "at most 17 untracked" ceiling.
+2. I treated the number **staying constant** as evidence of a stale query. It is the opposite: no
+   new unpriced rows are ever created, so a *correct* implementation must report a constant. I had
+   the inference exactly backwards.
+
+**No defect. No D-36.** The SQL query below is retained anyway as a cheap independent confirmation
+if anyone wants it, but it is no longer blocking:
 
 ```sql
 SELECT
@@ -358,18 +392,19 @@ FROM usage_logs
 WHERE created_at >= NOW() - INTERVAL '30 days';
 ```
 
-If `untracked_rows` ≠ 33, the banner is wrong and this becomes D-36. The banner exists so a low
-total is never mistaken for low spend — overstating how much data is missing undermines exactly
-that. Note this panel has already produced one confirmed arithmetic defect (D-31).
+**Method note earned the hard way:** this is the second severity/validity correction in this
+engagement (the first was D-7, downgraded S1 → S3 after a live bundle scan). Both times the fix was
+the same — **get a third data point before filing.** Two observations of a constant look like a
+frozen query; three observations plus the arithmetic showed it was simply constant.
 
 ---
+
 
 ## I. Still open — ranked
 
 | # | Finding | Sev | Owner |
 |---|---|---|---|
 | **D-32** | Annual plan unbuyable for existing monthly customers | **S2** | Stripe portal config (owner) + code |
-| — | **DISCREPANCY:** `/admin/usage` unpriced-row count stuck at 33 — run the SQL in §H3 | ? | owner (DB query) |
 | **D-12/13** | Quota check-then-act and daily-counter insert races | **S3** | code — needs transaction/atomic upsert + load test |
 | **D-6** | CSP still not shipped (Report-Only first) | **S3** | code |
 | **D-33** | "SHIJO AI" missing its dot on all Stripe surfaces | S4 | Stripe Dashboard (owner) |
