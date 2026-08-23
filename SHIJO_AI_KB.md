@@ -2101,3 +2101,134 @@ Sitelinks (6) all verified accurate after the §51.1 Pricing fix.
 5. **GTM container quality "Urgent"** — additional domains detected, single administrator.
 6. Two checkout routes disagree on `&plan=` (§48).
 7. Ahrefs Site Audit not re-crawled since the SEO fixes went live.
+
+---
+
+## §52 — Real-user audit + live test run: 33 findings, 3 deploys (2026-08-23)
+
+Full detail: `docs/testing/2026-08-23-shijo-findings-register.md`
+Reusable method: `docs/testing/2026-08-23-real-user-audit-methodology.md`
+Public write-up: `docs/marketing/2026-08-23-case-study-real-user-audit.md`
+Test plan: `docs/testing/2026-08-23-shijo-ai-test-plan.md`
+
+### §52.1 What was done — CONFIRMED
+
+A real account was registered by the owner (srikanth@shiroapps.com), the free tier was
+exhausted, **a real $29 Standard subscription was purchased on the live Stripe account**, and
+all 12 registry tools were exercised against a single fixed scenario ("Maya Reddy, yoga studio
+in Dallas, 6-week beginner course, $149, October"). ~64,000 characters of generated output were
+reviewed by hand. 90+ test cases across 12 suites.
+
+**33 findings assigned.** Three deploys, all verified on production:
+
+| Commit | Contents |
+|---|---|
+| `c48058f` | 18 audit fixes |
+| `8533c72` | D-21/24/25 + API cost tracking + `/admin/usage` |
+| `7ff5366` | admin layout; avg-cost fix over unpriced rows |
+
+### §52.2 ⚠️ DISCREPANCY — four finding numbers are unrecoverable
+
+**D-20, D-26, D-28 and D-29 have no surviving record.** Assigned during the run; detail lost when
+working context rolled over; not recoverable from transcript, commits or repo. Recorded as gaps in
+the register rather than reconstructed. **Do not reuse those numbers and do not assume they were
+trivial.** 33 assigned, 29 documented.
+
+### §52.3 The four findings that matter most — CONFIRMED
+
+1. **D-1 — the SEO Meta Generator could not count.** Claimed title lengths 58/56/57/54/60 against
+   actual 52/44/43/39/47. Wrong 5 of 5, reproduced on a second run. Root cause: a language model
+   was being asked to count characters. Fixed by computing `title.length` in code after
+   generation. **Post-fix on production: 10/10 exact.**
+2. **D-4 — tools invented credentials.** "with certified instructors" for a studio that never
+   claimed it. `ACCURACY_GUARD` now forbids invented credentials/certifications/awards/ratings and
+   emits `[YOUR CREDENTIAL]` placeholders. Verified clean across all 12 tools post-fix.
+3. **D-27 — API cost was unmeasurable.** `api_cost_usd` had been in the schema from the start and
+   **never written to**; every row read 0.0000, and only output tokens were kept. Now both counts
+   are stored raw and priced at the rate in force at call time.
+4. **D-32 (NEW, OPEN, S2) — see §52.5.**
+
+### §52.4 Unit economics — measured for the first time, CONFIRMED
+
+| Plan | Internal key | Price | Limit | Max API cost | Margin |
+|---|---|---|---|---|---|
+| Standard | `pro` | $29/mo | 200/mo | **$7.34** | **~75%** |
+| Pro | `growth` | $199/mo | 1,500/mo | **$55.05** | **~72%** |
+
+Measured sample: 378 in / 396 out = **$0.0024**, matching hand calculation.
+
+Naming trap that caused D-21 and will cause more: internal `pro` = customer-facing **"Standard"**;
+internal `growth` = customer-facing **"Pro"**. `PLAN_DISPLAY_NAME` in `lib/stripe/products.ts` is
+the only correct translation — never hand-roll it.
+
+### §52.5 D-32 — the annual plan is unbuyable by existing monthly customers — CONFIRMED, OPEN
+
+All three routes verified closed against production on 2026-08-23:
+
+| Route | Result |
+|---|---|
+| `/dashboard/billing`, annual toggle on | inert **"Current Plan" text**, zero buttons — while showing the *annual* price and calling it the customer's current plan, which is false |
+| `POST /api/stripe/create-checkout {plan:'pro',interval:'annual'}` | **400 "You are already on the pro plan"** — the guard compares `planTier` only, and monthly/annual share `'pro'` |
+| Stripe Billing Portal | **"Cancel subscription" only** — plan switching never enabled in the portal config |
+
+Root cause underneath all three: **the billing interval is never persisted.** `users` has
+`plan_tier` and no interval column, so the application cannot distinguish a monthly customer from
+an annual one.
+
+**Fix is two-part and one half is an owner action:**
+- **Stripe Dashboard:** Settings → Billing → Customer portal → enable "Customers can switch plans",
+  add the three prices. Stripe then handles proration.
+- **Code:** billing card renders "Switch to annual — save 20%" → portal when plan matches but
+  interval differs; relax the guard to compare *(plan, interval)*.
+- **Do NOT** fix by issuing a second Checkout session — that creates a duplicate subscription.
+
+### §52.6 Annual price and Stripe Link — both CONFIRMED WORKING
+
+- **Annual price is correctly configured.** Live checkout for `PRO_ANNUAL`
+  (`price_1TuEaIHTpiuftGGEslehCB4Y`) renders "Subscribe to SHIJO.AI Standard · **$278.00 per year**
+  · $23.17 / month billed annually · All 12 AI marketing tools, 200 generations/month, advanced AI
+  models." $348 → $278 = **20.1%**, so the "Save 20%" badge is honest.
+- **Stripe Link / pay-by-phone works.** "Confirm it's you → code sent to (•••) ••• ••92 → Send code
+  to email instead → Pay without Link" all render. It did **not** appear on the owner's *first*
+  purchase because they were not yet enrolled in Link — Stripe saved the card to Link **during**
+  that purchase. Both checkout routes pass the same `customer` id, so no code changed.
+  **This was never a defect.**
+
+### §52.7 D-33 — brand name wrong on every Stripe surface — CONFIRMED, OPEN
+
+Merchant display name reads **"SHIJO AI"** (no dot) on the checkout header, the billing portal
+title, "SHIJO AI partners with Stripe" and "SHIJO AI Billing". The product line is correctly
+"SHIJO.AI Standard". Brand standard is **SHIJO.AI**. Fix: Stripe Dashboard → Settings → Public
+business name. **No code change.**
+
+### §52.8 Three defects were introduced by this run's own fixes — CONFIRMED
+
+Recorded deliberately:
+- **D-24** — the D-1 character-count corrector, applied globally, read the *rationale* line on Ad
+  Headline A/B and labelled a 43-char headline "(130 characters)". Scoped to `COUNTED_TOOLS`.
+- **D-31** — the new `/admin/usage` page divided total cost by *all* generations including 33
+  unpriced ones, under-reporting average cost by **24×** ($0.0001 vs $0.0024).
+- A broken `import` insertion in `Sidebar.tsx`, caught by typecheck (TS1003/TS1005).
+
+An audit that does not re-audit its own patches ships a smaller number of bigger bugs.
+
+### §52.9 Open after this session
+
+| # | Item | Sev | Owner |
+|---|---|---|---|
+| D-32 | annual plan unbuyable for existing monthly customers | **S2** | Stripe portal config + code |
+| D-12/13 | quota check-then-act and daily-counter insert races | S3 | code — needs transaction/atomic upsert + load test |
+| D-6 | CSP still not shipped (Report-Only first — site loads GTM, gtag, Ahrefs, Stripe) | S3 | code |
+| D-33 | "SHIJO AI" missing its dot on all Stripe surfaces | S4 | Stripe Dashboard |
+| D-23 | `Title Tag:` / `Meta Description:` label prefixes | S4 | code |
+| D-22 | do free-tier generations count against the first paid month? | S4 | **product decision** |
+| — | Google Ads description says "free trial"; SHIJO has a free **tier** | S4 | Google Ads |
+| — | Google Ads callouts, lead form and call asset never audited | — | Google Ads |
+| — | sandbox `CREDITS_*` price ids still in the live `STRIPE_PRICE_IDS` constant | S4 | code |
+| — | **Scenario 2 not yet run** — B2B SaaS persona for shiroapps.com, second case study | — | next session |
+
+### §52.10 Tooling note that saved the session
+
+`git status` in the Cowork sandbox creates `.git/index.lock`, which the sandbox is then not
+allowed to unlink — this had blocked commits repeatedly across sessions. **Use
+`git --no-optional-locks status`.** Verified: it leaves no lock behind.
