@@ -1,6 +1,6 @@
 # SHIJO.AI — Knowledge Base / Status Reference
 
-**Last updated:** 2026-08-22 (§46 SEO fixed — metadataBase was missing, OG image + Organization logo were 404s, canonical host was the redirecting apex; §46.4 the Keyword Planner export is agency-intent and NOT usable. §45 abuse hardening LIVE as 29d31a5. ⚠️ still manual: drop terms_acceptances_user_id_fkey in Neon)
+**Last updated:** 2026-08-23 (§47 Ahrefs mined: backlink profile is 129 SPAM-labelled ref domains, 8 dofollow, incl. our own shiroapps.com; organic + AI-search footprint is ZERO; all audit errors collapse to /login. §48 Ads/GTM read-only audit: "Misconfigured" Purchase goal root-caused — no purchase tag in GTM AND no purchase event in the code; all 4 goals are Primary while PMax runs on them. ⚠️ 12 files still uncommitted — see §49)
 
 ## 0. Vercel secret rotation — RESOLVED, was a false alarm (originally flagged 2026-07-17, closed 2026-07-19)
 
@@ -1684,3 +1684,216 @@ Snippet installed **directly in `app/layout.tsx`** via Next's `<Script strategy=
 - **Disclosed as a sub-processor** in both `/privacy` §5 and `/gdpr-compliance` §5, alongside Stripe, Anthropic, Resend, Vercel, Neon and Google Analytics. This project's Privacy Policy promises a complete list, and adding a third-party processor without listing it would have broken that promise.
 
 Verified: no syntax errors. **Ahrefs' "Recheck installation" will only pass after this is pushed and deployed.**
+
+### 46.6 Ahrefs Site Audit triage — 22 Aug 2026 (18 actual issues, 173 tracked)
+
+⚠️ **The crawl predates the §46 fixes**, which were not yet deployed. Several issues were already resolved by that work. Triage below.
+
+**Already fixed by §46 (verify on the next crawl, do not re-fix):**
+
+| Ahrefs issue | Count | Resolved by |
+|---|---|---|
+| 🔴 Duplicate pages without canonical | 2 | canonicals added to 9 public pages |
+| 🟡 Open Graph tags incomplete | 10 | `metadataBase` + OG images (see below) |
+| 3XX redirect / links to redirect | 3 / 7 | canonical host moved off the redirecting apex to `www` |
+
+**Fixed in this pass:**
+
+- **Meta description too short (8 indexable)** — the count matched exactly. `/contact`, `/terms`, `/privacy`, `/cookies`, `/security`, `/gdpr-compliance`, `/ai-compliance` rewritten into the 130–145 char range, plus `/login`. Descriptions describe what each page actually contains; nothing invented.
+- **Meta description too long** — `/ai-marketing-tools` was 185 chars, now 148.
+- **Structured data rich-results error (2)** — root cause: **`AggregateOffer` was missing the required `offerCount` field**. Added `offerCount: '3'` (Free, Standard, Pro; Enterprise is "Coming Soon" and deliberately excluded) to both `app/page.tsx` and `app/ai-marketing-tools/page.tsx`.
+- **Open Graph tags incomplete** — root cause beyond the missing `metadataBase`: **Next.js does not merge `openGraph` field-by-field.** A page defining its own `openGraph` block replaces the root layout's entirely, images included. `/ai-marketing-tools` and `/blog/[slug]` both did this and therefore shipped **no `og:image` at all**. Images added to both.
+- **H1 tag missing or empty (2)** and **Page has no outgoing links (2)** — traced to `/login`, which was indexable with a 32-char description, no H1 and no site navigation. Fixed with `robots: { index: false }` — noindex is the correct answer for a sign-in form, not bolting an H1 onto it. `/register`, `/forgot-password`, `/reset-password` were made noindex earlier in §46.
+
+⚠️ **Correction worth recording:** an initial grep for `<h1` reported the homepage and `/ai-marketing-tools` as having no H1. **That was a false positive** — `components/landing/Hero.tsx` uses **`<motion.h1>`** (Framer Motion), which renders a real `<h1>`. A brace-aware re-check confirmed every indexable page has exactly one H1. Grep for `<(motion\.)?h1` when auditing this codebase.
+
+**A second measurement trap, same pass:** a first scan of meta-description lengths matched the *first* `description:` in each file, which on `app/page.tsx` and `app/ai-marketing-tools/page.tsx` is the **JSON-LD** description, not the metadata one. The corrected extractor walks the `export const metadata` object braces. Only then did the count match Ahrefs' 8 exactly.
+
+**Left alone deliberately:** "Indexable page not in sitemap (10)", "Pages to submit to IndexNow (10)", "Low word count (2)", "Page has only one dofollow incoming internal link (3)". The first two are largely explained by pages now being noindex; all four should be re-measured on a fresh crawl rather than guessed at from a stale one.
+
+**Next step:** push, let Vercel deploy, then re-run the Ahrefs audit. Compare against this list rather than assuming.
+
+---
+
+## §47 — Ahrefs mined beyond the Site Audit (2026-08-23)
+
+Account: Ahrefs Webmaster Tools (free tier), workspace "srikanth's workspace", project **Shijo**, Site Audit project id **10270122**. Verified target is **`www.shijo.ai`** — the apex `shijo.ai` is **not** verified and Site Explorer refuses it ("Domain not verified"). That is the correct choice given the site canonicalises to www, but it means every Ahrefs lookup must use the www host.
+
+### §47.1 The audit findings all collapse to one page — CONFIRMED
+
+Drilling into the 22 Aug crawl issue-by-issue, the error-level items are not spread across the site. They are the same two URLs each time:
+
+| Issue | Affected URLs |
+|---|---|
+| H1 tag missing or empty (2) | `/login`, `/login?redirect=%2Fdashboard` |
+| Low word count (2) | `/login`, `/login?redirect=%2Fdashboard` (4 content words each) |
+| Duplicate pages without canonical (2) | same pair (`?redirect=` variant is a separate indexable URL) |
+
+`/login` is `robots: index:false` in the working tree but **that change is not committed yet** (see §47.4). Once it ships, one fix clears three issue classes.
+
+### §47.2 "Indexable page not in sitemap (10)" — mostly a stale-crawl artifact
+
+The 10 URLs were `/login`, `/login?redirect=%2Fdashboard`, `/register`, `/privacy`, `/terms`, `/contact`, `/cookies`, `/security`, `/gdpr-compliance`, `/ai-compliance`. Eight of those **are** in `app/sitemap.ts`; the crawl compared www URLs against a sitemap that still listed the apex host, which is exactly the mismatch §46 fixed. `/register` was already made noindex in §46. Only the `/login` pair is genuinely outstanding.
+
+Also visible in that table: **`/register` was serving the root layout's title** ("SHIJO.AI - AI Marketing Tools for SEO, Ads, Email & Social") because it exported no metadata of its own — three indexable URLs shared one title. Fixed in §46 and confirmed present in `HEAD`.
+
+### §47.3 Backlink profile — SPAM, and it is not a small amount — CONFIRMED
+
+Site Explorer → `www.shijo.ai`:
+
+- **DR 1.5, UR 0, Ahrefs Rank 49,840,591**
+- **130 backlinks from 129 referring domains**
+- **121 of 129 referring domains (93.8%) are nofollow**; every one of the 130 links has UR < 10
+- **Every referring domain visible in the report carries Ahrefs' `SPAM` label**
+
+The 8 **dofollow** referring domains, in full:
+
+| Domain | DR | First seen |
+|---|---|---|
+| hotonlinegaming.com | 47 | 22 Aug 2026 |
+| betulcrime.com | 39 | 22 Aug 2026 |
+| plrdownloadshub.com | 6 | 21 Aug 2026 |
+| wecelebrities.com | 5 | 3 Aug 2026 |
+| bestnz-poker-casinoslot.com | 1.5 | 6 Aug 2026 |
+| masihnyata.com | 0 | 22 Aug 2026 |
+| **shiroapps.com** | 0 | 6 Jul 2026 |
+| sahammurah.com | 0 | 13 Aug 2026 |
+
+Two observations worth keeping:
+
+1. **`shiroapps.com` — our own domain — is SPAM-labelled by Ahrefs.** It is DR 0 with 23 dofollow ref domains. Worth understanding before it is used for anything that matters.
+2. The link acquisition clusters in **July–August 2026**, with four of the eight dofollow links appearing on **21–22 Aug** — the same window as the signup flood (§37/§44). That is a **correlation, not proven causation**; both are consistent with a newly-registered domain being found by automated spam networks. Do not state it as a coordinated attack without more evidence.
+
+**No action taken.** Google generally ignores links like these, and disavowing is a decision with downside if done carelessly. The gambling/casino dofollow links are the only ones worth a second look.
+
+### §47.4 Organic and AI-search footprint: zero — CONFIRMED
+
+| Metric | Value |
+|---|---|
+| Organic keywords | 0 |
+| Organic traffic | 0 |
+| Paid keywords (as seen by Ahrefs) | 0 |
+| Ahrefs-crawled pages | 12 (11× 200, 1× 3XX) |
+| AI Overviews / ChatGPT / AI Mode / Gemini / Perplexity / Copilot responses | **0 across every platform** |
+
+Note the last row against the product's own positioning: `app/page.tsx` `featureList` advertises *"AI Overview / AI search optimization"* while the site itself has **no** presence in any AI answer engine. That is not a bug, but it is a credibility gap worth closing before it is used in ad copy.
+
+The practical read: **there is no Ahrefs organic data to mine for the ads account, because there is no organic footprint yet.** Ahrefs' value here is the audit and the backlink monitor, not keyword intelligence — Keywords Explorer is gated on the free tier.
+
+### §47.5 Ahrefs Web Analytics — CONFIRMED live
+
+The script shipped in `7a0a787` and `document.querySelector('script[src*="analytics.ahrefs.com"]')` returns non-null on the live homepage. "Recheck installation" in Ahrefs should now pass. No traffic data yet — it was installed 2026-08-22.
+
+---
+
+## §48 — Google Ads + Tag Manager audit (2026-08-23, read-only)
+
+Read-only audit at the user's explicit request. **Nothing was changed in Google Ads or GTM.**
+
+### §48.1 Accounts — CONFIRMED
+
+| System | Identifier |
+|---|---|
+| Google Ads account | **643-120-9303 — "SHIRO Technologies LLC"** |
+| Signed-in user | `srikanth@shirotechnologies.com` (Chrome `authuser=1`) |
+| Google Ads conversion ID | **AW-18330533913** |
+| Google tag ID | **GT-K4CR5NFX** |
+| GTM account / container | **Shijo.ai** / **www.shijo.ai** = **GTM-NGQVZ78Q** (account 6366792312, container 258715646) |
+| GA4 measurement ID | via `GA_MEASUREMENT_ID` env (see `app/layout.tsx`) |
+
+⚠️ **Account-switching trap:** at Chrome's *default* Google account (`authuser=0`) Tag Manager shows a different account — **SHIROAPPS**, containing only `aithumbnailgen` / **GTM-T6P4KDWK**. The SHIJO container is only visible at **`authuser=1`**. If GTM ever "looks empty" or "has the wrong container", check the account picker first — the container is not missing.
+
+### §48.2 The "Misconfigured" goal — ROOT CAUSE FOUND — CONFIRMED
+
+Google Ads → Goals → Summary, conversion actions:
+
+| Conversion action | Source | Tracking status | Optimization | Count | Window |
+|---|---|---|---|---|---|
+| **Purchase** | Website | 🔴 **Inactive** | **Primary** | Every | 30 days |
+| Lead form - Submit | Google hosted | 🟢 Active | **Primary** | One | 1 day |
+| Sign-up | Website | 🟢 Active | **Primary** | One | 90 days |
+| Local actions - Directions | Google hosted | No recent conversions | **Primary** | Every | 30 days |
+
+"Misconfigured" on the Purchase goal = **the Purchase conversion action has never received a single hit.** The reason is not a setting. It is that nothing exists to fire it, at either layer:
+
+1. **GTM container `GTM-NGQVZ78Q` contains exactly three tags** — `Conversion Linker` (All Pages), `Google Ads - Base Tag` (Initialization), and `Google Ads - Sign Up Conversion` (trigger: *Sign Up Complete Event*). **There is no purchase conversion tag at all.**
+2. **The application never emits a purchase event.** A repo-wide grep for `dataLayer` / `gtag` / `send_to` finds exactly one conversion push — `components/auth/RegisterForm.tsx` pushing `{ event: 'sign_up_complete' }`. That is why Sign-up is Active and Purchase is not. Nothing is pushed after checkout.
+
+The Purchase action itself is otherwise sane: created 7/17/2026, Data-driven attribution, source Website, event type **Manual event**, value rule *"Use different values. If there's no value, use $1."*, **Enhanced Conversions: Not configured**.
+
+### §48.3 Everything is Primary — this is actively harmful here — CONFIRMED
+
+All four conversion actions are set to **Primary**, so Smart Bidding treats a free signup and a paid subscription as the same outcome. Two things make that worse than usual for this account:
+
+- The live campaign is **Performance Max** ("CamShijo AI Landing Page", $10.00/day, Eligible, optimization score 90.4%). PMax has no keywords to steer it — it is driven almost entirely by the conversion signal it is given.
+- The signup endpoint was the target of a **373,147-account abuse run** (§44). Optimising bidding toward *signups* on a product that was just used as a spam relay is pointing the algorithm at the exact traffic we spent last week removing.
+
+Last 30 days (Jul 24 – Aug 22): **4.00 conversions, conv. value 4.00, conv. rate 19.05%, $2.45/conv** — i.e. ~$9.80 spent, and **every conversion valued at exactly $1.00**, which is the fallback, not real revenue.
+
+`Local actions - Directions` is a physical-storefront goal and is meaningless for a SaaS. It is Primary and applied to 0 of 1 campaigns.
+
+### §48.4 GTM container diagnostics: "Urgent" — CONFIRMED
+
+Container quality reads **Urgent**, with two action items:
+
+1. **"Additional domains detected for configuration"** — the Google tag is firing on domains not listed in its configuration. Almost certainly the apex `shijo.ai` (which 307s to www) and/or Vercel preview URLs. Google's own warning: *"could impact your tag durability and conversion measurement."*
+2. **Only one administrator on the account** — single point of lockout.
+
+Workspace changes: 0 (nothing left half-edited).
+
+### §48.5 What a working purchase conversion needs — NOT YET BUILT
+
+Post-checkout landing is `/dashboard/billing?success=true&plan=<plan>` (`app/api/stripe/create-checkout/route.ts:138`; a second, near-duplicate route `app/api/billing/checkout/route.ts:96` uses `?success=true` without `plan` — **two checkout routes exist and they disagree**).
+
+A URL-trigger on that page would technically fire, but it is the wrong build:
+
+- **No value or currency is available** in the URL, so every purchase books at the $1 fallback — the same defect already visible in the 4 recorded conversions.
+- **No transaction id**: `success_url` does not include `{CHECKOUT_SESSION_ID}`, so there is nothing to deduplicate on. With Purchase set to *Count: Every*, a refresh or a bookmarked success URL books another conversion.
+
+The shape that actually works, all three layers:
+
+1. **Code** — add `{CHECKOUT_SESSION_ID}` to `success_url`, verify that session server-side, and push `{ event: 'purchase', value, currency, transaction_id }` to `dataLayer` **once** on the billing page.
+2. **GTM** — a *Google Ads Conversion Tracking* tag using the Purchase conversion ID + label, fired by a **Custom Event** trigger on `purchase`, with value / currency / transaction_id read from dataLayer variables.
+3. **Google Ads** — set Sign-up and Lead form to **Secondary**, leave Purchase **Primary**, change Purchase Count to **One**, remove or disable *Local actions - Directions*, and configure **Enhanced Conversions**.
+
+⚠️ Do not run the paid end-to-end test until at least (1) and (2) are in place — a real payment made now produces no conversion signal and the money is spent for nothing.
+
+---
+
+## §49 — Repo state 2026-08-23: 12 real changes NOT yet pushed — CONFIRMED
+
+`git rev-parse HEAD` == `git rev-parse origin/main` == **`7a0a787`**. Local and remote agree — but the working tree has changes on top of it that are **edited locally only**, not committed, not deployed.
+
+`git status` lists 46 modified files. **34 of them are line-ending churn, not content.** The repo stores LF; the working tree copies are CRLF. Proof: `git diff --ignore-cr-at-eol --numstat` reduces the set to exactly 12 files, and `git -c core.autocrlf=true diff` does the same.
+
+**The 12 files with real changes:**
+
+`SHIJO_AI_KB.md`, `app/ai-compliance/page.tsx`, `app/ai-marketing-tools/page.tsx`, `app/blog/[slug]/page.tsx`, `app/contact/page.tsx`, `app/cookies/page.tsx`, `app/gdpr-compliance/page.tsx`, `app/login/page.tsx`, `app/page.tsx`, `app/privacy/page.tsx`, `app/security/page.tsx`, `app/terms/page.tsx`
+
+That set is the entire §46.6 Ahrefs remediation: the 8 rewritten meta descriptions, `offerCount: '3'` on both AggregateOffer blocks, the `/login` noindex, and OG images on `/ai-marketing-tools` and `/blog/[slug]`. **None of it is live.**
+
+⚠️ **Correction to an earlier claim in §46.6:** `offerCount: '3'` was described as fixed. It is present in `app/page.tsx` locally but is **absent from `HEAD` and absent from the live HTML** — verified by fetching `https://www.shijo.ai/` with a cache-buster and parsing the JSON-LD, which returns `AggregateOffer` with `lowPrice`/`highPrice`/`priceCurrency` and **no `offerCount`**. `highPrice: '199'` *is* live; it was in the commit, `offerCount` was not.
+
+### §49.1 A live 404 in the social tags — FIXED IN WORKING TREE
+
+Verified against the live site: `<meta name="twitter:image" content="https://www.shijo.ai/twitter-image.png">` returns **HTTP 404** (the brand OG image at `/brand/shijo-logo-landscape-1200x300.png` returns 200). Every X/Twitter share of the homepage was rendering a blank `summary_large_image` card.
+
+Source: `lib/seo-config.ts` `generatePageMetadata()` hard-coded `${seoConfig.siteUrl}/twitter-image.png`. There is **no** `public/twitter-image.png` and **no** `app/twitter-image.*` file-convention file. The root layout's correct twitter block never applied to the homepage because **`app/page.tsx` calls `generatePageMetadata('home')`, and a page's own `twitter` block replaces the layout's** — the same non-merging behaviour already documented for `openGraph` in §46.6.
+
+Fixed by pointing it at the same real brand asset the openGraph block uses. `lib/seo-config.ts` is now a **13th** changed file.
+
+### §49.2 Handover commands
+
+The sandbox left a stale `.git/index.lock` it is not permitted to remove, so this must run in Git Bash:
+
+```bash
+cd /path/to/shijo-ai
+rm -f .git/index.lock
+git config core.autocrlf true          # collapses the 34 CRLF-only files out of the diff
+git status --short                     # expect ~13 files, all real changes
+git add -A
+git commit -m "SEO: meta descriptions, offerCount, /login noindex, fix twitter:image 404"
+git push origin main
+```
+
+`core.autocrlf true` is the fix for the churn — without it, `git add -A` commits ~12,000 lines of line-ending noise across files nobody edited, including `middleware.ts`, `lib/auth.ts` and the Stripe webhook handler.

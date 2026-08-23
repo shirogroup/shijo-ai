@@ -24,6 +24,11 @@ const jsonLd = {
     // is "Coming Soon" and deliberately absent from structured data.
     highPrice: '199',
     priceCurrency: 'USD',
+    // Required by Google for AggregateOffer — its absence is what produced the
+    // "rich results validation error" in the Ahrefs audit (2026-08-22).
+    // Free, Standard and Pro are purchasable; Enterprise is "Coming Soon"
+    // and deliberately excluded from the count.
+    offerCount: '3',
   },
   description: 'AI-powered SEO and marketing toolkit with 12 tools for social media, SEO, ads, and email.',
   featureList: [

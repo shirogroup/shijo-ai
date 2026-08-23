@@ -25,6 +25,11 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
     keywords: post.keywords,
     alternates: { canonical: `https://shijo.ai/blog/${post.slug}` },
     openGraph: {
+      // Next.js does NOT merge openGraph field-by-field: a page defining its own
+      // openGraph block replaces the root layout's entirely, images included.
+      // Without this the page ships no og:image at all, which is what Ahrefs
+      // flagged as "Open Graph tags incomplete" (2026-08-22).
+      images: [{ url: '/brand/shijo-logo-landscape-1200x300.png', width: 1200, height: 300 }],
       title: post.title,
       description: post.description,
       url: `https://shijo.ai/blog/${post.slug}`,

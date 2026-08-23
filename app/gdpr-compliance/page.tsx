@@ -5,7 +5,7 @@ import { Footer } from '@/components/Footer';
 export const metadata: Metadata = {
   alternates: { canonical: '/gdpr-compliance' },
   title: 'GDPR Compliance | SHIJO.AI',
-  description: 'How SHIJO.AI complies with the EU General Data Protection Regulation and related privacy laws.',
+  description: 'How SHIJO.AI complies with the EU General Data Protection Regulation, covering your data rights, our sub-processors, transfers, and requests.',
   keywords: ['gdpr compliance', 'ai marketing platform gdpr', 'data privacy ai tools'],
 };
 

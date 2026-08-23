@@ -108,7 +108,12 @@ export function generatePageMetadata(page: keyof typeof seoConfig.pages) {
       card: 'summary_large_image',
       title: pageConfig.title,
       description: pageConfig.description,
-      images: [`${seoConfig.siteUrl}/twitter-image.png`],
+      // Was `/twitter-image.png`, which does not exist in public/ and has
+      // no app/twitter-image file-convention counterpart either — it returned
+      // a verified 404 on the live site (checked 2026-08-23), so every X/Twitter
+      // share of the homepage rendered a blank summary_large_image card.
+      // Pointed at the same real brand asset the openGraph block uses.
+      images: [`${seoConfig.siteUrl}/brand/shijo-logo-landscape-1200x300.png`],
     },
     robots: {
       index: true,

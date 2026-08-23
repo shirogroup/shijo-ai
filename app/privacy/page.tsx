@@ -5,7 +5,7 @@ import { Footer } from '@/components/Footer';
 export const metadata: Metadata = {
   alternates: { canonical: '/privacy' },
   title: 'Privacy Policy | SHIJO.AI',
-  description: 'Privacy Policy for SHIJO.AI - how we collect, use, and protect your data.',
+  description: 'How SHIJO.AI collects, uses, stores and protects your personal data, including our sub-processors and your rights under GDPR and CCPA.',
   keywords: ['shijo.ai privacy policy', 'ai marketing platform data privacy'],
 };
 

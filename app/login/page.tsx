@@ -4,7 +4,11 @@ import LoginForm from '@/components/auth/LoginForm';
 export const metadata = {
   alternates: { canonical: '/login' },
   title: 'Sign In - SHIJO.AI',
-  description: 'Sign in to your SHIJO.AI account',
+  description: 'Sign in to your SHIJO.AI account to access your AI marketing tools, saved work, usage history and billing settings.',
+  // Transactional page with no search value. It was indexable with a 32-char
+  // description and no H1, which is what Ahrefs flagged; noindex is the right
+  // fix rather than adding an H1 to a sign-in form. (2026-08-22)
+  robots: { index: false, follow: true },
 };
 
 export default function LoginPage() {

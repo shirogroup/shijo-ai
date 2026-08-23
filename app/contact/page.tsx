@@ -8,7 +8,7 @@ import { Mail, MapPin, Sparkles, Tag, Rocket, ArrowRight } from 'lucide-react';
 export const metadata: Metadata = {
   alternates: { canonical: '/contact' },
   title: 'Contact | SHIJO.AI',
-  description: 'Get in touch with the SHIJO.AI team — questions, support, or feedback.',
+  description: 'Get in touch with the SHIJO.AI team for questions about our AI marketing tools, billing, technical support, or partnership enquiries.',
   keywords: ['contact shijo.ai', 'ai marketing tools support', 'ai marketing platform contact'],
 };
 

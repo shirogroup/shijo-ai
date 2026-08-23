@@ -5,7 +5,7 @@ import { Footer } from '@/components/Footer';
 export const metadata: Metadata = {
   alternates: { canonical: '/security' },
   title: 'Security | SHIJO.AI',
-  description: 'How SHIJO.AI protects your account, data, and payment information.',
+  description: 'How SHIJO.AI protects your account, data and payments: encryption in transit, session security, access controls, and vulnerability reporting.',
   keywords: ['ai marketing platform security', 'shijo.ai security', 'data security ai tools'],
 };
 
