@@ -1936,3 +1936,168 @@ Meta description lengths as served: home 160, ai-marketing-tools 148, ai-complia
 4. **Ahrefs Site Audit not re-crawled.** The current crawl (10270122, 22 Aug) predates every fix above, so its 72 issues are stale.
 5. **Enhanced Conversions not configured**; GTM container quality still reads Urgent (additional domains detected, single administrator).
 6. **Homepage structured data still advertises AI-visibility features** the site has no footprint for (0 citations across 6 AI platforms).
+
+---
+
+## §51 — Google Ads pass: goal hierarchy, keyword research, ad assets (2026-08-23)
+
+### §51.1 Changes APPLIED in Google Ads — CONFIRMED
+
+Account 643-120-9303, `authuser=1` (`srikanth@shirotechnologies.com`).
+
+| Goal | Before | After | Verified |
+|---|---|---|---|
+| Purchases | Primary | **Primary** (unchanged) | ✅ |
+| Submit lead forms | Primary | **Secondary (observe only)** | ✅ table shows "Primary conversion actions: 0" |
+| Sign-ups | Primary | **Secondary (observe only)** | ✅ |
+| Get directions | Primary | unchanged — **dropdown disabled by Google** | Account default = **Off**, 0 of 1 campaigns → already inert |
+
+⚠️ **Live risk this creates.** Purchase is now the only Primary goal and it has still
+never fired. Google warned on both screens: *"You need at least one primary
+conversion action to bid for this goal."* Performance Max currently has **no usable
+primary conversion signal**. Acceptable only if purchase tracking ships in days.
+If it slips, flip **Sign-ups back to Primary**.
+
+**Purchase Count deliberately left on "Every".** §48 recommended "One" for dedupe.
+Rejected after reading Google's inline guidance (*"Every — recommended for
+purchases because every purchase is valuable"*): SHIJO sells subscriptions, so
+renewals and Standard→Pro upgrades are real repeat purchases. Once
+`transaction_id` ships (§48 step 2) Google dedupes on it, making "Every" both safe
+and correct. "One" would silently under-count renewals.
+
+**Pricing sitelink corrected.** Was *"Free, Pro & Enterprise plans"* — advertised
+Enterprise (which is `price: 'Coming Soon'` in `LandingPageContent.tsx`, not
+purchasable) and omitted **Standard $29** (which is). Same class of bug as the
+retired Enterprise price pulled from JSON-LD on 22 Aug. Now
+**"Free, Standard & Pro plans"**; status *Pending / Under review*. 99 impressions
+and $5.03 had run against the wrong version.
+
+⚠️ **Still unfixed:** long headline *"Scale Your SEO Operations With Our
+Enterprise-Ready AI Platform"* points the same direction while Enterprise is
+unavailable.
+
+### §51.2 The GTM purchase tag Sri believed was added — NOT PRESENT
+
+Container **GTM-NGQVZ78Q** checked directly: still exactly **3 tags**
+(`Conversion Linker`, `Google Ads - Base Tag`, `Google Ads - Sign Up Conversion`),
+all "Last Edited: a month ago". **Workspace Changes: 0. Live version is still
+Version 5, published 18 Jul 2026.** No draft, nothing unpublished. The only other
+container on the second Google account is `aithumbnailgen` (GTM-T6P4KDWK).
+
+Repo re-grepped: the only conversion push anywhere is still
+`dataLayer.push({ event: 'sign_up_complete' })` in `RegisterForm.tsx`. **No purchase
+event at either layer.** §48's blocker stands untouched.
+
+### §51.3 Keyword research — first real Keyword Planner run
+
+Full export of **2,445 keyword ideas** downloaded and analysed row by row (not
+sampled). Saved: `docs/marketing/2026-08-23-google-ads-keyword-research.md` and
+`docs/marketing/2026-08-23-keyword-clusters.csv`.
+
+**Headline finding — no public tool pages.** Only indexable marketing routes are
+`/`, `/ai-marketing-tools`, `/lp`, `/blog`, `/blog/[slug]`, `/contact` + legal.
+All 12 tools sit at `/dashboard/tools/[toolId]` **behind auth**. This
+simultaneously (a) caps Quality Score on any tool-specific keyword, and (b)
+explains the 0 organic keywords in Ahrefs. Highest-leverage fix available.
+
+Cost reality: 604 relevant keywords; **532 have no bid data at all**. Median
+top-of-page high by theme — Email Sequence **$93.78**, Platform/category $36.69,
+Ad Copy $25.30, Keyword Research $24.44, SEO Meta $13.65, Captions $5.19.
+**Only 8 keywords are simultaneously buyer-intent, 3+ words, ≤$20 and ≥50/mo.**
+
+Buy: **Cluster A (SEO meta description)** — 40 kws, 4,250/mo, best intent/cost;
+`meta description writer` $0.16–$9.01 is the single best entry point.
+**Cluster B (caption/hashtag)** — 30,500/mo at $1–$7 but free-tool intent;
+unjustifiable until purchase tracking can measure it.
+88 negative keywords mined (without them `wedding hashtag generator`, 5,000/mo at
+$2.89, eats the budget).
+
+**Dynamic keyword features ruled out:** DKI needs a Search campaign with keywords
+(only campaign is PMax, no keywords). DSA is being retired into AI Max
+(new creation ends ~Sept 2026, sunset Feb 2027).
+
+### §51.4 Ad image assets — created, NOT yet uploaded
+
+Asset group "Asset Group 1" had **3 images** (2048×1069 horizontal with 133
+impressions and **0 clicks**; 1150×1150 square; 920×1150 vertical), all from
+18 Jul. Ad strength **Average**. Google's banner: *"Add 3 more horizontal images,
+3 more square images, 1 more vertical (4:5) image to reach Excellent."*
+Also flagged: **"No audience signals provided."**
+
+Seven brand graphics built to those exact specs and committed to
+**`public/brand/ads/`** (#DC0019 / #0a0a0a / white, real landscape logo and icon,
+Poppins). Every claim verified against code before use: 12 tools
+(`lib/tools/registry.ts`), 2 free tools, no credit card, categories
+social/seo/ads/email. No fabricated screenshots, no invented stats.
+
+**Not uploaded to Google Ads.** Awaiting sign-off.
+
+### §51.5 Ad images UPLOADED — CONFIRMED live
+
+All 7 brand graphics uploaded to Asset Group 1 (Performance Max, "CamShijo AI
+Landing Page"). Asset group went **4 → 11 images**; Google's panel changed from
+*"Add 3 more horizontal, 3 more square, 1 more vertical"* to **"You have enough
+images to reach Excellent ad strength."** Status now *Pending — asset group under
+review*, Ad strength *Pending* (normal after adding assets; recheck in ~24h).
+
+Final URL on the asset group is `https://www.shijo.ai/ai-marketing-tools` (www, correct).
+
+### §51.6 ⚠️ TWO FABRICATED CLAIMS FOUND IN LIVE AD HEADLINES — NOT YET FIXED
+
+Found while editing the asset group. Both are live PMax headlines and both are
+**contradicted by the code**:
+
+1. **"Get Started With 5 Free Tools"** — `lib/tools/registry.ts` has exactly **two**
+   entries with `minPlan: 'free'` (lines 60 and 110), and `getFreeTools()` filters
+   on exactly that. Every other surface says "2 tools free forever". **The ad says 5.**
+
+2. **"AI Search Visibility Tracking"** — `app/dashboard/ai-visibility/page.tsx`
+   renders *"…coming soon"* with a **waitlist** button posting to
+   `/api/dashboard/ai-visibility-waitlist`. There is no tracking feature. This is
+   the same fabricated "AI visibility tracking" claim already flagged in §46 for
+   homepage metadata — it also exists in ad copy, and was missed then.
+
+Same family as the Enterprise sitelink fixed in §51.1. Recommend rewriting both.
+`View more` on the headline list was not exhausted — **the remaining headlines have
+not all been audited for accuracy.**
+
+### §51.7 Ad copy accuracy audit — 3 fixes applied, full inventory recorded
+
+**Fixed and saved** (asset group re-entered review):
+
+| Was | Now | Why |
+|---|---|---|
+| Headline "Get Started With 5 Free Tools" | **"Start With 2 Free AI Tools"** | `registry.ts` has exactly 2 `minPlan: 'free'` entries |
+| Headline "AI Search Visibility Tracking" | **"AI Overview Optimizer Tool"** | AI-visibility page is a *waitlist* ("coming soon"); AI Overview Optimizer is a real registry tool |
+| Long headline "…With Our Enterprise-Ready AI Platform" | **"Scale Your SEO Operations With 12 AI Tools In One Platform"** | Enterprise plan is not purchasable |
+
+**Full asset inventory audited against code (2026-08-23):**
+
+Headlines (15) — remainder all puffery, no factual claims: Dominate AI Search & SEO ·
+Boost Your SEO & Rankings · Scale Your SEO Operations · Manage Client SEO Campaigns ·
+12 AI Marketing Tools · 12 Tools In One Platform · Your AI Marketing Hub ·
+AI-Powered Marketing Suite · AI-Powered Content Creation · Unlock The Power Of AI ·
+AI-First SaaS & Tech Solutions · Get Ad Copy In Seconds. "12" verified = 12 registry tools.
+
+Long headlines (5) and Descriptions (5) — "12 AI tools" and "2 free tools" claims
+verified correct.
+
+⚠️ **One soft issue left, not changed:** description 2 says *"Start your free trial."*
+SHIJO has a **free tier** (2 tools, forever), not a time-limited trial. Minor, but
+"trial" implies expiry. Flagged, not fixed.
+
+Sitelinks (6) all verified accurate after the §51.1 Pricing fix.
+
+**Not audited:** callouts, the lead form, and the account-level call asset
+(800) 971-8013.
+
+### §51.8 Open items after this session
+
+1. **Purchase event still does not exist** — the single biggest blocker (§48, §51.2).
+   Purchase is the only Primary goal, so PMax currently optimises on nothing.
+2. **No public tool pages** — caps paid Quality Score and explains 0 organic keywords (§51.3).
+3. **No audience signals** on the PMax asset group.
+4. **Enhanced Conversions** not configured.
+5. **GTM container quality "Urgent"** — additional domains detected, single administrator.
+6. Two checkout routes disagree on `&plan=` (§48).
+7. Ahrefs Site Audit not re-crawled since the SEO fixes went live.
