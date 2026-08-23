@@ -6,6 +6,7 @@ import { eq } from 'drizzle-orm';
 import crypto from 'crypto';
 import { sendEmail, buildWelcomeEmail } from '@/lib/email';
 import { consumeRateLimit, clientIpFrom, pruneRateLimits } from '@/lib/rate-limit';
+import { isIpBlocked } from '@/lib/blocklist';
 import { CURRENT_TERMS_VERSION, CURRENT_PRIVACY_VERSION } from '@/lib/legal';
 import { serverErrorResponse } from '@/lib/api/errors';
 
@@ -72,6 +73,21 @@ export async function POST(req: NextRequest) {
     if (!originOk) {
       console.warn('[REGISTER][BLOCKED] Bad or missing Origin. origin=%s ip=%s', origin || '(none)', ip);
       // Deliberately generic — don't tell an attacker which control tripped.
+      return NextResponse.json({ error: 'Registration failed' }, { status: 403 });
+    }
+
+    const userAgent = req.headers.get('user-agent') || 'unknown';
+
+    // ── Admin-managed blocklist. Invisible to real users. ──
+    // Checked before ANY work is done — no DB write, no email, no account.
+    // Fails open if the table is missing or the DB is unreachable
+    // (see lib/blocklist.ts). Supports IPv4 CIDR, because the 2026-08 abuse
+    // ran from cloud ranges where single addresses rotate for free.
+    const blocked = await isIpBlocked(ip);
+    if (blocked.blocked) {
+      console.warn('[REGISTER][BLOCKED_IP] ip=%s matched=%s', ip, blocked.matchedEntry);
+      // Same deliberately generic response as the origin check — never tell
+      // an attacker which control stopped them.
       return NextResponse.json({ error: 'Registration failed' }, { status: 403 });
     }
 
@@ -196,6 +212,10 @@ export async function POST(req: NextRequest) {
       passwordHash,
       name: safeName || null,
       planTier: 'free',
+      // Kept on the user row deliberately — see db/schema.ts. Purging abuse
+      // accounts previously cascaded away every attacker IP (KB §44.5).
+      signupIp: ip,
+      signupUserAgent: userAgent,
       emailVerificationToken,
       emailVerificationSentAt: new Date(),
     }).returning();
@@ -203,7 +223,6 @@ export async function POST(req: NextRequest) {
     // Record Terms/Privacy acceptance — append-only audit row, captures
     // the exact document versions in effect and best-effort IP/UA.
     const ipAddress = ip;
-    const userAgent = req.headers.get('user-agent') || 'unknown';
     const acceptedAt = new Date();
 
     await db.insert(termsAcceptances).values({

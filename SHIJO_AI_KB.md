@@ -1,6 +1,6 @@
 # SHIJO.AI — Knowledge Base / Status Reference
 
-**Last updated:** 2026-08-22 (§44 spam fix DEPLOYED to prod (963924f) but NOT yet proven live — no signup since deploy; test signup needed. §43 email infra: inbound RESTORED, legal@shijo.ai confirmed Delivered. Signup-throttle migration still not run; abuse user rows not purged)
+**Last updated:** 2026-08-22 (§45 abuse hardening built — signup IP/UA retention, blocked_ips + admin /admin/signups review. ⚠️ ONE MANUAL STEP LEFT: drop terms_acceptances_user_id_fkey in Neon, the migration missed it and CASCADE still wins. §43 email infra live; §44 spam fix deployed, awaiting a test signup to prove)
 
 ## 0. Vercel secret rotation — RESOLVED, was a false alarm (originally flagged 2026-07-17, closed 2026-07-19)
 
@@ -1536,3 +1536,89 @@ The **app-level signup throttle is still inactive**: `docs/manual-db-changes/202
 - ❌ App-level IP+email throttle — code deployed, table missing, failing open
 
 Also still not done: the abuse-created user rows in Neon have not been purged (§38.2).
+
+### 44.5 ⚠️ Attacker IPs are NOT recoverable — and the current "Denied" traffic is unrelated
+
+Sri deleted the abuse rows (**373,147 of them** — far more than the ~116k the Resend log implied, so the abuse ran well beyond the 2026-08-20/21 email flood, likely for months). Two consequences:
+
+**1. The IP evidence is gone.** `terms_acceptances.user_id` is `ON DELETE CASCADE` (§41.3), so deleting the users destroyed the acceptance rows that held `ip_address` and `user_agent`. This is exactly the risk §41.3 flagged, and it has now materialised.
+
+**2. Vercel can't fill the gap.** Firewall traffic retention on the **Hobby** plan is **Past Day** maximum (options are Live / Past Hour / Past Day). The attack window is two days old and no longer queryable.
+
+**⚠️ Do NOT mistake the current denials for the spammer.** Past-day firewall shows Denied 222, but breaking it down:
+
+- **Rules hit: `DDoS Mitigation` 219, `managed_crawler_ruleset` 3** — i.e. Vercel's *automatic* protection, **not** the `10R-10M-IP` custom rule, which shows **zero** rate-limited hits.
+- **Top request paths: `/wp-admin/install.php` (12), `/login`, `/admin.php`, `/this_is_a_new_hello_world.php`, `/wp-content/plugins/hellopress/wp_filemanager.php`** — generic WordPress vulnerability scanners.
+- One "user agent" is literally `http://shijo.ai/wp-admin/install.php?step=1` — a malformed scanner.
+- **`/api/auth/register` does not appear in the denied traffic at all.**
+
+So those IPs (`172.212.194.58`, `158.158.100.150`, …) are **internet background noise, not the signup spammer**. Blocking them would accomplish nothing against this attacker.
+
+**Conclusion: no signup abuse is visible in the last 24 hours, and there is no attacker IP list to block.** Retroactive IP blocking is not available and would not be durable anyway — the attack ran from Azure ranges, which rotate freely and cost the attacker nothing to change.
+
+### 44.6 What actually prevents recurrence
+
+IP blocklists are the weakest control here. In priority order:
+
+1. **Already live and decisive:** the constant welcome subject. The attacker's goal was placing ad copy in a subject line; that channel no longer exists, so the exploit has no payoff regardless of IPs.
+2. **Already live:** `name` validation, HTML escaping, same-origin check, Vercel WAF 10 req/10 min per IP → Deny.
+3. **Not yet live — run the migration:** `docs/manual-db-changes/2026-08-22-signup-throttle.sql`. Adds per-IP *and* per-email throttling, which is what catches a distributed run that per-IP WAF rules miss.
+4. **Needed for next time — retain the evidence.** Add `signup_ip` / `signup_user_agent` to `users` directly, and change `terms_acceptances.user_id` to `ON DELETE SET NULL`. Without this, the next incident is equally blind.
+5. **Admin review + app-level blocklist.** Vercel Hobby allows only 3 custom firewall rules, so a growing IP/CIDR blocklist cannot live there — it needs to be a DB table the admin panel manages and the register route checks.
+6. **Bot Protection Log → Challenge**, once `/api/webhooks/stripe` has a bypass rule (§41.2).
+
+---
+
+## 45. Abuse hardening build — schema, blocklist, admin signups review (2026-08-22)
+
+Built at Sri's request after the 373,147-account cleanup (§44.5), one step at a time. **Edited locally; Sri pushes via Git Bash.**
+
+### 45.1 ⚠️ CRITICAL — the migration's constraint drop MISSED, verified live in Neon
+
+Sri ran the migration and Neon reported: *Constraint "terms_acceptances_user_id_users_id_fk" of relation "terms_acceptances" does not exist, skipping.*
+
+Queried `pg_constraint` directly in the Neon SQL editor. **Two foreign keys existed on `terms_acceptances.user_id`:**
+
+| Constraint | `confdeltype` | Meaning |
+|---|---|---|
+| `terms_acceptances_user_id_fkey` | `c` | **CASCADE** — the original, still active |
+| `terms_acceptances_user_id_users_id_fk` | `n` | SET NULL — added by the migration |
+
+**Root cause:** the original constraint was created by Postgres under its own default naming (`<table>_<column>_fkey`), not Drizzle's `<table>_<column>_<reftable>_<refcol>_fk` convention that the migration assumed. `DROP CONSTRAINT IF EXISTS` matched nothing and silently skipped.
+
+**Why this matters:** when two foreign keys exist on the same column, **CASCADE wins**. The fix appeared to succeed while changing nothing — deleting a user would still destroy the acceptance record and its IP.
+
+**The migration file has been corrected** to drop *both* names. **Still outstanding on the live database** — attempting the DDL through browser automation was blocked by a safety classifier, so Sri must run:
+
+```sql
+ALTER TABLE terms_acceptances DROP CONSTRAINT terms_acceptances_user_id_fkey;
+-- verify: expect exactly ONE row, confdeltype = 'n'
+SELECT conname, confdeltype FROM pg_constraint
+ WHERE conrelid = 'terms_acceptances'::regclass AND contype = 'f';
+```
+
+**Lesson worth carrying:** never trust `DROP CONSTRAINT IF EXISTS` with a guessed name. `IF EXISTS` converts a wrong guess into a silent no-op. Always confirm against `pg_constraint` afterwards.
+
+### 45.2 What was built
+
+**`db/schema.ts`**
+- `users.signupIp` + `users.signupUserAgent` — signup origin stored on the user row, so triage survives cleanup of related tables. Indexes on `signup_ip` and `created_at`.
+- `terms_acceptances.userId` → nullable, `ON DELETE SET NULL`.
+- New `blockedIps` table — address or CIDR, reason, added-by, hit count, last hit.
+
+**`lib/blocklist.ts`** (new) — `isIpBlocked()` and `ipMatches()`. Real IPv4 CIDR matching; IPv6 exact-match only, documented. **Fails open**, same contract as `lib/rate-limit.ts`. Verified 9/9 against a runtime test including `20.151.129.194` ∈ `20.151.0.0/16` (the Azure shape the abuse actually used).
+
+**`app/api/auth/register/route.ts`** — blocklist checked immediately after the origin check, before any DB write or email; generic 403 so an attacker learns nothing; signup IP + user agent persisted. Final order: origin → blocklist → validation → duplicate → throttle → insert.
+
+**`app/api/admin/signups/route.ts`** (new) — GET returns recent signups with flags, IP clusters (3+ accounts on one address, all time) and the blocklist; POST adds an entry; DELETE removes one. Every handler re-checks `isAdmin` **against the database**, never the JWT, per §3/§13. POST refuses a range covering the admin's own current IP so nobody can lock themselves out.
+
+**`app/admin/signups/page.tsx`** (new) — dark theme matching the existing admin pages, summary tiles, flagged-only filter, search, one-click block from either a cluster or an individual signup. A "Signups" link was added to the nav on the Users, Tickets and Terms pages so it is reachable.
+
+### 45.3 Verification
+
+- TypeScript: **no syntax errors** across all five files. Remaining standalone diagnostics are artifacts of checking outside the project tsconfig — `TS7031` on pre-existing `relations()` lines, and `TS2550` on `.finally()` which the real config supports via `"lib": ["esnext"]` (and which `app/admin/users/page.tsx` already uses in production).
+- CIDR matcher: 9/9 runtime cases including boundary, `/0`, IPv6 and malformed input.
+
+### 45.4 Known limitation
+
+IP clustering only sees accounts created **after** this ships — older rows have no `signup_ip`. The page states this rather than showing a misleadingly empty result.

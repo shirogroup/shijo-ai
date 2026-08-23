@@ -26,12 +26,23 @@ export const users = pgTable('users', {
   emailVerificationSentAt: timestamp('email_verification_sent_at'),
   emailVerifiedAt: timestamp('email_verified_at'),
   emailVerifiedIp: varchar('email_verified_ip', { length: 64 }),
+  // Signup origin, captured at registration and stored ON THE USER ROW
+  // (added 2026-08-22). This duplicates termsAcceptances.ipAddress on
+  // purpose: during the abuse cleanup, deleting users cascaded away the
+  // acceptance rows and with them every attacker IP, leaving the incident
+  // un-investigable (KB §44.5). Keeping a copy here means abuse triage
+  // survives as long as the account does, and the admin signups review
+  // (app/admin/signups) has something to cluster on.
+  signupIp: varchar('signup_ip', { length: 64 }),
+  signupUserAgent: text('signup_user_agent'),
   createdAt: timestamp('created_at').defaultNow().notNull(),
   updatedAt: timestamp('updated_at').defaultNow().notNull(),
 }, (table) => ({
   emailIdx: index('idx_users_email').on(table.email),
   stripeIdx: index('idx_users_stripe').on(table.stripeCustomerId),
   emailVerificationTokenIdx: index('idx_users_email_verification_token').on(table.emailVerificationToken),
+  signupIpIdx: index('idx_users_signup_ip').on(table.signupIp),
+  createdAtIdx: index('idx_users_created_at').on(table.createdAt),
 }));
 
 // Audit log of Terms of Service / Privacy Policy acceptances.
@@ -41,7 +52,14 @@ export const users = pgTable('users', {
 // from this table.
 export const termsAcceptances = pgTable('terms_acceptances', {
   id: uuid('id').primaryKey().defaultRandom(),
-  userId: uuid('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
+  // NULLABLE with ON DELETE SET NULL, changed 2026-08-22. It was previously
+  // NOT NULL + ON DELETE CASCADE, which meant deleting a user destroyed
+  // their Terms-acceptance record — and the person most likely to dispute
+  // having agreed is a FORMER user. It also destroyed the signup IP and
+  // user agent: purging 373,147 abuse accounts erased the entire attacker
+  // trail in one statement (KB §41.3, §44.5). The row now survives with
+  // email, versions, IP, user agent and timestamp intact.
+  userId: uuid('user_id').references(() => users.id, { onDelete: 'set null' }),
   email: varchar('email', { length: 255 }).notNull(),
   name: varchar('name', { length: 255 }),
   termsVersion: varchar('terms_version', { length: 20 }).notNull(),
@@ -527,6 +545,28 @@ export const rateLimits = pgTable('rate_limits', {
   windowStart: timestamp('window_start').defaultNow().notNull(),
   createdAt: timestamp('created_at').defaultNow().notNull(),
 });
+
+// Admin-managed blocklist for abusive signup sources (added 2026-08-22).
+//
+// Lives in the database, NOT in Vercel's firewall, for a concrete reason:
+// the project is on Vercel's Hobby plan, which allows only 3 custom
+// firewall rules total (1 already spent on the /api/auth/register rate
+// limit — KB §41.1). A blocklist that grows over time cannot live there.
+// Checked by app/api/auth/register/route.ts on every signup attempt.
+//
+// Supports a bare IPv4/IPv6 address or a CIDR prefix (e.g. "20.151.0.0/16"),
+// because abuse runs from cloud ranges where single addresses rotate freely.
+export const blockedIps = pgTable('blocked_ips', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  ipAddress: varchar('ip_address', { length: 64 }).notNull().unique(),
+  reason: text('reason'),
+  createdBy: uuid('created_by').references(() => users.id, { onDelete: 'set null' }),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  lastHitAt: timestamp('last_hit_at'),
+  hitCount: integer('hit_count').default(0).notNull(),
+}, (table) => ({
+  ipIdx: index('idx_blocked_ips_ip').on(table.ipAddress),
+}));
 
 // Abuse throttle for UNAUTHENTICATED public endpoints (added 2026-08-22).
 //

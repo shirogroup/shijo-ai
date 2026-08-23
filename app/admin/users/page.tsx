@@ -131,6 +131,7 @@ export default function AdminUsersPage() {
     <div className="p-6 md:p-10 max-w-6xl mx-auto">
       <div className="flex gap-4 mb-6 text-sm">
         <span className="text-white font-medium border-b-2 border-shiro-red pb-1">Users</span>
+        <a href="/admin/signups" className="text-gray-400 hover:text-white pb-1">Signups</a>
         <a href="/admin/tickets" className="text-gray-400 hover:text-white pb-1">Support Tickets</a>
         <a href="/admin/terms" className="text-gray-400 hover:text-white pb-1">Terms Acceptances</a>
       </div>

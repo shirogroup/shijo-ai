@@ -103,6 +103,7 @@ export default function AdminTicketsPage() {
     <div className="p-6 md:p-10 max-w-5xl mx-auto">
       <div className="flex gap-4 mb-6 text-sm">
         <a href="/admin/users" className="text-gray-400 hover:text-white pb-1">Users</a>
+        <a href="/admin/signups" className="text-gray-400 hover:text-white pb-1">Signups</a>
         <span className="text-white font-medium border-b-2 border-shiro-red pb-1">Support Tickets</span>
         <a href="/admin/terms" className="text-gray-400 hover:text-white pb-1">Terms Acceptances</a>
       </div>
