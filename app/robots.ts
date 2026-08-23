@@ -25,6 +25,6 @@ export default function robots(): MetadataRoute.Robots {
         allow: '/',
       },
     ],
-    sitemap: 'https://shijo.ai/sitemap.xml',
+    sitemap: 'https://www.shijo.ai/sitemap.xml',
   };
 }

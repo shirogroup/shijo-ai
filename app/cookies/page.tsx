@@ -3,6 +3,7 @@ import { Header } from '@/components/Header';
 import { Footer } from '@/components/Footer';
 
 export const metadata: Metadata = {
+  alternates: { canonical: '/cookies' },
   title: 'Cookie Policy | SHIJO.AI',
   description: 'Cookie Policy for SHIJO.AI - how we use cookies and similar technologies.',
   keywords: ['shijo.ai cookie policy', 'ai marketing platform cookies'],

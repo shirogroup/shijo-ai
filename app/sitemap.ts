@@ -2,7 +2,9 @@ import { MetadataRoute } from 'next';
 import { posts } from '@/lib/blog/posts';
 
 export default function sitemap(): MetadataRoute.Sitemap {
-  const baseUrl = 'https://shijo.ai';
+  // Canonical host. The bare apex 307-redirects to www, so listing apex
+// URLs in the sitemap points crawlers at redirects instead of final URLs.
+const baseUrl = 'https://www.shijo.ai';
 
   const blogEntries: MetadataRoute.Sitemap = [
     {

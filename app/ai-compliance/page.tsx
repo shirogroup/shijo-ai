@@ -3,6 +3,7 @@ import { Header } from '@/components/Header';
 import { Footer } from '@/components/Footer';
 
 export const metadata: Metadata = {
+  alternates: { canonical: '/ai-compliance' },
   title: 'AI Compliance | SHIJO.AI',
   description: 'How SHIJO.AI approaches AI transparency, the EU AI Act, and responsible use of AI-generated content.',
   keywords: ['ai compliance', 'eu ai act compliance', 'ai transparency', 'responsible ai marketing tools'],

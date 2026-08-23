@@ -3,7 +3,7 @@
 
 export const seoConfig = {
   siteName: 'SHIJO.ai',
-  siteUrl: 'https://shijo.ai',
+  siteUrl: 'https://www.shijo.ai',
   defaultTitle: 'SHIJO.AI - AI Marketing Tools for SEO, Ads, Email & Social',
   defaultDescription: 'AI-powered marketing platform with 12 tools for keyword research, content generation, ad copy, and email. 2 tools free forever, no credit card required.',
 
@@ -33,25 +33,25 @@ export const seoConfig = {
       title: 'SHIJO.AI - AI Marketing Tools for SEO, Ads, Email & Social',
       description: 'AI-powered SEO and marketing platform with 12 tools for keyword research, content generation, ad copy, and email. 2 tools free forever, no credit card required.',
       keywords: ['AI SEO tools', 'keyword research tool', 'AI marketing tools'],
-      canonical: 'https://shijo.ai',
+      canonical: 'https://www.shijo.ai',
     },
     features: {
       title: 'AI SEO Features | Keyword Research, Clustering & Search Volume Analysis - SHIJO.ai',
       description: 'Explore SHIJO.ai\'s AI-powered SEO features: automated keyword research, clustering, intent classification, search volume checking, SERP analysis, and rank tracking. Enterprise-grade SEO tools.',
       keywords: ['keyword research', 'keyword clustering', 'search volume checker', 'keyword difficulty'],
-      canonical: 'https://shijo.ai/features',
+      canonical: 'https://www.shijo.ai/features',
     },
     pricing: {
       title: 'AI Marketing Tools Pricing | Free, Pro & Enterprise Plans - SHIJO.ai',
       description: 'Simple pricing for AI-powered marketing tools. Free plan with 2 tools and 3 generations/day. Standard at $29/mo or Pro at $199/mo unlocks all 12 tools with advanced AI models.',
       keywords: ['AI marketing tools pricing', 'keyword research tool cost', 'affordable SEO software'],
-      canonical: 'https://shijo.ai/pricing',
+      canonical: 'https://www.shijo.ai/pricing',
     },
     dashboard: {
       title: 'SEO Dashboard | Keyword Tracking & Analytics - SHIJO.ai',
       description: 'Comprehensive SEO dashboard for tracking keywords, monitoring rankings, analyzing SERP performance, and measuring AI search visibility. Real-time SEO analytics.',
       keywords: ['SEO dashboard', 'keyword tracking', 'rank monitoring', 'SEO analytics'],
-      canonical: 'https://shijo.ai/dashboard',
+      canonical: 'https://www.shijo.ai/dashboard',
     },
   },
   
@@ -60,8 +60,10 @@ export const seoConfig = {
     '@context': 'https://schema.org',
     '@type': 'Organization',
     name: 'SHIRO Technologies LLC',
-    url: 'https://shijo.ai',
-    logo: 'https://shijo.ai/logo.png',
+    url: 'https://www.shijo.ai',
+    // Was /logo.png, which does not exist in public/ — the Organization
+    // structured data has been advertising a 404 logo to crawlers.
+    logo: 'https://www.shijo.ai/brand/shijo-logo-square-1200.png',
     sameAs: [
       'https://twitter.com/shijoai',
       'https://linkedin.com/company/shijo-ai',
@@ -91,10 +93,13 @@ export function generatePageMetadata(page: keyof typeof seoConfig.pages) {
       description: pageConfig.description,
       url: pageConfig.canonical,
       siteName: seoConfig.siteName,
+      // Was `${seoConfig.siteUrl}/og-image.png`, which does not exist in
+      // public/ — the homepage has been advertising a 404 as its social
+      // preview image. Pointed at the real brand asset 2026-08-22.
       images: [{
-        url: `${seoConfig.siteUrl}/og-image.png`,
+        url: `${seoConfig.siteUrl}/brand/shijo-logo-landscape-1200x300.png`,
         width: 1200,
-        height: 630,
+        height: 300,
       }],
       locale: 'en_US',
       type: 'website',

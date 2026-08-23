@@ -18,21 +18,40 @@ const inter = Inter({ subsets: ["latin"] });
 // the legal/compliance pages. Rewritten 2026-07-18 to match the real
 // 12-tool product and the corrected copy already used in lib/seo-config.ts.
 export const metadata: Metadata = {
+  // metadataBase was MISSING entirely until 2026-08-22. Without it Next.js
+  // cannot resolve relative Open Graph / Twitter image URLs and emits a build
+  // warning on every deploy. It must be the CANONICAL host: shijo.ai issues a
+  // 307 to www.shijo.ai, so anything pointing at the bare apex advertises a
+  // redirecting URL to crawlers and social scrapers.
+  metadataBase: new URL("https://www.shijo.ai"),
+  alternates: { canonical: "/" },
   title: "SHIJO.AI - AI Marketing Tools for SEO, Ads, Email & Social",
   description: "AI-powered marketing platform with 12 tools for keyword research, content generation, ad copy, and email. 2 tools free forever, no credit card required.",
   keywords: "AI marketing tools, AI SEO tools, keyword research, ad copy generator, email sequence generator, social media caption generator",
   openGraph: {
     title: "SHIJO.AI - AI Marketing Tools for SEO, Ads, Email & Social",
     description: "AI-powered marketing platform with 12 tools for keyword research, content generation, ad copy, and email.",
-    url: "https://shijo.ai",
+    url: "https://www.shijo.ai",
     siteName: "SHIJO.AI",
     locale: "en_US",
     type: "website",
+    // Without an image the Twitter card below ("summary_large_image") renders
+    // blank on every share. 1200x300 is the widest brand asset that exists;
+    // a purpose-made 1200x630 would be better and is worth producing.
+    images: [
+      {
+        url: "/brand/shijo-logo-landscape-1200x300.png",
+        width: 1200,
+        height: 300,
+        alt: "SHIJO.AI - AI Marketing Tools",
+      },
+    ],
   },
   twitter: {
     card: "summary_large_image",
     title: "SHIJO.AI - AI Marketing Tools for SEO, Ads, Email & Social",
     description: "AI-powered marketing platform with 12 tools for keyword research, content generation, ad copy, and email.",
+    images: ["/brand/shijo-logo-landscape-1200x300.png"],
   },
   robots: {
     index: true,
@@ -79,6 +98,24 @@ export default function RootLayout({
             });
           `}
         </Script>
+        {/* Ahrefs Web Analytics (added 2026-08-22).
+            Installed directly instead of through GTM: it then loads even if
+            GTM is blocked, mis-tagged, or fails — and the GTM container has
+            its own outstanding conversion-tracking problem. The data-key is a
+            public site identifier, not a secret, and is meant to appear in
+            client HTML.
+
+            Deliberately NOT gated behind the cookie banner: Ahrefs Web
+            Analytics is cookieless and sets no client-side storage, so it does
+            not require prior consent the way analytics_storage / ad_storage
+            do. It is still a third-party processor and has been added to the
+            sub-processor lists in /privacy and /gdpr-compliance accordingly. */}
+        <Script
+          id="ahrefs-analytics"
+          src="https://analytics.ahrefs.com/analytics.js"
+          data-key="H2EA8pp7UdLLwtAcYkdr2A"
+          strategy="afterInteractive"
+        />
         {/* Google Tag Manager */}
         <Script id="google-tag-manager" strategy="afterInteractive">
           {`

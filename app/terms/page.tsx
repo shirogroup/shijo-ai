@@ -3,6 +3,7 @@ import { Header } from '@/components/Header';
 import { Footer } from '@/components/Footer';
 
 export const metadata: Metadata = {
+  alternates: { canonical: '/terms' },
   title: 'Terms of Service | SHIJO.AI',
   description: 'Terms of Service for SHIJO.AI - AI-powered SEO and marketing platform.',
   keywords: ['shijo.ai terms of service', 'ai marketing platform terms'],

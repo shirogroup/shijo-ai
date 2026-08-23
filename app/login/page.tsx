@@ -2,6 +2,7 @@ import { Suspense } from 'react';
 import LoginForm from '@/components/auth/LoginForm';
 
 export const metadata = {
+  alternates: { canonical: '/login' },
   title: 'Sign In - SHIJO.AI',
   description: 'Sign in to your SHIJO.AI account',
 };

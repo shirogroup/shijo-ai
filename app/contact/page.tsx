@@ -6,6 +6,7 @@ import { ContactForm } from '@/components/contact/ContactForm';
 import { Mail, MapPin, Sparkles, Tag, Rocket, ArrowRight } from 'lucide-react';
 
 export const metadata: Metadata = {
+  alternates: { canonical: '/contact' },
   title: 'Contact | SHIJO.AI',
   description: 'Get in touch with the SHIJO.AI team — questions, support, or feedback.',
   keywords: ['contact shijo.ai', 'ai marketing tools support', 'ai marketing platform contact'],

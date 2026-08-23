@@ -1,5 +1,16 @@
+import type { Metadata } from 'next';
 import Link from 'next/link';
 import { RegisterForm } from '@/components/auth/RegisterForm';
+
+// Added 2026-08-22. These public pages previously exported no metadata at
+// all, so all three inherited the root layout's title and description —
+// three indexable URLs sharing one <title>. They are transactional pages
+// with no search value, so they are also explicitly noindex.
+export const metadata: Metadata = {
+  title: 'Create your account | SHIJO.AI',
+  description: 'Create a free SHIJO.AI account and start using 2 AI marketing tools free forever, no credit card required.',
+  robots: { index: false, follow: true },
+};
 
 export default function RegisterPage() {
   return (

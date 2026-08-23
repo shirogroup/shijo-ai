@@ -3,6 +3,7 @@ import { Header } from '@/components/Header';
 import { Footer } from '@/components/Footer';
 
 export const metadata: Metadata = {
+  alternates: { canonical: '/privacy' },
   title: 'Privacy Policy | SHIJO.AI',
   description: 'Privacy Policy for SHIJO.AI - how we collect, use, and protect your data.',
   keywords: ['shijo.ai privacy policy', 'ai marketing platform data privacy'],
@@ -100,6 +101,7 @@ export default function PrivacyPage() {
                 <li><strong>Vercel</strong> — application hosting and infrastructure.</li>
                 <li><strong>Neon</strong> — database hosting.</li>
                 <li><strong>Google Analytics</strong> — aggregate website usage analytics.</li>
+                <li><strong>Ahrefs</strong> — cookieless website analytics and SEO measurement.</li>
               </ul>
               <p className="text-gray-700 leading-relaxed mt-4">
                 We may also disclose information where required by law, to protect our rights or the safety

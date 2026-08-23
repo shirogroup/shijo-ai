@@ -3,6 +3,7 @@ import { Header } from '@/components/Header';
 import { Footer } from '@/components/Footer';
 
 export const metadata: Metadata = {
+  alternates: { canonical: '/gdpr-compliance' },
   title: 'GDPR Compliance | SHIJO.AI',
   description: 'How SHIJO.AI complies with the EU General Data Protection Regulation and related privacy laws.',
   keywords: ['gdpr compliance', 'ai marketing platform gdpr', 'data privacy ai tools'],
@@ -78,6 +79,7 @@ export default function GdprCompliancePage() {
                 <li><strong>Vercel</strong> &mdash; application hosting and infrastructure.</li>
                 <li><strong>Neon</strong> &mdash; database hosting.</li>
                 <li><strong>Google Analytics</strong> &mdash; aggregate website usage analytics.</li>
+                <li><strong>Ahrefs</strong> &mdash; cookieless website analytics and SEO measurement.</li>
               </ul>
             </section>
 

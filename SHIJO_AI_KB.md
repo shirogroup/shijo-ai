@@ -1,6 +1,6 @@
 # SHIJO.AI — Knowledge Base / Status Reference
 
-**Last updated:** 2026-08-22 (§45 abuse hardening built — signup IP/UA retention, blocked_ips + admin /admin/signups review. ⚠️ ONE MANUAL STEP LEFT: drop terms_acceptances_user_id_fkey in Neon, the migration missed it and CASCADE still wins. §43 email infra live; §44 spam fix deployed, awaiting a test signup to prove)
+**Last updated:** 2026-08-22 (§46 SEO fixed — metadataBase was missing, OG image + Organization logo were 404s, canonical host was the redirecting apex; §46.4 the Keyword Planner export is agency-intent and NOT usable. §45 abuse hardening LIVE as 29d31a5. ⚠️ still manual: drop terms_acceptances_user_id_fkey in Neon)
 
 ## 0. Vercel secret rotation — RESOLVED, was a false alarm (originally flagged 2026-07-17, closed 2026-07-19)
 
@@ -1622,3 +1622,65 @@ SELECT conname, confdeltype FROM pg_constraint
 ### 45.4 Known limitation
 
 IP clustering only sees accounts created **after** this ships — older rows have no `signup_ip`. The page states this rather than showing a misleadingly empty result.
+
+---
+
+## 46. SEO audit and fixes (2026-08-22)
+
+Triggered by a Vercel SEO warning. **Note:** the two items under Vercel's "Deployment Settings → 2 Recommendations" turned out to be *build-setting upsells* ("Build Multiple Deployments Simultaneously", "Prevent Frontend-Backend Mismatches"), **not** SEO. The real defects below were found by auditing the code directly.
+
+### 46.1 What was actually broken
+
+| # | Defect | Impact |
+|---|---|---|
+| 1 | **`metadataBase` missing entirely** (0 hits repo-wide) | Next.js cannot resolve relative OG/Twitter image URLs and warns on every build. Most likely the origin of the warning. |
+| 2 | **No Open Graph image anywhere** | `twitter.card` was `summary_large_image` with no image — every social share rendered blank. |
+| 3 | **Homepage OG image was a 404** | `lib/seo-config.ts` pointed at `${siteUrl}/og-image.png`; **that file does not exist in `public/`**. |
+| 4 | **Organization JSON-LD logo was a 404** | Pointed at `/logo.png`, which also does not exist. |
+| 5 | **Canonical host was the apex everywhere** | `sitemap.ts`, `robots.ts` and all `seo-config` canonicals used `https://shijo.ai` — which **307-redirects to `www.shijo.ai`**. Every sitemap URL pointed crawlers at a redirect instead of the final URL. |
+| 6 | **Canonicals missing on 9 public pages** | Only `/ai-marketing-tools`, `/blog`, `/blog/[slug]` had one. |
+| 7 | **`/register`, `/forgot-password`, `/reset-password` had no metadata at all** | Three public URLs inheriting one identical root `<title>`. `/register` is a Google Ads landing target. |
+
+### 46.2 Fixes applied
+
+- **`app/layout.tsx`** — added `metadataBase: new URL("https://www.shijo.ai")`, `alternates.canonical`, and OG/Twitter `images` using the real brand asset.
+- **Canonical host → `www.shijo.ai`** in `app/sitemap.ts`, `app/robots.ts` and all six `seo-config` canonicals. No apex URLs remain in any SEO surface (verified by grep).
+- **`lib/seo-config.ts`** — OG image and Organization logo repointed from non-existent files to `public/brand/` assets that exist.
+- **Canonicals added** to `/contact`, `/terms`, `/privacy`, `/cookies`, `/security`, `/gdpr-compliance`, `/ai-compliance`, `/login`.
+- **`/register`** — title, description, `robots: { index: false }`. Metadata placed after the imports (ESLint `import/first`).
+- **`app/forgot-password/layout.tsx`** and **`app/reset-password/layout.tsx`** created — those pages are **client components** and cannot export metadata themselves, so it lives in a route layout.
+
+Verified: no syntax errors across all changed files.
+
+### 46.3 ⚠️ Worth producing — a real OG image
+
+The brand asset used is **1200×300**; the social standard is **1200×630**. It will render, but letterboxed. A purpose-made 1200×630 at `public/brand/og-1200x630.png` would be better, then update the two references in `app/layout.tsx` and `lib/seo-config.ts`.
+
+### 46.4 ⚠️ The Keyword Planner export is NOT usable for SHIJO.AI
+
+Sri exported 218 keywords from Google Keyword Planner using the "start with a website" mode and asked whether it helps. **Analysed: it does not, and using it would waste ad spend.**
+
+**Of 218 keywords, ZERO contain "ai", "tool", "generator", "free", "software", "automation", "copy" or "writer".** Not one.
+
+The entire list is **agency-hire intent**: "digital marketing agency", "social media marketing agencies", "digital marketing services", "search engine optimization agencies", "internet marketing company".
+
+Someone searching those wants **to hire an agency**, not to buy a $29/month self-serve AI tool. Consequences of targeting them:
+
+- **Ads:** top-of-page bids of **$4–$13** for clicks that cannot convert to SaaS signups.
+- **SEO:** pages that almost certainly will not rank against agencies, and would bounce if they did.
+
+**Also treat the volumes with suspicion.** Every value is a bucketed round number — 500,000 / 50,000 / 5,000 / 500 / 50 — which is what Keyword Planner returns when the account has no active qualifying spend. These are wide ranges, not measurements. The 900% / -90% change columns look like the same placeholder behaviour.
+
+**Better approach:** re-run Keyword Planner in "start with keywords" mode, seeded with the product's actual jobs-to-be-done rather than the domain. The existing `lib/seo-config.ts` primary set ("AI SEO tools", "keyword research tool", "SEO automation") is already far closer to correct than this export. Product-intent long-tail to seed with: *ai ad copy generator*, *seo meta description generator*, *ai email sequence generator*, *social media caption generator free*, *ai content brief generator*, *faq generator for seo* — each maps to a tool that actually exists in the 12-tool registry.
+
+### 46.5 Ahrefs Web Analytics installed (2026-08-22)
+
+Snippet installed **directly in `app/layout.tsx`** via Next's `<Script strategy="afterInteractive">`, not through GTM.
+
+**Why not GTM**, even though Ahrefs offers that route: the tag then loads regardless of whether GTM fires, is mis-tagged, or is blocked — and this project's GTM container (`GTM-NGQVZ78Q`) has an outstanding conversion-tracking problem still to be diagnosed. Putting a measurement tag inside a container you already distrust means you cannot tell a broken tag from broken analytics.
+
+- `data-key`: `H2EA8pp7UdLLwtAcYkdr2A` — a **public site identifier**, not a secret; it is designed to appear in client HTML and is safe to commit.
+- **Deliberately not gated behind the cookie banner.** Ahrefs Web Analytics is cookieless and sets no client-side storage, so it does not need prior consent the way `analytics_storage` / `ad_storage` do (those remain denied-by-default via Consent Mode).
+- **Disclosed as a sub-processor** in both `/privacy` §5 and `/gdpr-compliance` §5, alongside Stripe, Anthropic, Resend, Vercel, Neon and Google Analytics. This project's Privacy Policy promises a complete list, and adding a third-party processor without listing it would have broken that promise.
+
+Verified: no syntax errors. **Ahrefs' "Recheck installation" will only pass after this is pushed and deployed.**
