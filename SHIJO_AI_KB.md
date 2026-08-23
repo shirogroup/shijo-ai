@@ -1,6 +1,6 @@
 # SHIJO.AI — Knowledge Base / Status Reference
 
-**Last updated:** 2026-08-22 (§39 spam-relay fix SHIPPED as 99cce4d; §40 zero-friction hardening edited locally NOT pushed — origin check, IP+email signup throttle (new table, migration pending), legal@ email removed as never-required, 429 visibility, JSON-LD $99→$199; Vercel WAF + DMARC still Sri's to do)
+**Last updated:** 2026-08-22 (§44 spam fix DEPLOYED to prod (963924f) but NOT yet proven live — no signup since deploy; test signup needed. §43 email infra: inbound RESTORED, legal@shijo.ai confirmed Delivered. Signup-throttle migration still not run; abuse user rows not purged)
 
 ## 0. Vercel secret rotation — RESOLVED, was a false alarm (originally flagged 2026-07-17, closed 2026-07-19)
 
@@ -1140,3 +1140,399 @@ git add lib/email.ts lib/rate-limit.ts app/api/auth/register/route.ts db/schema.
 git commit -m "Zero-friction abuse hardening: origin check, IP+email signup throttle, drop bouncing legal@ email, 429 visibility, fix retired JSON-LD price"
 git push origin main
 ```
+
+---
+
+## 41. WAF rule live + two findings on the legal-record question (2026-08-22, later same day)
+
+### 41.1 Vercel WAF rate-limit rule — ✅ LIVE (Sri configured it)
+
+Rule `10R-10M-IP` on project `shijo-ai`: **If** Request Path **Equals** `/api/auth/register`, **AND** Rate Limit Fixed Window **600s / 10 requests**, key **IP Address**, **Then Deny (403)**. Enabled.
+
+Two notes for whoever reads this next:
+
+- **The account is on the Hobby plan**, not Pro (confirmed from the dashboard badge and the "Upgrade to pro to add up to 40 rate limit rules" prompt). Hobby allows **1 rate-limit rule** and 3 custom firewall rules total. This single rule is therefore spent on the highest-value endpoint — correct choice, but there is no second rate-limit rule available for `/api/contact` or anywhere else without upgrading.
+- **The rule's description says "action Log for a day, then Deny" but the action is already set to Deny (403).** That's fine on the merits — 10 requests per 10 minutes per IP is far above any real user — but the description is misleading. Worth correcting so a future reader doesn't think it's still in observation mode.
+
+### 41.2 Bot Protection — ⚠️ do NOT switch Log → Challenge yet
+
+Currently **Log**. Switching to Challenge risks the payment path: the managed ruleset challenges "requests from non-browser sources," and **`/api/webhooks/stripe` is exactly that** — a server-to-server POST from Stripe, verified via `stripe.webhooks.constructEvent()`. If Stripe is not treated as a verified bot, subscription events would be dropped and **paying customers would not get upgraded**. That is the single worst failure mode available here, and it is the opposite of the "no friction for real paying users" brief.
+
+Sequence to follow instead:
+1. Leave it on **Log** for a few days and read Firewall observability — specifically whether Stripe webhook traffic appears as would-be-challenged.
+2. Then either **(a)** add a bypass custom rule for `/api/webhooks/stripe` and switch to Challenge (2 of 3 Hobby custom-rule slots remain), or **(b)** use **BotID Basic** — invisible, free on Basic, applied per-route in code via `npm i botid`, so it can be scoped to `/register` alone and never touches the webhook path. **(b) is the cleaner long-term answer** for this specific endpoint.
+
+### 41.3 ⚠️ NEW FINDING — the acceptance record is destroyed on account deletion
+
+Sri asked whether the `termsAcceptances` table is sufficient on its own. Field-wise, **yes** — it captures userId, email, name, termsVersion, privacyVersion, ipAddress, userAgent, acceptedAt. That is a complete clickwrap-evidence record and strictly more than the email ever carried.
+
+**But there is a real gap.** `db/schema.ts`:
+
+```ts
+userId: uuid('user_id').notNull().references(() => users.id, { onDelete: 'cascade' })
+```
+
+Account deletion (`app/api/account/delete/route.ts`) deletes the `users` row, which **cascades and destroys the acceptance record**. The person most likely to dispute having agreed to the Terms is a former user — and theirs is precisely the record that gets erased.
+
+**Suggested fix (NOT applied — this is a legal-retention decision, not an engineering one):** make `user_id` nullable with `ON DELETE SET NULL` so the row survives deletion with email, versions, IP, user-agent and timestamp intact. This is consistent with what the Privacy Policy already promises — that "some records may be retained for a limited period where required by law or for legitimate business purposes" — but it should be confirmed by the attorney review Sri has already planned (§13).
+
+### 41.4 ⚠️ NEW FINDING — `legal@shijo.ai` bouncing is worse than we thought
+
+The acceptance email was the *least* important thing pointed at that address. It is publicly advertised as a live contact channel in **seven** places in the shipped site:
+
+| Location | Purpose |
+|---|---|
+| `app/terms/page.tsx` ×3 | general contact, the formal **notice** address, and the contact block |
+| `app/security/page.tsx` | **vulnerability reporting** |
+| `app/gdpr-compliance/page.tsx` ×2 | the **GDPR data-subject request** channel |
+| `lib/email.ts` (account-deleted email) | "if you did not request this deletion, contact us immediately" |
+
+All of it bounces. Concretely: a security researcher reporting a vulnerability gets a bounce; a GDPR erasure or access request — which carries a **statutory one-month response deadline** — never arrives; and someone whose account was deleted without their consent has no working way to report it.
+
+**So the answer to "do we still need a real legal@ mailbox?" is: not for the acceptance record — the table covers that — but YES, and more urgently than the original reason.** Creating the mailbox is about honouring channels the site already publishes, not about archiving signups.
+
+Removing the acceptance email (§40.2) remains correct regardless: it was redundant with the table and doubled email volume.
+
+---
+
+## 42. ROOT CAUSE of every @shijo.ai bounce — the domain has no inbound mail at all (2026-08-22)
+
+Sri asked where the email is hosted. Answer, from live DNS lookups against 8.8.8.8 / 1.1.1.1:
+
+**It isn't. `shijo.ai` has no MX record.** There is no inbound mail hosting for the domain, and there never has been. That is the whole explanation for the 100% bounce rate in §38.3 — it was never a Resend problem.
+
+| Query | Result |
+|---|---|
+| `MX shijo.ai` | **NoAnswer — no MX record exists** |
+| `TXT shijo.ai` | **NoAnswer — no root SPF either** |
+| `NS shijo.ai` | `ns1.vercel-dns.com`, `ns2.vercel-dns.com` (DNS hosted at Vercel) |
+| `MX send.shijo.ai` | `10 feedback-smtp.us-east-1.amazonses.com` |
+| `TXT send.shijo.ai` | `v=spf1 include:amazonses.com ~all` |
+| `TXT _dmarc.shijo.ai` | **NoAnswer — confirms the "Include valid DMARC record" warning** |
+| `TXT resend._domainkey.shijo.ai` | present (DKIM, verified) |
+
+The single MX in the zone, `send.shijo.ai`, is **Resend's bounce-feedback endpoint for outbound mail** — the Return-Path address. It is not a mailbox and cannot receive human email.
+
+### 42.1 Consequence — EVERY @shijo.ai address is undeliverable
+
+Not just `legal@`. `info@shijo.ai` and `noreply@shijo.ai` are equally dead. That widens §41.4 significantly:
+
+- **`info@shijo.ai` is printed in the footer of every welcome email** (`lib/email.ts`, "Questions? info@shijo.ai") and in the support signature on ticket emails, and it is the public mailto on `/contact`. Every customer who replies to it gets a bounce.
+- `legal@shijo.ai` — the seven published legal, GDPR and vulnerability-reporting channels in §41.4.
+- `noreply@shijo.ai` — the From address, which is fine to be unreachable, but Resend flags it as a trust negative anyway (§38.5).
+
+**The only address in this codebase that actually receives mail is `info@shiroapps.com`** — the `SUPPORT_INBOX` in `app/api/contact/route.ts`, on a different domain.
+
+### 42.2 The fix is easy — Google Workspace is already in use on the sibling domains
+
+Verified by the same lookups:
+
+- `shiroapps.com` → **Google Workspace MX** (`aspmx.l.google.com` et al). Working.
+- `shirotechnologies.com` → **Google Workspace MX**. Working.
+
+So the org already runs Workspace. Options, cheapest first:
+
+1. **Email forwarding only** (Cloudflare Email Routing, ImprovMX, or similar): add MX records in Vercel DNS and forward `legal@shijo.ai` and `info@shijo.ai` to an existing monitored Workspace mailbox. No new licence.
+2. **Add shijo.ai to the existing Google Workspace** as a domain alias or secondary domain, then add Google's MX records in Vercel DNS. Real mailboxes, sends-as support.
+3. **Resend inbound** — the domain page has an "Enable Receiving" section. Workable, but forwarding to Workspace is simpler for humans reading mail.
+
+Whichever route, the MX records go in **Vercel DNS**, since that is where the zone lives.
+
+### 42.3 Note on SPF — the missing root TXT is expected, not broken
+
+The root domain has no SPF record, which looks alarming but is normal for Resend's setup: SPF authenticates the **Return-Path** domain (`send.shijo.ai`, which does have SPF), while the visible `From:` is `noreply@shijo.ai`. DMARC alignment is carried by **DKIM**, which is published on the root at `resend._domainkey.shijo.ai` and verified. So alignment passes.
+
+Adding a root SPF record is still worth doing as anti-spoofing hardening once inbound mail exists — but it is not the reason anything is currently failing, and it should be added **together** with the MX records, not before.
+
+### 42.4 Registrar — Network Solutions, and the likely explanation for the lost mailboxes
+
+Sri recalled the email being hosted somewhere, and asked whether the domain was at Dynadot or Namecheap. **Neither.** From RDAP (registry data, 2026-08-22):
+
+| Field | Value |
+|---|---|
+| Registrar | **Network Solutions, LLC** (IANA ID 2) |
+| Created | 2025-08-24 |
+| Last changed | **2026-08-12** |
+| Expires | 2027-08-24 |
+| Nameservers | `ns1.vercel-dns.com`, `ns2.vercel-dns.com` |
+| Status | clientTransferProhibited |
+
+**Most likely explanation for §42's missing MX:** Network Solutions sells hosting with bundled mailboxes, and the MX records for those mailboxes would have lived in Network Solutions' own DNS. When the nameservers were repointed to Vercel, the zone was rebuilt from scratch there — and only the records needed for the website and for Resend were recreated. **The MX records never made the move.** The mailboxes themselves may well still exist at Network Solutions, simply unreachable because nothing points at them any more.
+
+**Worth checking directly in the Network Solutions account** before paying for anything new: if the mailboxes are still provisioned, restoring inbound mail may be as simple as re-adding Network Solutions' MX records in Vercel DNS.
+
+❓ **Unexplained and worth a look:** the registry records a change on **2026-08-12**, eight days before the spam flood began. The Resend domain was verified ~5 months ago with DNS already at Vercel, so this is *not* the nameserver move. Could be a renewal, a lock, or a contact update — not established either way, and not necessarily related. Do not assume a connection.
+
+### 42.5 Correction — the `mail.`/`webmail.`/`cpanel.` subdomains are a wildcard, not a mail host
+
+A subdomain probe returned A records for `mail.shijo.ai`, `webmail.shijo.ai`, `smtp.`, `imap.`, `pop.`, `cpanel.` and others, all pointing at `216.198.79.x` / `64.29.17.x`. **These are Vercel's anycast IPs and the zone has a wildcard A record** — `_dmarc.shijo.ai` also returns an A record, which nobody would ever create deliberately, and which proves it is a catch-all.
+
+**Do not mistake these for a surviving mail host.** There is no mail server behind any of them; every one of those names resolves to the website.
+
+### 42.6 Vercel account split mirrors the Resend split
+
+The Vercel session logged in as `srikanth@shiroapps.com` ("srikanth merianda's projects", Hobby) does **not** contain the `shijo-ai` project, and `/shiro-technologies/~/domains` 404s for it. `shijo-ai` lives under the other account — the same two-account split already recorded for Resend in §38.1. Use the `merianda@shirotechnologies.com` login for anything shijo.ai.
+
+### 42.7 ✅ CONFIRMED at source — the full Vercel DNS zone for shijo.ai (read 2026-08-22)
+
+Read directly from `vercel.com/shiro-technologies/~/domains/shijo.ai`. The zone contains **eight records, and not one of them is a root MX**:
+
+| Name | Type | Value | Age |
+|---|---|---|---|
+| `*` | ALIAS | `cname.vercel-dns-017.com.` | **Jan 19** |
+| `@` | ALIAS | `a33f4cc46d719bcd.vercel-dns-017.com` | **Jan 19** |
+| `@` | CAA | `0 issue "pki.goog"` | Jan 19 |
+| `@` | CAA | `0 issue "sectigo.com"` | Jan 19 |
+| `@` | CAA | `0 issue "letsencrypt.org"` | Jan 19 |
+| `resend._domainkey` | TXT | DKIM public key | Mar 15 |
+| `send` | TXT | `v=spf1 include:amazonses.com ~all` | Mar 15 |
+| `send` | MX | `feedback-smtp.us-east-1.amazonses.com.` | Mar 15 |
+
+**This settles §42.** Two clean groups: the web records created when the domain landed on Vercel nameservers on **Jan 19, 2026**, and the Resend records added on **Mar 15, 2026**. No inbound MX was ever created in this zone. Inbound mail for `@shijo.ai` has therefore been dead since **2026-01-19** — roughly seven months — and the terms-acceptance email introduced on 2026-07-17 (§13) never had any chance of being delivered.
+
+The `* ALIAS` record also confirms §42.5: the `mail.`/`webmail.`/`cpanel.` hits were this wildcard, not a surviving mail host.
+
+Other facts from the same page: Registrar shows as **"Third Party"** (consistent with Network Solutions, §42.4); nameservers are Vercel's and *"nameserver changes must be made with your domain's registrar"*; domain age in Vercel is Jan 19; team is **SHIRO Technologies (Hobby)**, git org `shirogroup`; `shijo.ai` 307-redirects to `www.shijo.ai`.
+
+### 42.8 What to add, once a mail host is chosen
+
+Vercel's DNS panel has an **"Add DNS Preset"** button — it carries a Google Workspace preset, which is the least error-prone route given Workspace already runs on `shiroapps.com` and `shirotechnologies.com` (§42.2).
+
+If added manually, for Google Workspace:
+
+| Name | Type | Value | Priority |
+|---|---|---|---|
+| `@` | MX | `smtp.google.com.` | 1 |
+| `@` | TXT | `v=spf1 include:_spf.google.com ~all` | — |
+| `_dmarc` | TXT | `v=DMARC1; p=none; rua=mailto:<a real mailbox>;` | — |
+
+Notes that matter:
+
+- **Adding a root SPF record does NOT break Resend.** SPF authenticates the Return-Path, which Resend sets to `send.shijo.ai` (its own SPF record, untouched). The root SPF governs mail sent *from* Workspace. DMARC alignment for Resend continues to ride on the root DKIM record.
+- **Do not remove or edit the three `send`/`resend._domainkey` records** — outbound email breaks immediately if they go.
+- Start DMARC at `p=none`, and only tighten to `quarantine` then `reject` after the reports show everything passing.
+- Before buying anything: check whether the Network Solutions mailboxes still exist (§42.4). If they do, their MX records go here instead of Google's.
+
+### 42.9 ✅ FOUND — the email was on HostGator (cPanel)
+
+Sri asked where the mail was actually hosted. Found in the project's own master document, **`SHIJO-AI-COMPLETE-DOCUMENTATION.md`, dated 2025-11-30**, which names it in three separate places:
+
+- Tech stack → Third-Party Services: **"Domain: Your existing HostGator domain"**
+- Deployment §7.8 Step 8: **"A. HostGator DNS: 1. Log in to HostGator cPanel  2. DNS Management → Zone Editor  3. Add CNAME…"**
+- Deployment checklist, Phase 4 Domain: **"Configure DNS at HostGator (15 min)"**
+
+**So the picture is a three-way split, which is why this was confusing:**
+
+| Role | Provider |
+|---|---|
+| Registrar | **Network Solutions** (§42.4) |
+| DNS + hosting + **mailboxes** | **HostGator (cPanel)** — until Jan 2026 |
+| DNS today | **Vercel** (since 2026-01-19) |
+
+Registering at Network Solutions while hosting DNS and email at HostGator is a normal arrangement — they are independent. The mailboxes for `@shijo.ai` would have been **cPanel email accounts on HostGator**, reachable through HostGator's webmail.
+
+**Timeline that explains everything:**
+
+1. **2025-08-24** — domain registered at Network Solutions.
+2. **~Nov 2025** — DNS at HostGator cPanel; any `@shijo.ai` mailboxes live there, with HostGator's MX records in the HostGator zone.
+3. **2026-01-19** — nameservers repointed to Vercel. The zone was rebuilt at Vercel with only web records (§42.7). **The HostGator MX records were left behind, orphaning the mailboxes.**
+4. **2026-03-15** — Resend records added for outbound.
+
+**Where to look:** the **HostGator cPanel account → Email Accounts** (and Webmail). If the hosting plan is still active, the mailboxes and any stored mail are most likely still sitting there untouched — they simply stopped receiving anything new on 2026-01-19, because nothing on the internet points at them any more.
+
+⚠️ Note for future sessions: **the repo itself has no record of this.** `SHIJO_AI_KB.md` and everything under `docs/` contain zero references to a mail host. The only trace anywhere is that November 2025 master document in the claude.ai project. That is exactly the kind of infrastructure fact that should live in this KB.
+
+---
+
+## 43. EMAIL INFRASTRUCTURE — single reference (2026-08-22)
+
+**Read this section first for anything email-related.** It consolidates §37, §38, §41 and §42 into one place so nobody has to reconstruct the picture again.
+
+### 43.1 Current state
+
+| Layer | Where | Status |
+|---|---|---|
+| Registrar | **HostGator** panel; accredited registrar of record is **Network Solutions** (both Newfold brands — that is why RDAP and the HostGator panel disagree) | ✅ active, expires 2027-08-24 |
+| Nameservers | **`NS1/NS2.VERCEL-DNS.COM`** — set at HostGator, flagged there as "not using default nameservers" | ✅ live since 2026-01-19 |
+| DNS zone | **Vercel** (`vercel.com/shiro-technologies/~/domains/shijo.ai`) | ✅ 8 records, listed in §42.7 |
+| Outbound email | **Resend** — account `merianda@shirotechnologies.com`, team `shirotechnologies`, key `SHIJO AI` / `re_G5CREC5q…`, Free plan (3,000/mo, 100/day, 10 req/s) | ✅ working |
+| **Inbound email** | **NOTHING.** No MX record on the root domain. | ❌ **dead since 2026-01-19** |
+| Former inbound host | **HostGator cPanel mailboxes** | ⚠️ orphaned — plan may still be active, mail may still be stored there |
+| Working mailboxes elsewhere | `shiroapps.com` and `shirotechnologies.com` → **Google Workspace** (`aspmx.l.google.com`) | ✅ working |
+
+### 43.2 How it broke — timeline
+
+1. **2025-08-24** — `shijo.ai` registered (HostGator / Network Solutions).
+2. **~Nov 2025** — DNS at HostGator cPanel. `@shijo.ai` mailboxes are cPanel email accounts there, with HostGator's MX in the HostGator zone. Documented in `SHIJO-AI-COMPLETE-DOCUMENTATION.md` (2025-11-30).
+3. **2026-01-19** — nameservers repointed to Vercel. Zone rebuilt at Vercel with **web records only**. **The HostGator MX records were left behind. Inbound mail dies here.**
+4. **2026-03-15** — Resend DKIM/SPF records added. Outbound starts working; nobody notices inbound is gone.
+5. **2026-07-17** — the `legal@shijo.ai` terms-acceptance email is introduced (§13). It never had a chance — it bounced from day one.
+6. **2026-08-22** — root cause found.
+
+### 43.3 Every @shijo.ai address currently dead
+
+`legal@shijo.ai`, `info@shijo.ai`, `noreply@shijo.ai` — all of them. Published in the shipped site at:
+
+- `app/terms/page.tsx` ×3 (general contact, formal **notice** address, contact block)
+- `app/security/page.tsx` (**vulnerability reporting**)
+- `app/gdpr-compliance/page.tsx` ×2 (**GDPR data-subject requests** — statutory 1-month deadline)
+- `app/contact/page.tsx` (public mailto → `info@shijo.ai`)
+- `lib/email.ts` — footer of **every welcome email**, support signature on ticket emails, account-deletion notice
+
+**The only address in the codebase that actually receives mail is `info@shiroapps.com`** (`SUPPORT_INBOX` in `app/api/contact/route.ts`).
+
+### 43.4 DECISION — Google Workspace domain alias
+
+Chosen over restoring HostGator mail because: a **domain alias is free** (no per-user licence), every existing Workspace user automatically gains the same address at `@shijo.ai`, mail lands in an inbox that is already checked daily, deliverability is far better than shared cPanel IPs, and it does not depend on keeping a HostGator hosting plan alive.
+
+`legal@` and `info@` are not people — create them as **Groups** (also free, no licence) delivering to existing users.
+
+⚠️ A domain can be an alias of **only one** Workspace account. Sri has Workspace on both `shiroapps.com` and `shirotechnologies.com` — attach `shijo.ai` to whichever is actually used daily.
+
+⚠️ **Old mail:** anything that arrived in the HostGator cPanel mailboxes **before 2026-01-19** may still be stored there. Retrieve it before cancelling anything. Nothing has arrived since.
+
+### 43.5 Exact records to add — all in VERCEL DNS
+
+Vercel's DNS panel has an **"Add DNS Preset"** button with a Google Workspace preset (least error-prone). Manually:
+
+| Name | Type | Value | Priority |
+|---|---|---|---|
+| `@` | MX | `smtp.google.com.` | 1 |
+| `@` | TXT | `v=spf1 include:_spf.google.com ~all` | — |
+| `_dmarc` | TXT | `v=DMARC1; p=none; rua=mailto:<a real mailbox>;` | — |
+| (as issued) | TXT | Google's site-verification string for the alias | — |
+
+`smtp.google.com` is Google's modern single-record MX; the legacy 5-record `aspmx` set is equally valid if the preset uses it.
+
+### 43.6 ⛔ DO NOT TOUCH
+
+- **Do not revert the nameservers to HostGator.** The site depends on Vercel's apex `ALIAS` and wildcard records, which HostGator DNS handles poorly. MX records live fine in Vercel's zone alongside the web records. Never risk the live site to fix email.
+- **Do not remove or edit** `resend._domainkey` TXT, `send` TXT, or `send` MX. Outbound email dies instantly.
+- Adding Google MX and a root SPF record **does not** affect Resend: SPF authenticates the Return-Path (`send.shijo.ai`, which has its own SPF), and Resend's DMARC alignment rides on the root DKIM.
+- Start DMARC at `p=none`. Only tighten to `quarantine` then `reject` after reports show everything passing.
+
+### 43.7 Code side, once mailboxes exist
+
+- Set **`REPLY_TO_EMAIL`** in Vercel to a monitored address. `lib/email.ts` already supports it (§40.2) and is inert until set.
+- `app/api/account/delete/route.ts` still `cc`s `legal@shijo.ai` — currently bouncing; becomes correct automatically once the mailbox exists.
+- `FROM_EMAIL` still defaults to `noreply@shijo.ai`. Resend flags no-reply as a trust negative (§38.5) — consider moving it to a real address once one exists.
+- The registration → `legal@` terms-acceptance email was **removed** in §40 and should stay removed. The `termsAcceptances` table is the record. See §41.3 for the separate cascade-delete gap in that table.
+
+### 43.8 ✅ DONE — inbound email restored (2026-08-22, executed in-session)
+
+Sri asked for it to be set up directly. All of the following was performed and verified live.
+
+**Google Workspace** (account: **`shiroapps.com`**, the one Sri logs into — note `shirotechnologies.com` is a *separate* Workspace and was NOT used):
+
+- `shijo.ai` added as a **user alias domain** — free, no extra licence. This matches the existing pattern: `shirobpo.com` and `shirocloud.com` were already set up the same way.
+- Ownership **verified**. Google confirmed: *"Gmail is activated! You verified shijo.ai"*.
+- Every existing user now also has an `@shijo.ai` address: `srikanth@`, `info@`, `lokitha@`, `shuchitha@`.
+- **`info@shijo.ai` works automatically** — `info@shiroapps.com` already existed as a real user ("SHIRO Apps Support").
+- **New Group `legal@shiroapps.com`** ("Legal") created → gives **`legal@shijo.ai`** via the alias domain. Members: `srikanth@shiroapps.com`, `info@shiroapps.com`.
+  - ⚠️ **Critical setting, easy to miss:** "Who can post" → **External** was OFF by default. It was explicitly enabled. Without it, outside GDPR requests and vulnerability reports — the entire reason this address is published — would have been rejected. Access type therefore shows as **Custom**. **Do not reset this group to "Public"**; that would silently re-block external senders.
+
+**Vercel DNS records added** (verified live against 8.8.8.8 / 1.1.1.1):
+
+| Name | Type | Value | TTL | Priority |
+|---|---|---|---|---|
+| `@` | MX | `smtp.google.com.` | 60 | 1 |
+| `@` | TXT | `v=spf1 include:_spf.google.com ~all` | 60 | — |
+| `@` | TXT | `google-site-verification=NHuWrz3Q8u8Q1T2PARWKK0h0XeaMlPCsV4TSmkWW4xs` | 60 | — |
+
+**Resend records confirmed intact after every change**: `send` MX → `feedback-smtp.us-east-1.amazonses.com`, `send` TXT SPF, and `resend._domainkey` DKIM all still resolving. Outbound was never at risk. Nameservers untouched at `NS1/NS2.VERCEL-DNS.COM`.
+
+**Still outstanding:**
+
+1. **DMARC not yet added** — deliberately held back. `_dmarc` TXT `v=DMARC1; p=none; rua=mailto:<address>;` needs a decision on which mailbox receives the aggregate reports (that address becomes public in DNS). Now that `legal@shijo.ai` exists it is a candidate.
+2. **`REPLY_TO_EMAIL` not yet set in Vercel** — `lib/email.ts` supports it and is inert until set. A monitored address now exists, so this can be switched on.
+3. **Propagation** — Google warns delivery routing can take up to 24h. No live send test was performed (sending mail on Sri's behalf was out of scope).
+4. **HostGator cPanel mailboxes** — any mail received there before 2026-01-19 is still only in HostGator. Retrieve before cancelling that plan.
+5. `FROM_EMAIL` still `noreply@shijo.ai` (§38.5) — a real address now exists if Sri wants to change it.
+
+### 43.9 ✅ DMARC published (2026-08-22)
+
+Added in Vercel DNS and confirmed resolving against 8.8.8.8 / 1.1.1.1:
+
+| Name | Type | Value | TTL |
+|---|---|---|---|
+| `_dmarc` | TXT | `v=DMARC1; p=none; rua=mailto:legal@shijo.ai;` | 60 |
+
+`rua` points at `legal@shijo.ai` because that address is **already published in seven places on the live site** (§43.3), so putting it in a DNS record adds no new exposure — and as of §43.8 it actually receives mail.
+
+**Full email DNS state for `shijo.ai`, all verified live:**
+
+| Record | Value | Purpose |
+|---|---|---|
+| `@` MX | `smtp.google.com.` (pri 1) | inbound → Google Workspace |
+| `@` TXT | `v=spf1 include:_spf.google.com ~all` | SPF for mail sent from Workspace |
+| `@` TXT | `google-site-verification=NHuWrz…` | Workspace domain verification |
+| `_dmarc` TXT | `v=DMARC1; p=none; rua=mailto:legal@shijo.ai;` | DMARC, monitor-only |
+| `send` MX | `feedback-smtp.us-east-1.amazonses.com.` | **Resend** bounce feedback |
+| `send` TXT | `v=spf1 include:amazonses.com ~all` | **Resend** SPF (Return-Path) |
+| `resend._domainkey` TXT | DKIM key | **Resend** DKIM — carries DMARC alignment |
+
+⚠️ **`p=none` is monitor-only.** It changes nothing about delivery today; it only starts aggregate reports flowing to `legal@shijo.ai`. Review a few weeks of those reports before tightening to `p=quarantine`, then `p=reject`. Do **not** jump straight to reject — that can bounce your own legitimate mail.
+
+### 43.10 ⚠️ What DMARC does NOT change — Resend limits are unchanged
+
+Publishing DMARC clears Resend's *"Include valid DMARC record"* deliverability warning. It does **not** lift any sending limit. Still in force on the **Free** plan (§38.4):
+
+- **10 req/s API rate limit** — the ceiling that produced the 231,239 rejections in §37. Unchanged.
+- **3,000 emails/month, 100/day.** Unchanged.
+- Pay-as-you-go still **off**.
+
+Those are plan limits, not deliverability flags, and only a plan upgrade or a rate-limit request to Resend changes them. Do not assume "DMARC done" means "no restrictions".
+
+**Still open after this:** `FROM_EMAIL` is still `noreply@shijo.ai` (Resend flags no-reply as a trust negative), sending is still from the root domain rather than a subdomain (listed by Resend as an improvement, not a requirement), and `REPLY_TO_EMAIL` is still unset in Vercel.
+
+---
+
+## 44. Spam-relay fix — deployment VERIFIED, live behaviour NOT yet proven (2026-08-22)
+
+Sri asked whether the spam problem is actually fixed. Checked properly rather than assumed.
+
+### 44.1 ✅ CONFIRMED — both fixes are deployed to Production
+
+From the Vercel Deployments list for project `shijo-ai`:
+
+| Commit | Description | Status | Age |
+|---|---|---|---|
+| **`963924f`** | Zero-friction abuse hardening: origin check, IP+email signup throttle… | **Ready — current Production** | 9h ago |
+| `99cce4d` | Fix spam relay: constant welcome subject, validate name, escape all… | Ready, Production | 10h ago |
+
+So the code that closes the relay **is running in production**, and has been for ~10 hours. The Vercel WAF rate-limit rule (§41.1) is also live and enabled.
+
+### 44.2 ⚠️ But there is NO post-fix evidence yet — do not call this proven
+
+The Resend message log still shows welcome emails **with the registrant's name in the subject**:
+
+- `ahmadmamdou279@gmail.com` — "…are ready, **Ahmad**!" — **11h ago**
+- `majdkamal2016@gmail.com` — "…are ready, **mahmoud**!" — **17h ago**
+
+**Both predate the 10h-ago deploy.** They are pre-fix artefacts, not failures of the fix. The last emails carrying the actual spam payload (`✨70.000TL✨…bit.ly…`) are **2 days old**.
+
+**The real situation: no registration has occurred since the deploy, so the new code path has never been exercised.** Absence of new spam is currently explained equally well by "the fix works" and by "nobody has signed up in 10 hours". Do not record this as verified until a real signup passes through.
+
+**The definitive test** — Claude cannot perform it, as registering accounts is prohibited: register a test account on the live site with a name like `Test User`, then check the resulting email in Resend. Expected on the fixed code:
+
+1. Subject is exactly **"Welcome to SHIJO.AI — Your 2 free AI tools are ready!"** — no name appended.
+2. **No second email to `legal@shijo.ai`** — that send was removed in `963924f`.
+
+Both together confirm the deployed code is the fixed code.
+
+### 44.3 ✅ Incidental proof that inbound mail now works
+
+The `legal@shijo.ai` messages from 11h and 17h ago previously showed **"Delivery Delayed"** (§38.3). They now show **"Delivered"** — Resend retried them and they landed once the MX record went live (§43.8). **This is live end-to-end confirmation that `legal@shijo.ai` receives mail.**
+
+### 44.4 Remaining gap in the defence stack
+
+The **app-level signup throttle is still inactive**: `docs/manual-db-changes/2026-08-22-signup-throttle.sql` has not been run in Neon, so `lib/rate-limit.ts` fails open and logs `[RATE_LIMIT][DEGRADED]` on every signup (by design — §40.2). Until that migration runs, the protections in force are:
+
+- ✅ Constant welcome subject — removes the attacker's payload channel entirely (the fix that matters)
+- ✅ `name` validation — blocks URLs/markup/control characters
+- ✅ HTML escaping across all templates
+- ✅ Same-origin check on `/api/auth/register`
+- ✅ Vercel WAF: 10 requests / 10 min per IP on that route, action Deny
+- ❌ App-level IP+email throttle — code deployed, table missing, failing open
+
+Also still not done: the abuse-created user rows in Neon have not been purged (§38.2).
