@@ -30,7 +30,12 @@ export default function AdminUsagePage() {
   if (error) return <div className="p-8 text-red-400">{error}</div>;
   if (!data) return <div className="p-8 text-gray-400">Loading…</div>;
 
-  const avg = data.totals.generations ? data.totals.costUsd / data.totals.generations : 0;
+  // Average over PRICED rows only. Dividing by every generation in the window
+  // mixed in the pre-2026-08-23 rows that have no cost data, so a real $0.0024
+  // call showed as "$0.0001 avg" — an under-statement of ~24x that would only
+  // get worse the further back the window reached.
+  const pricedGenerations = data.totals.generations - data.rowsWithoutCostData;
+  const avg = pricedGenerations > 0 ? data.totals.costUsd / pricedGenerations : 0;
 
   return (
     <div className="p-8 space-y-8 text-gray-200">
@@ -58,7 +63,7 @@ export default function AdminUsagePage() {
         {[
           { icon: DollarSign, label: 'Total API cost', value: money(data.totals.costUsd) },
           { icon: Zap, label: 'Generations', value: data.totals.generations.toLocaleString() },
-          { icon: TrendingDown, label: 'Avg cost / generation', value: money(avg) },
+          { icon: TrendingDown, label: `Avg cost / generation${pricedGenerations < data.totals.generations ? ' (priced only)' : ''}`, value: money(avg) },
         ].map(s => (
           <div key={s.label} className="bg-gray-900 border border-gray-800 rounded-xl p-5">
             <div className="flex items-center gap-2 text-gray-400 text-xs mb-2">
