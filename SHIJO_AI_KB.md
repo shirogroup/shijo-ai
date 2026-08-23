@@ -1897,3 +1897,42 @@ git push origin main
 ```
 
 `core.autocrlf true` is the fix for the churn — without it, `git add -A` commits ~12,000 lines of line-ending noise across files nobody edited, including `middleware.ts`, `lib/auth.ts` and the Stripe webhook handler.
+
+---
+
+## §50 — The §46.6/§49 SEO batch is PUSHED AND LIVE — CONFIRMED (2026-08-23)
+
+Commit **`d5720b2`** — "SEO: meta descriptions, offerCount, /login noindex, fix twitter:image 404" — 15 files, 433 insertions. Pushed to `origin/main` by Sri; Vercel production deploy **Ready in 37s**. This closes §49, which had recorded the whole batch as edited-locally-only.
+
+### §50.1 Verified against live HTML, not against the diff
+
+Every item below was checked by fetching the live page from the browser and parsing the returned HTML. This is the proof §49 was missing.
+
+| Fix | Live result |
+|---|---|
+| `offerCount` on homepage `AggregateOffer` | `{low:'0', high:'199', count:'3'}` — **present**, correcting the §49 finding that it never made the previous commit |
+| `offerCount` on `/ai-marketing-tools` | same, present |
+| `/login` noindex | `<meta name="robots" content="noindex, follow">` — live |
+| `twitter:image` | now `…/brand/shijo-logo-landscape-1200x300.png`, **HTTP 200** (old `/twitter-image.png` still 404s, but nothing references it) |
+| `og:image` on `/blog/[slug]` | present with `width=1200` on `/blog/ai-seo-tools-keyword-research-faster` |
+| `og:image` on `/ai-marketing-tools` | present |
+| 8 meta descriptions | all live, lengths 115–160 chars (were 32–86) |
+
+Meta description lengths as served: home 160, ai-marketing-tools 148, ai-compliance 144, gdpr-compliance 141, security 141, cookies 139, terms 137, privacy 134, contact 133, login 115.
+
+### §50.2 Repo hygiene changed
+
+- **`core.autocrlf true` is now set in the shijo-ai repo.** This is what collapsed `git status` from 46 dirty files to the 14 real ones. It is permanent local config, not committed. Any future session on a fresh clone must set it again or the CRLF churn returns.
+- The Cowork sandbox **cannot delete files** on the device (`rm` → Operation not permitted), and every git command leaves a `.git/index.lock` it cannot unlink. **Workaround that works: `mv` the lock aside before each git command** rather than asking for a manual `rm`. Leftovers named `.git/index.lock.stale-*` and `.git/stale-lock-*` are inert and can be removed by hand.
+- **The sandbox cannot `git push`** — it reaches github.com (public `ls-remote` succeeds) but has no credentials, so push fails with `could not read Username`. Commit in the sandbox, push from Sri's Git Bash. Commit identity must be set per-repo: `shiroapps <srikanth@shiroapps.com>`.
+- `node_modules/typescript/lib` is **broken/incomplete** in the local checkout — `tsc` cannot run on the device. Typecheck was done by staging the changed files into the cloud container and running `tsc --noEmit --noResolve`; result was clean (only TS7026 JSX-types noise from `--noResolve`).
+- The monorepo superproject at `~/projects/shiro-group-monorepo` still carries an **outdated gitlink** for `apps/shijo-ai`. Not updated. Separate repo, separate commit.
+
+### §50.3 Still open — unchanged by this commit
+
+1. **No purchase event exists at any layer** (§48). Blocks the paid end-to-end test. Needs `{CHECKOUT_SESSION_ID}` in `success_url`, server-side session verification on the billing page, and a `dataLayer.push({event:'purchase', …})`. Requires sign-off — touches the checkout route.
+2. **Four Primary goals in Google Ads.** Performance Max is still optimising toward free signups. No changes made.
+3. **Two checkout routes disagree** — `app/api/stripe/create-checkout` appends `&plan=`, `app/api/billing/checkout` does not.
+4. **Ahrefs Site Audit not re-crawled.** The current crawl (10270122, 22 Aug) predates every fix above, so its 72 issues are stale.
+5. **Enhanced Conversions not configured**; GTM container quality still reads Urgent (additional domains detected, single administrator).
+6. **Homepage structured data still advertises AI-visibility features** the site has no footprint for (0 citations across 6 AI platforms).
