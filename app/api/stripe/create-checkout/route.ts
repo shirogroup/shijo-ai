@@ -149,7 +149,9 @@ export async function POST(req: NextRequest) {
           interval,
         },
       },
-      allow_promotion_codes: true,
+      // Disabled 2026-08-23 — see the note in app/api/billing/checkout/route.ts.
+      // No coupons exist in Stripe, so the field could only ever reject people.
+      allow_promotion_codes: false,
     });
 
     return NextResponse.json({

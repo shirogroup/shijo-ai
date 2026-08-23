@@ -26,7 +26,17 @@ export default function LoginForm() {
       const result = await login(email, password);
 
       if (result.success) {
-        const redirect = searchParams.get('redirect') || '/dashboard';
+        // Only ever redirect to a same-origin path. `?redirect=` is
+        // attacker-controllable: before this guard, /login?redirect=https://evil.example
+        // sent a user who had just typed their real password on our real
+        // login page straight to someone else's site (open redirect,
+        // CWE-601). A leading "//" is rejected too — the browser reads
+        // //evil.example as protocol-relative and leaves the origin.
+        const requested = searchParams.get('redirect') || '/dashboard';
+        const redirect =
+          requested.startsWith('/') && !requested.startsWith('//')
+            ? requested
+            : '/dashboard';
         window.location.href = redirect;
       } else {
         setError(result.error || 'Invalid email or password');

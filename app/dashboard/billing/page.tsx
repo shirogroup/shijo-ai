@@ -45,7 +45,11 @@ const plans = [
     annualPrice: undefined,
     interval: 'month',
     description: 'For heavier, everyday use',
-    badge: 'Most Popular',
+    // Was 'Most Popular' until 2026-08-23. Stripe showed **zero subscriptions
+    // ever created** on this account, so "Most Popular" was a factual claim
+    // about other customers who do not exist. "Best Value" is an opinion we
+    // are entitled to hold; popularity is not, until someone buys something.
+    badge: 'Best Value',
     features: [
       'All 12 AI marketing tools',
       '1,500 generations per month',
@@ -58,8 +62,12 @@ const plans = [
   },
   {
     name: 'Enterprise',
-    price: 99,
-    annualPrice: 950,
+    // Enterprise is paused and not purchasable (see VALID_PLANS in
+    // app/api/stripe/create-checkout/route.ts). It renders as "Coming Soon",
+    // so these numbers were never shown — but dead price config is exactly
+    // what gets accidentally surfaced later. Zeroed until the plan is real.
+    price: 0,
+    annualPrice: undefined,
     interval: 'month',
     description: 'Custom volume & pricing for agencies and teams',
     badge: null,
@@ -222,7 +230,7 @@ function BillingContent() {
 
       {/* Monthly / Annual toggle */}
       <div className="flex items-center justify-center gap-3 mb-8">
-        <span className={`text-sm font-medium ${billingInterval === 'monthly' ? 'text-white' : 'text-gray-500'}`}>
+        <span className={`text-sm font-medium ${billingInterval === 'monthly' ? 'text-white' : 'text-gray-400'}`}>
           Monthly
         </span>
         <button
@@ -238,7 +246,7 @@ function BillingContent() {
             }`}
           />
         </button>
-        <span className={`text-sm font-medium ${billingInterval === 'annual' ? 'text-white' : 'text-gray-500'}`}>
+        <span className={`text-sm font-medium ${billingInterval === 'annual' ? 'text-white' : 'text-gray-400'}`}>
           Annual
         </span>
         <span className="text-xs font-semibold text-green-400 bg-green-900/30 px-2 py-0.5 rounded-full">
@@ -296,8 +304,27 @@ function BillingContent() {
                       )}
                     </div>
                     {plan.annualPrice && billingInterval === 'monthly' && (
-                      <p className="text-xs text-green-400 mt-1">
+                      // Was a plain <p>. A buyer reading "or $278/year (save 20%)"
+                      // had no way to act on it from here — the only path to the
+                      // annual price was a toggle above the cards, and Stripe
+                      // Checkout offers no interval choice because the session is
+                      // created with one fixed price. So we advertised a discount
+                      // and then didn't sell it. Now it switches the card to annual.
+                      <button
+                        type="button"
+                        onClick={() => setBillingInterval('annual')}
+                        className="text-xs text-green-400 mt-1 underline underline-offset-2 hover:text-green-300 transition-colors"
+                      >
                         or ${plan.annualPrice}/year (save 20%)
+                      </button>
+                    )}
+                    {!plan.annualPrice && plan.interval && billingInterval === 'annual' && (
+                      // Pro has no annual price. Without this the card silently
+                      // kept showing "/month" while the toggle said Annual and the
+                      // badge said "Save 20%" — a buyer could reasonably read $199
+                      // as the annual figure.
+                      <p className="text-xs text-gray-400 mt-1">
+                        Billed monthly — no annual option yet
                       </p>
                     )}
                     {plan.annualPrice && billingInterval === 'annual' && (

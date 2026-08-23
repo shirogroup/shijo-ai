@@ -39,6 +39,11 @@ export default function ToolPage({
   const [upgradePrompt, setUpgradePrompt] = useState('');
   const [copied, setCopied] = useState(false);
   const [usage, setUsage] = useState<UsageData | null>(null);
+  // Bumped after every generate attempt. Keying the refetch on `result` alone
+  // meant a *blocked* generation never refreshed the counter, and a generation
+  // made in another tab (or via the API) left this one showing a stale number —
+  // observed live showing "1 of 3 left" when the server had recorded 3 of 3.
+  const [usageTick, setUsageTick] = useState(0);
 
   const cat = CATEGORIES[category];
   const userPlan = (user?.planTier || 'free') as PlanAccess;
@@ -63,7 +68,7 @@ export default function ToolPage({
       }
     }
     fetchUsage();
-  }, [result]); // Refetch after each generation
+  }, [result, usageTick]); // Refetch after each generation, successful or not
 
   const handleGenerate = async () => {
     if (isLocked) return;
@@ -107,6 +112,7 @@ export default function ToolPage({
       setError('Network error. Please check your connection.');
     } finally {
       setLoading(false);
+      setUsageTick((n) => n + 1);
     }
   };
 
@@ -214,7 +220,10 @@ export default function ToolPage({
                   {field.type === 'select' ? (
                     <select
                       value={inputs[field.id] || ''}
-                      onChange={(e) => setInputs({ ...inputs, [field.id]: e.target.value })}
+                      onChange={(e) => {
+                        setInputs({ ...inputs, [field.id]: e.target.value });
+                        if (error) { setError(''); setUpgradePrompt(''); }
+                      }}
                       className="w-full border border-gray-700 rounded-lg px-3 py-2.5 text-sm text-white bg-gray-800 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                     >
                       <option value="">Select an option...</option>
@@ -223,7 +232,10 @@ export default function ToolPage({
                   ) : field.type === 'textarea' ? (
                     <textarea
                       value={inputs[field.id] || ''}
-                      onChange={(e) => setInputs({ ...inputs, [field.id]: e.target.value })}
+                      onChange={(e) => {
+                        setInputs({ ...inputs, [field.id]: e.target.value });
+                        if (error) { setError(''); setUpgradePrompt(''); }
+                      }}
                       placeholder={field.placeholder}
                       rows={4}
                       className="w-full border border-gray-700 rounded-lg px-3 py-2.5 text-sm text-white bg-gray-800 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none"
@@ -232,7 +244,10 @@ export default function ToolPage({
                     <input
                       type="text"
                       value={inputs[field.id] || ''}
-                      onChange={(e) => setInputs({ ...inputs, [field.id]: e.target.value })}
+                      onChange={(e) => {
+                        setInputs({ ...inputs, [field.id]: e.target.value });
+                        if (error) { setError(''); setUpgradePrompt(''); }
+                      }}
                       placeholder={field.placeholder}
                       className="w-full border border-gray-700 rounded-lg px-3 py-2.5 text-sm text-white bg-gray-800 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                     />
@@ -246,7 +261,20 @@ export default function ToolPage({
                   <div>
                     <p>{error}</p>
                     {upgradePrompt && (
-                      <p className="mt-1 text-yellow-400 text-xs">{upgradePrompt}</p>
+                      <>
+                        <p className="mt-1 text-yellow-400 text-xs">{upgradePrompt}</p>
+                        {/* Added 2026-08-23. The box previously said "Upgrade now"
+                            and contained zero links or buttons — the user had to
+                            find Billing in the sidebar unaided, at the exact moment
+                            they most wanted to pay. */}
+                        <Link
+                          href="/dashboard/billing"
+                          className="mt-3 inline-flex items-center gap-2 bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white font-semibold text-xs px-4 py-2 rounded-lg transition-all"
+                        >
+                          <Crown className="w-3.5 h-3.5" />
+                          See plans &amp; upgrade
+                        </Link>
+                      </>
                     )}
                   </div>
                 </div>

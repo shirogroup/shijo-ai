@@ -5,6 +5,7 @@ import { db } from '../../../../db';
 import { users } from '../../../../db/schema';
 import { eq } from 'drizzle-orm';
 import { serverErrorResponse } from '@/lib/api/errors';
+import { STRIPE_PRICE_IDS } from '@/lib/stripe/products';
 
 export const runtime = 'nodejs';
 
@@ -22,6 +23,38 @@ export async function POST(req: NextRequest) {
     }
 
     const { priceId, mode = 'subscription' } = await req.json();
+
+    // Allowlist. Until 2026-08-23 this route forwarded whatever `priceId` and
+    // `mode` the client sent straight to Stripe, with no validation — unlike its
+    // sibling /api/stripe/create-checkout, which checks `plan` against a
+    // server-side list. A live probe with a bogus id returned 500 from Stripe,
+    // not 400 from us, which is how we know nothing here was checking. No price
+    // ids are exposed in the client bundle (verified), so this was never
+    // directly exploitable — but "not discoverable" is not an access control.
+    // Deliberately NOT Object.values(STRIPE_PRICE_IDS): that constant also holds
+    // the paused ENTERPRISE_* prices and the sandbox CREDITS_* ids. Allowlisting
+    // all of them would silently re-enable self-serve Enterprise checkout, which
+    // VALID_PLANS in the sibling route exists to prevent. This list mirrors
+    // VALID_PLANS exactly — the three prices a customer may actually buy.
+    const ALLOWED_PRICE_IDS: string[] = [
+      STRIPE_PRICE_IDS.PRO_MONTHLY,     // "Standard" $29/mo
+      STRIPE_PRICE_IDS.PRO_ANNUAL,      // "Standard" $278/yr
+      STRIPE_PRICE_IDS.GROWTH_MONTHLY,  // "Pro" $199/mo
+    ];
+
+    if (priceId && !ALLOWED_PRICE_IDS.includes(priceId)) {
+      return NextResponse.json(
+        { error: 'Invalid plan selected' },
+        { status: 400 }
+      );
+    }
+
+    if (mode !== 'subscription' && mode !== 'payment') {
+      return NextResponse.json(
+        { error: 'Invalid checkout mode' },
+        { status: 400 }
+      );
+    }
 
     if (!priceId) {
       return NextResponse.json(
@@ -95,7 +128,11 @@ export async function POST(req: NextRequest) {
       ],
       success_url: `${baseUrl}/dashboard/billing?success=true`,
       cancel_url: `${baseUrl}/dashboard/billing?canceled=true`,
-      allow_promotion_codes: true,
+      // Disabled 2026-08-23: Stripe has **no coupons** on this account, so the
+      // field rendered, accepted input, and rejected every code — at the exact
+      // moment the customer had their card out. Flip back to true the day a
+      // real promotion code exists.
+      allow_promotion_codes: false,
       billing_address_collection: 'auto',
       customer_update: {
         address: 'auto',

@@ -46,8 +46,9 @@ export const TOOL_LIMITS = {
 
 // Enterprise is marketed and displayed as "Unlimited generations" (with a
 // fair-use policy disclosed in the pricing copy), but the tool calls
-// underneath are real, metered Anthropic API cost — 9 of the 12 tools run
-// on Sonnet, and a single account hammering the endpoint with zero ceiling
+// underneath are real, metered Anthropic API cost — 10 of the 12 tools run
+// on Sonnet (only seo-meta-generator and ad-headline-ab are Haiku), and a
+// single account hammering the endpoint with zero ceiling
 // has no cost floor at all under the old code. This is a hidden backstop,
 // not a customer-facing quota: normal usage (even genuinely heavy usage)
 // never approaches it, so the dashboard keeps showing "Unlimited" and this

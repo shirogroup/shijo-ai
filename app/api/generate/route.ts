@@ -5,6 +5,7 @@ import { PROMPTS } from '@/lib/tools/prompts';
 import { getSession } from '@/lib/auth';
 import { checkToolAccess, recordToolUsage } from '@/lib/tools/usage';
 import { serverErrorResponse } from '@/lib/api/errors';
+import { correctCharacterCounts, ACCURACY_GUARD } from '@/lib/tools/output';
 
 const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
 
@@ -13,6 +14,13 @@ const MODEL_MAP = {
   haiku: 'claude-haiku-4-5-20251001',
   sonnet: 'claude-sonnet-4-5-20250929',
 } as const;
+
+// Longest single input field we will forward to the model. Output was already
+// capped by max_tokens; input was not capped at all, so one pasted document in
+// a textarea field (e.g. AI Overview Optimizer's "Page URL or Content") could
+// bill an unbounded number of input tokens. 20k chars is far more than any
+// legitimate use of these fields and still cheap.
+const MAX_FIELD_CHARS = 20_000;
 
 // Max tokens by model tier (haiku tasks are shorter)
 const MAX_TOKENS_MAP = {
@@ -61,6 +69,51 @@ export async function POST(req: NextRequest) {
       );
     }
 
+    // ── Validate the inputs themselves ──────────────────────────────
+    // The registry marks fields `required: true` and the form honours that,
+    // but the form is not the only caller. Before this check, a request with
+    // `inputs: {}` returned 200, consumed one of the user's generations and
+    // billed real tokens for output that began "Since the page topic and
+    // target keyword are undefined...". Client-side validation is a courtesy;
+    // this is the actual rule.
+    const suppliedInputs: Record<string, unknown> = (inputs && typeof inputs === 'object') ? inputs : {};
+
+    const missing = tool.fields
+      .filter((f) => f.required)
+      .filter((f) => {
+        const v = suppliedInputs[f.id];
+        return typeof v !== 'string' || v.trim() === '';
+      })
+      .map((f) => f.label);
+
+    if (missing.length > 0) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: `Please fill in: ${missing.join(', ')}`,
+          missingFields: missing,
+        },
+        { status: 400 }
+      );
+    }
+
+    const tooLong = tool.fields
+      .filter((f) => {
+        const v = suppliedInputs[f.id];
+        return typeof v === 'string' && v.length > MAX_FIELD_CHARS;
+      })
+      .map((f) => f.label);
+
+    if (tooLong.length > 0) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: `Too long (limit ${MAX_FIELD_CHARS.toLocaleString()} characters): ${tooLong.join(', ')}`,
+        },
+        { status: 400 }
+      );
+    }
+
     // ── Check API key ───────────────────────────────────────────────
     if (!process.env.ANTHROPIC_API_KEY) {
       return NextResponse.json(
@@ -93,7 +146,7 @@ export async function POST(req: NextRequest) {
     const maxTokens = MAX_TOKENS_MAP[effectiveModelTier];
 
     // ── Build prompt ────────────────────────────────────────────────
-    const userPrompt = promptBuilder(inputs || {});
+    const userPrompt = promptBuilder(inputs || {}) + ACCURACY_GUARD;
 
     // ── Call Claude API ─────────────────────────────────────────────
     const message = await client.messages.create({
@@ -103,10 +156,13 @@ export async function POST(req: NextRequest) {
     });
 
     // ── Extract text from response ──────────────────────────────────
-    const result = message.content
+    const rawResult = message.content
       .filter((b) => b.type === 'text')
       .map((b) => (b as { type: 'text'; text: string }).text)
       .join('\n');
+
+    // Replace any "(N characters)" the model wrote with the real count.
+    const result = correctCharacterCounts(rawResult);
 
     // ── Record usage (after successful generation) ──────────────────
     await recordToolUsage(
