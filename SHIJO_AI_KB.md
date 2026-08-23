@@ -2331,3 +2331,86 @@ tools.
 Keyword Research seeded with *"beginner yoga classes Dallas"* returned top primaries *"online yoga
 classes for beginners"* / *"beginner yoga online"* — **local intent dropped**. Single observation,
 not reproduced. Add a dedicated local-intent test case next pass.
+
+---
+
+## §54 — D-34 / D-35 re-verified LIVE after `52cc9bf` (2026-08-23)
+
+### §54.1 Deploy confirmed by a NON-MODEL signal first — method note worth keeping
+
+Before running any generation, confirmed the new build was actually serving using a **deterministic
+static string**: the Brand Name placeholder on `/dashboard/tools/seo-meta-generator` now renders
+`"e.g. Acme Studio"`, which exists only in `52cc9bf`. `HEAD == origin/main == 52cc9bf`, 0/0.
+
+**Why this matters:** without it, a failing generation cannot be distinguished from "the deploy
+hasn't landed yet", and you file a false defect. **Always find a deterministic deploy probe before
+behavioural testing.**
+
+### §54.2 D-34 → LIVE — CONFIRMED
+
+6 live generations (the 5 failing verticals + 1 with Brand Name deliberately filled):
+
+| Run | Brand supplied | "Shijo" hits | Labels | Counts exact |
+|---|---|---|---|---|
+| yoga | — | **0** | 10 | 10/10 |
+| leather wallets | — | **0** | 10 | 10/10 |
+| emergency plumbing | — | **0** | 10 | 10/10 |
+| vegan meal prep | — | **0** | 10 | 10/10 |
+| bookkeeping | — | **0** | 10 | 10/10 |
+| yoga + "Lotus Flow Studio" | ✅ | **0** | 10 | 10/10 |
+
+**0 occurrences of our brand across all 6** (was 35 across 5). The fallback string `"not specified"`
+also never leaked into copy — 0 occurrences. Output degrades to first person instead: *"Start your
+yoga journey with **our** 6-week beginner course in Dallas."*
+
+**Regression check passed:** with Brand Name filled, "Lotus Flow Studio" appears 6×. The optional
+field still works.
+
+### §54.3 D-35 → LIVE — CONFIRMED
+
+**Label emitted 6/6 runs (was 3/5). 60/60 counts exact.** Rate, not best-of.
+
+**Refactor regression passed:** `ad-headline-ab` and `post-caption-generator` both state **0**
+character counts — `NO_SELF_MEASUREMENT_GUARD` still reaches every non-counted tool after being
+split out of `ACCURACY_GUARD`. D-24 holds.
+
+### §54.4 D-23 → LIVE (side effect) — CONFIRMED
+
+`Title Tag:` / `Meta Description:` prefixes present on every label (`Title Tag (49 characters):`).
+D-23 closed.
+
+### §54.5 D-4 re-confirmed
+
+Fabrication scan across all 6 outputs (certified / accredited / award-winning / star ratings /
+review counts / voted / #1 / guarantee): **0 hits.**
+
+### §54.6 ⚠️ DISCREPANCY — /admin/usage unpriced-row count needs a direct DB check
+
+`rowsWithoutCostData` has returned **33** at three different totals (42 generations, then 50). The
+number has not moved while the data has, and **cannot be reconciled from the endpoint's own
+output**: 50 total with 33 rows recorded today (all carrying tokens) implies at most 17 untracked.
+
+**Recorded as DISCREPANCY, NOT a defect — not confirmed.** The API-side arithmetic is ambiguous
+because `byTool` aggregates mixed priced/unpriced rows under one tool, so it cannot derive the true
+count. Settle with a direct query before filing:
+
+```sql
+SELECT
+  COUNT(*)                                                        AS total_rows,
+  COUNT(*) FILTER (WHERE metadata->>'inputTokens' IS NULL)         AS untracked_rows,
+  COUNT(*) FILTER (WHERE api_cost_usd IS NULL OR api_cost_usd = 0) AS zero_cost_rows
+FROM usage_logs
+WHERE created_at >= NOW() - INTERVAL '30 days';
+```
+
+If `untracked_rows` ≠ 33 the banner is wrong and this becomes **D-36**. Note `/admin/usage` has
+already produced one confirmed arithmetic defect (D-31), so treat it as a suspect panel.
+
+### §54.7 Still open after this pass
+
+**D-32** (annual plan unbuyable for existing monthly customers — Stripe portal config + code),
+**D-33** (merchant name still "SHIJO AI" without the dot), **D-12/13** (concurrency races),
+**D-6** (CSP), **D-22** (product decision), the Google Ads "free trial" wording, the unaudited Ads
+callouts/lead form/call asset, the sandbox `CREDITS_*` ids, and the §54.6 discrepancy.
+
+**Scenario 2 (B2B SaaS persona for shiroapps.com) still not started.**

@@ -12,6 +12,8 @@
 | `c48058f` | 18 audit fixes: char counts, server-side validation, upgrade CTA, checkout allowlist, security headers, pricing accuracy |
 | `8533c72` | D-21 / D-24 / D-25 + API cost tracking and `/admin/usage` |
 | `7ff5366` | Admin layout; avg-cost calculation corrected over unpriced rows |
+| `3582d5d` | Methodology doc, public case study, register through D-33, KB §52 (docs only) |
+| `52cc9bf` | **D-34 / D-35** — brand default neutralised; count-label guards de-conflicted + label insertion |
 
 ---
 
@@ -39,7 +41,7 @@ about them at all. Total findings assigned: **35** — D-34 and D-35 were added 
 | **D-9** | **Usage counter goes stale in the UI.** Showed "1 of 3 left" while the server had recorded 3 of 3. Corrected only on reload. Affects anyone with two tabs open. | UI vs `/api/usage` (`used:3, remaining:0`) | S4 | `usageTick` bumped in `finally` — refetch after **every** attempt, not only successful ones. | **LIVE** |
 | **D-10** | **Validation error doesn't clear.** "Please fill in: Page Topic, Target Keyword" stayed on screen after both fields were filled. | SEO Meta Generator | S4 | Error clears on any input change. | **LIVE** |
 | **D-11** | **Comment/code drift.** `lib/tools/usage.ts` said "9 of the 12 tools run on Sonnet". Registry has **10** sonnet, 2 haiku. | `lib/tools/usage.ts` | S4 | Comment corrected. | **LIVE** |
-| **D-23** | **Label prefixes dropped.** The `Title Tag:` / `Meta Description:` prefixes were lost from output labels during the D-1 rework. | SEO Meta Generator output | S4 | Restore the prefixes in `LENGTH_LABEL_GUARD`. | **OPEN** |
+| **D-23** | **Label prefixes dropped.** The `Title Tag:` / `Meta Description:` prefixes were lost from output labels during the D-1 rework. | SEO Meta Generator output | S4 | Restore the prefixes in `LENGTH_LABEL_GUARD`. | **LIVE** — verified in §H3: `Title Tag (49 characters):` |
 
 ---
 
@@ -217,7 +219,7 @@ the text Google displays.
 
 **Sev S2** — a false claim published into customer-facing copy, on every affected generation.
 
-**Status: FIXED-LOCAL** (committed, **not yet pushed or deployed**).
+**Status: LIVE** — deployed in `52cc9bf` and re-verified across 6 runs, **0 occurrences**. See §H3.
 `prompts.ts:66` → `${i.brand || 'not specified'}`, matching the other three defaults. All three
 `'e.g. Shijo.ai'` placeholders in `registry.ts` → `'e.g. Acme Studio'`.
 
@@ -244,7 +246,7 @@ picks a side non-deterministically.
 **When it fires it is perfect — 30/30 exact.** When it doesn't, the tool states no length at all
 and the user is back to counting by hand, which is the original D-1 complaint.
 
-**Status: FIXED-LOCAL** (committed, **not yet pushed or deployed**). Both halves done:
+**Status: LIVE** — deployed in `52cc9bf`. Re-verified: label emitted **6/6 runs, 60/60 counts exact**. See §H3. Both halves shipped:
 
 1. The prohibition was moved out of `ACCURACY_GUARD` into a new
    `NO_SELF_MEASUREMENT_GUARD`, and `route.ts` now appends **either**
@@ -257,8 +259,8 @@ and the user is back to counting by hand, which is the original D-1 complaint.
 
 **Unit-tested** against the four real output shapes: bare labels (the failing run-1 shape),
 existing-but-wrong counts (the original D-1 shape), bold + bulleted decoration, and a prose control
-that must be left untouched. **4/4 pass, 0 failures.** Live re-verification across ≥5 runs is still
-required after deploy before this may be marked LIVE.
+that must be left untouched. **4/4 pass, 0 failures** — then confirmed live at a rate, not a
+single pass (§H3).
 
 **Process lesson, recorded deliberately:** the original D-1 verification ran the tool **once**, saw
 10/10, and marked it LIVE. A fix that works 60% of the time passes a single verification 60% of the
@@ -290,17 +292,87 @@ recorded here rather than filed. Worth a dedicated local-intent test case in the
 
 ---
 
+## H3. RE-VERIFICATION after deploy `52cc9bf` — 2026-08-23
+
+**Deploy confirmed live by a deterministic, non-model signal first:** the Brand Name placeholder on
+`/dashboard/tools/seo-meta-generator` now renders `"e.g. Acme Studio"`, a string that exists only in
+`52cc9bf`. `HEAD == origin/main == 52cc9bf`, 0 ahead / 0 behind.
+
+Then 6 live generations — the same 5 verticals as the failing retest, **plus a sixth with the Brand
+field deliberately filled** to prove the fix didn't break the legitimate path.
+
+| Run | Brand supplied | "Shijo" hits | Count labels | Counts exact |
+|---|---|---|---|---|
+| yoga | — | **0** | 10 | **10/10** |
+| leather wallets | — | **0** | 10 | **10/10** |
+| emergency plumbing | — | **0** | 10 | **10/10** |
+| vegan meal prep | — | **0** | 10 | **10/10** |
+| bookkeeping | — | **0** | 10 | **10/10** |
+| yoga, brand = "Lotus Flow Studio" | ✅ | **0** | 10 | **10/10** |
+
+### D-34 → **LIVE**
+
+**0 occurrences of our brand across all 6 runs** (was 35 across 5). The literal fallback string
+`"not specified"` also never leaked into the copy — 0 occurrences — which was the main risk of the
+fix. Copy degrades to first person instead: *"Start your yoga journey with **our** 6-week beginner
+course in Dallas."*
+
+**Regression check passed:** with Brand Name filled, "Lotus Flow Studio" appears 6 times. The
+optional field still works exactly as intended when the user uses it.
+
+### D-35 → **LIVE**
+
+**Label emitted 6/6 (was 3/5). 60/60 counts exact.** Rate is 100%, not a best-of.
+
+**Refactor regression check passed:** `ad-headline-ab` and `post-caption-generator` both state **0**
+character counts, confirming `NO_SELF_MEASUREMENT_GUARD` still reaches every non-counted tool after
+the split. D-24 holds.
+
+### D-23 → **LIVE** (resolved as a side effect)
+
+The `Title Tag:` / `Meta Description:` prefixes are present on every label —
+`Title Tag (49 characters):` — so the D-23 item is closed.
+
+### D-4 re-confirmed
+
+Fabrication scan across all 6 outputs (certified / accredited / award-winning / star ratings /
+review counts / "voted" / "#1" / guarantee): **0 hits.**
+
+### ⚠️ DISCREPANCY — `/admin/usage` unpriced-row count needs a direct DB check
+
+`rowsWithoutCostData` has reported **33** at three different totals (42 generations, then 50). The
+figure has not moved while the underlying data has, and it cannot be reconciled from the endpoint's
+own output: 50 total generations with 33 rows recorded today (all with tokens) implies at most 17
+untracked, not 33.
+
+**This is recorded as a DISCREPANCY, not a defect — it is not confirmed.** The API-side arithmetic
+is ambiguous because `byTool` aggregates mixed priced/unpriced rows under one tool, so it cannot be
+used to derive the true count. Settle it with a direct query before filing anything:
+
+```sql
+SELECT
+  COUNT(*)                                                        AS total_rows,
+  COUNT(*) FILTER (WHERE metadata->>'inputTokens' IS NULL)         AS untracked_rows,
+  COUNT(*) FILTER (WHERE api_cost_usd IS NULL OR api_cost_usd = 0) AS zero_cost_rows
+FROM usage_logs
+WHERE created_at >= NOW() - INTERVAL '30 days';
+```
+
+If `untracked_rows` ≠ 33, the banner is wrong and this becomes D-36. The banner exists so a low
+total is never mistaken for low spend — overstating how much data is missing undermines exactly
+that. Note this panel has already produced one confirmed arithmetic defect (D-31).
+
+---
+
 ## I. Still open — ranked
 
 | # | Finding | Sev | Owner |
 |---|---|---|---|
 | **D-32** | Annual plan unbuyable for existing monthly customers | **S2** | Stripe portal config (owner) + code |
-| **D-34** | Our own brand name hardcoded into customer SEO copy (5/5 runs) | **S2** | **FIXED-LOCAL — needs push + deploy + live re-verify** |
-| **D-35** | D-1 character-count fix only fired on ~60% of runs (contradictory prompt guards) | **S3** | **FIXED-LOCAL — needs push + deploy + ≥5-run live re-verify** |
+| — | **DISCREPANCY:** `/admin/usage` unpriced-row count stuck at 33 — run the SQL in §H3 | ? | owner (DB query) |
 | **D-12/13** | Quota check-then-act and daily-counter insert races | **S3** | code — needs transaction/atomic upsert + load test |
 | **D-6** | CSP still not shipped (Report-Only first) | **S3** | code |
 | **D-33** | "SHIJO AI" missing its dot on all Stripe surfaces | S4 | Stripe Dashboard (owner) |
-| **D-23** | `Title Tag:` / `Meta Description:` label prefixes | S4 | code |
 | **D-22** | Do free-tier generations count against the first paid month? | S4 | **product decision** |
 | — | Ad description says "free trial"; SHIJO has a free **tier** | S4 | Google Ads (owner) |
 | — | Callouts, lead form and call asset never audited | — | Google Ads (owner) |

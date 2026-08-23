@@ -115,6 +115,13 @@ works 60% of the time passes a single verification 60% of the time.
 > language model, one green run is not a pass — run it five times across genuinely different inputs
 > and report the rate, not the best result.
 
+**How we actually fixed it:** we stopped the two rules contradicting each other — but more
+importantly, we stopped the outcome depending on the model at all. The code can now *insert* the
+missing label rather than only rewrite an existing one. Compliance became irrelevant.
+
+Re-verified after deploy, across the same five verticals plus one more: **label present on 6 runs
+out of 6, and 60 out of 60 counts exact.** A rate, not a best-of.
+
 ---
 
 ## Finding 2 — It invented a credential
@@ -180,6 +187,14 @@ template, and it became the production default for every customer who didn't ove
 
 > **Audit your defaults, not just your outputs.** A hardcoded fallback is a claim your product
 > makes on every request where the user stayed silent — and silence is the common case.
+
+Fixed, deployed, and re-verified: **zero occurrences of our name across six runs**, where there had
+been thirty-five across five. The copy now degrades to first person — *"our 6-week beginner course
+in Dallas"* — which is what it should have said all along.
+
+We also checked the opposite direction, because a fix that quietly breaks the working path is not a
+fix: with Brand Name actually filled in, the supplied brand appears six times in the output. The
+field still does its job.
 
 ---
 
@@ -329,14 +344,13 @@ Across three deploys in one day:
 - A promo-code field switched off until an actual coupon exists, so it can't reject people mid-payment
 - Per-generation cost tracking and an internal margin view
 
-**Written after the retest, not yet deployed at the time of writing:**
+And after the retest, deployed and re-verified the same day:
 
-- **Finding 3, the brand default** — now falls back to `'not specified'`, matching every other
-  brand field in the file. The example placeholders on the form were changed off our own name too.
-- **Finding 1, the 60% label rate** — the two contradicting prompt rules are now mutually
-  exclusive, and more importantly the correction no longer *depends* on the model at all: where the
-  label is missing, the code now inserts it rather than only rewriting it. Unit-tested against the
-  exact output shapes that failed, including bold and bulleted variants, with prose left untouched.
+- **Finding 3, the brand default** — falls back to a neutral placeholder now, matching every other
+  brand field in the file. **0 occurrences across 6 runs**, and the field still works when filled.
+- **Finding 1, the 60% label rate** — the two contradicting prompt rules are now mutually exclusive,
+  and the correction no longer depends on the model at all: where the label is missing, the code
+  inserts it. **6/6 runs, 60/60 counts exact.**
 
 **Still open, and we'd rather say so than not:**
 
@@ -400,13 +414,11 @@ forever, no card required.*
 - [ ] Confirm every figure against `docs/testing/2026-08-23-shijo-findings-register.md`
 - [ ] Confirm the unit-economics table still matches current model pricing
 - [ ] Confirm Findings 5, 7 and 8 are still described in the past tense (all fixed and live)
-- [ ] **Findings 1, 3 and 6 are described as OPEN.** Re-run the five-vertical meta test and the
-      annual-switch test immediately before posting. If any has shipped, move it to "what we
-      changed" and update the "still open" list — do not publish a fixed bug as open, or an open
-      bug as fixed
-- [ ] Decide deliberately whether to publish Finding 3 (our brand in customer copy) before it is
-      fixed. It is the strongest item in the piece and also the most embarrassing. Fixing it first
-      is a one-line change
+- [ ] **Finding 6 (annual switch) is described as OPEN.** Re-run the annual-switch test immediately
+      before posting; if it has shipped, move it to "what we changed" — do not publish a fixed bug
+      as open, or an open bug as fixed
+- [ ] Re-run the six-vertical meta test before posting to confirm Findings 1 and 3 are still clean
+      at a rate, not a single pass
 - [ ] No AI vendor named anywhere (per brand policy — vendor disclosure belongs in the Privacy
       Policy sub-processor list, /security and /ai-compliance only)
 - [ ] SHIJO.AI used throughout; SHIRO Technologies LLC appears nowhere in customer-facing copy
