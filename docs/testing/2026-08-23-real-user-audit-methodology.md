@@ -215,6 +215,45 @@ production and record the new observed value. "The diff looks right" is not veri
 The first run produced a correction of its own record at this step: a fix the *previous* session
 had marked as done turned out, on reading the live HTML, never to have been committed.
 
+**Verify a probabilistic fix probabilistically.** If the patched path runs through a language
+model, one green run is not a pass. Run it **at least five times across genuinely different
+inputs** and record the *rate*, not the best result.
+
+This rule exists because the first run broke it. The character-count fix was verified once, scored
+10/10, and marked LIVE. A retest hours later across five verticals found the correction firing on
+only **3 runs in 5** — perfect when it fired (30/30 exact), absent entirely otherwise, because two
+prompt instructions we had written were contradicting each other. **A fix that works 60% of the
+time passes a single verification 60% of the time.**
+
+### Phase 11b — Audit hardcoded defaults
+
+Every `||` fallback in a prompt template is a claim the product makes on the user's behalf whenever
+they leave a field blank — and blank is the common case for any optional field.
+
+Grep the templates for every default and read them as though a customer had shipped them. The first
+run's retest found this line in production:
+
+```
+Brand name: ${i.brand || 'Shijo.ai'}
+```
+
+Brand Name is optional. Leave it blank and the tool wrote **our own product name** into the
+customer's title tags and meta descriptions — reproduced on 5 of 5 runs across 5 unrelated
+verticals, 35 occurrences, once inside the title tag itself. Every other brand default in the same
+file degraded neutrally (`'not specified'`, `'the business'`, `'the newsletter'`); exactly one named
+us, and it was the tool that writes the text Google displays.
+
+**No amount of output-diffing catches this if you only ever test with the optional fields filled
+in.** Test the empty-optional path explicitly.
+
+### Phase 11c — Retest days later, after everything is green
+
+Schedule a second full pass once the fix batch is deployed and the register says LIVE. Treat it as
+a fresh audit, not a spot-check.
+
+The first run's second pass produced two new S2/S3 findings, both in code that had already been
+verified — and both invisible to a re-read of the diff.
+
 ### Phase 12 — Audit your own fixes with the same hostility
 
 Fixes introduce defects. Three of the first run's findings were caused by earlier fixes in the
@@ -280,7 +319,9 @@ The method transfers; the specifics do not. For each new product:
 8. Enumerate the paths to each outcome and try all of them.
 9. Ask what a generation cost, and what the margin is at the limit.
 10. Check the ads against the fact table.
-11. Verify live. Then re-audit the patches.
+11. Read every hardcoded default in the prompt templates, and test the empty-optional path.
+12. Verify live — five runs minimum for anything that goes through a model, reporting the rate.
+13. Re-audit the patches. Then come back days later and run the whole suite again.
 
 **Rough effort, first run:** one product, 12 tools, ~64,000 characters of generated output
 reviewed by hand, 90+ test cases across 12 suites, 33 findings, three deploys.
@@ -295,6 +336,8 @@ reviewed by hand, 90+ test cases across 12 suites, 33 findings, three deploys.
 - **Concurrency was not tested.** Two race conditions (quota check-then-act, and the daily-counter
   insert) were found by reading code and remain unverified, because reproducing them needs
   parallel load, not a browser.
-- **Model output is non-deterministic.** Every quality finding here was reproduced on a second run
-  before being filed. A single bad generation is an anecdote.
+- **Model output is non-deterministic** — and this cuts both ways. Every quality *finding* here was
+  reproduced before being filed, because a single bad generation is an anecdote. The retest showed
+  the converse matters just as much: a single *good* generation is also an anecdote, and the first
+  run used one to close a finding that was in fact only 60% fixed. Rates, not results.
 - **Paginated asset lists were not always exhausted.** Where coverage stopped, the register says so.

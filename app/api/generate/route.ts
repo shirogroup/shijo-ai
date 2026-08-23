@@ -5,7 +5,7 @@ import { PROMPTS } from '@/lib/tools/prompts';
 import { getSession } from '@/lib/auth';
 import { checkToolAccess, recordToolUsage } from '@/lib/tools/usage';
 import { serverErrorResponse } from '@/lib/api/errors';
-import { correctCharacterCounts, toolStatesCharacterCounts, ACCURACY_GUARD, LENGTH_LABEL_GUARD } from '@/lib/tools/output';
+import { correctCharacterCounts, toolStatesCharacterCounts, ACCURACY_GUARD, LENGTH_LABEL_GUARD, NO_SELF_MEASUREMENT_GUARD } from '@/lib/tools/output';
 
 const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
 
@@ -149,8 +149,15 @@ export async function POST(req: NextRequest) {
     // Only the tools with a real, unambiguous length budget are asked to state
     // one; everything else is told not to measure its own output at all.
     const statesCounts = toolStatesCharacterCounts(toolId);
+    // D-35: the "never state a measurement" rule and the "keep the (N characters)
+    // label" rule used to be appended together and contradicted each other, so the
+    // label — and therefore the recount — appeared on only ~60% of runs. They are
+    // now mutually exclusive: tools whose counts are recomputed get the label rule,
+    // every other tool gets the prohibition.
     const userPrompt =
-      promptBuilder(inputs || {}) + ACCURACY_GUARD + (statesCounts ? LENGTH_LABEL_GUARD : '');
+      promptBuilder(inputs || {}) +
+      ACCURACY_GUARD +
+      (statesCounts ? LENGTH_LABEL_GUARD : NO_SELF_MEASUREMENT_GUARD);
 
     // ── Call Claude API ─────────────────────────────────────────────
     const message = await client.messages.create({

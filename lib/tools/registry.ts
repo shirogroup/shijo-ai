@@ -113,7 +113,7 @@ export const TOOLS: ToolConfig[] = [
       { id: 'topic', label: 'Page Topic', placeholder: 'e.g. Best project management tools 2026', required: true },
       { id: 'keyword', label: 'Target Keyword', placeholder: 'e.g. project management tools', required: true },
       { id: 'pageType', label: 'Page Type', placeholder: 'Blog post', type: 'select', options: ['Blog Post', 'Product Page', 'Landing Page', 'Category Page', 'Homepage'] },
-      { id: 'brand', label: 'Brand Name', placeholder: 'e.g. Shijo.ai' },
+      { id: 'brand', label: 'Brand Name', placeholder: 'e.g. Acme Studio' },
     ],
   },
   {
@@ -143,7 +143,7 @@ export const TOOLS: ToolConfig[] = [
     fields: [
       { id: 'url', label: 'Page URL or Content', placeholder: 'Paste your page URL or content text...', type: 'textarea', required: true },
       { id: 'keyword', label: 'Target Query / Keyword', placeholder: 'e.g. Best CRM software for startups', required: true },
-      { id: 'brand', label: 'Brand Name', placeholder: 'e.g. Shijo.ai' },
+      { id: 'brand', label: 'Brand Name', placeholder: 'e.g. Acme Studio' },
       { id: 'competitors', label: 'Key Competitors', placeholder: 'e.g. Semrush, Ahrefs, Frase' },
     ],
   },
@@ -226,7 +226,7 @@ export const TOOLS: ToolConfig[] = [
     minPlan: 'pro',
     outputLabel: 'Your Email Sequence',
     fields: [
-      { id: 'brand', label: 'Brand / Product Name', placeholder: 'e.g. Shijo.ai', required: true },
+      { id: 'brand', label: 'Brand / Product Name', placeholder: 'e.g. Acme Studio', required: true },
       { id: 'sequenceType', label: 'Sequence Type', placeholder: 'Welcome', type: 'select', options: ['Welcome', 'Onboarding', 'Sales / Launch', 'Abandoned Cart', 'Re-engagement', 'Nurture'] },
       { id: 'purpose', label: 'Purpose', placeholder: 'e.g. Convert trial users to paid' },
       { id: 'count', label: 'Number of Emails', placeholder: '5', type: 'select', options: ['3', '5', '7'] },

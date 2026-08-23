@@ -21,7 +21,8 @@
 but their detail was lost when the working context rolled over and it is not recoverable from the
 transcript, the commits, or the repo. They are recorded here as gaps rather than reconstructed
 from memory. **Do not reuse those numbers**, and do not assume they were trivial — assume nothing
-about them at all. Total findings assigned this run: **33**. Documented below: **29**.
+about them at all. Total findings assigned: **35** — D-34 and D-35 were added by the retest in
+§H2. Documented below: **31**.
 
 ---
 
@@ -163,11 +164,139 @@ Measured sample: 378 input / 396 output tokens = **$0.0024**.
 
 ---
 
+## H2. RETEST — 2026-08-23, second pass against production (post-`3582d5d`)
+
+Re-ran the regression suite after all fix batches were marked green. **Two new defects found, both
+in code we had already "verified".**
+
+### Still holding ✅
+
+| Check | Result |
+|---|---|
+| D-3 required fields | `{inputs:{}}` → **400** `"Please fill in: Page Topic, Target Keyword"` + `missingFields[]`. Same on `keyword-research`. |
+| D-8 length cap | 25,000-char field → **400** `"Too long (limit 20,000 characters): Page Topic"` |
+| D-25 estimate disclaimer | Present verbatim at the top of Keyword Research output |
+| D-4 fabrications | 0 invented credentials / awards / ratings across 5 fresh generations in 5 verticals |
+| D-24 count scoping | Ad Headline A/B stated **no** character counts — correctly out of scope |
+| D-27 cost tracking | 42 generations, 32 priced, **$0.0535** total. Arithmetic spot-checked: keyword-research 395 in / 1,559 out on the premium tier = `395/1e6×3 + 1559/1e6×15` = **$0.02457** ✓ matches the recorded $0.0246 |
+
+### Unchanged, still open
+
+| Check | Result |
+|---|---|
+| D-32 portal half | Billing portal **still offers "Cancel subscription" only.** Plan switching not yet enabled in Stripe. |
+| D-33 brand name | **Still "SHIJO AI"** on portal title, header and "SHIJO AI partners with Stripe". |
+
+### 🔴 D-34 (NEW, S2) — our own brand name is hardcoded into customer SEO copy
+
+`lib/tools/prompts.ts:66` — `Brand name: ${i.brand || 'Shijo.ai'}`
+
+`brand` is an **optional** field on the SEO Meta Generator form. When the user leaves it blank —
+the common case — the prompt tells the model the customer's brand is **Shijo.ai**, and the model
+duly writes it into the title tags and meta descriptions the customer will paste onto their own
+site.
+
+**Reproduction: 5 of 5 runs, 35 total occurrences, 5 unrelated verticals.**
+
+| Run | Vertical | "Shijo" occurrences |
+|---|---|---|
+| 1 | beginner yoga, Dallas | 5 |
+| 2 | handmade leather wallets | 7 |
+| 3 | emergency plumbing, Austin | 7 |
+| 4 | vegan meal-prep delivery | 9 |
+| 5 | small-business bookkeeping | 7 |
+
+Verbatim: *"Start your yoga journey with **Shijo.ai's** 6-week beginner course in Dallas this
+October."* · *"Handmade Leather Wallets for Men | Free Shipping by **Shijo.ai**"* — the second one
+is in the **title tag**.
+
+**This is not a model fabrication — it is our own template.** Every other brand default in the same
+file degrades neutrally: `i.brand || 'not specified'` (L91), `i.brand || 'the business'` (L176),
+`i.brand || 'the newsletter'` (L192). Exactly one names our product, and it is the tool that writes
+the text Google displays.
+
+**Sev S2** — a false claim published into customer-facing copy, on every affected generation.
+
+**Status: FIXED-LOCAL** (committed, **not yet pushed or deployed**).
+`prompts.ts:66` → `${i.brand || 'not specified'}`, matching the other three defaults. All three
+`'e.g. Shijo.ai'` placeholders in `registry.ts` → `'e.g. Acme Studio'`.
+
+### 🟠 D-35 (NEW, S3) — the D-1 character-count fix only fires on ~60% of runs
+
+`correctCharacterCounts()` **rewrites** an existing `(N characters)` label; it cannot **insert**
+one. So the fix depends on the model emitting the label — and `ACCURACY_GUARD` explicitly tells it
+not to:
+
+> `ACCURACY_GUARD`: *"Do NOT state character counts, word counts or any other measurement of your own output."*
+> `LENGTH_LABEL_GUARD`: *"Label each length as `Title Tag (N characters):` … keep the label."*
+
+Both are appended to the same prompt for `seo-meta-generator`. They contradict, and the model
+picks a side non-deterministically.
+
+| Run | Vertical | Label emitted | Counts exact |
+|---|---|---|---|
+| 1 | yoga | **no** | — no length stated at all |
+| 2 | leather wallets | yes | **10 / 10** |
+| 3 | emergency plumbing | **no** | — no length stated at all |
+| 4 | vegan meal prep | yes | **10 / 10** |
+| 5 | bookkeeping | yes | **10 / 10** |
+
+**When it fires it is perfect — 30/30 exact.** When it doesn't, the tool states no length at all
+and the user is back to counting by hand, which is the original D-1 complaint.
+
+**Status: FIXED-LOCAL** (committed, **not yet pushed or deployed**). Both halves done:
+
+1. The prohibition was moved out of `ACCURACY_GUARD` into a new
+   `NO_SELF_MEASUREMENT_GUARD`, and `route.ts` now appends **either**
+   `LENGTH_LABEL_GUARD` (counted tools) **or** `NO_SELF_MEASUREMENT_GUARD` (everything else) —
+   never both. The prohibition is correct where nothing recomputes the number; it must not apply
+   where something does.
+2. `correctCharacterCounts()` can now **insert** a missing label, not only rewrite an existing one.
+   A bare `Title Tag:` / `Meta Description:` heading is treated as a label with a missing number,
+   so the outcome no longer depends on the model complying at all.
+
+**Unit-tested** against the four real output shapes: bare labels (the failing run-1 shape),
+existing-but-wrong counts (the original D-1 shape), bold + bulleted decoration, and a prose control
+that must be left untouched. **4/4 pass, 0 failures.** Live re-verification across ≥5 runs is still
+required after deploy before this may be marked LIVE.
+
+**Process lesson, recorded deliberately:** the original D-1 verification ran the tool **once**, saw
+10/10, and marked it LIVE. A fix that works 60% of the time passes a single verification 60% of the
+time. **Any fix that runs through a language model must be verified across ≥5 runs on genuinely
+different inputs, and the register must record the rate, not the best result.**
+
+### Observed unit economics — real data, not ceilings
+
+The $7.34 / $55.05 figures in §H are **worst-case ceilings** (premium model, every generation).
+Observed average across 32 priced generations: **$0.0021**.
+
+| Tool | Tier | Gens | Cost | Per gen |
+|---|---|---|---|---|
+| keyword-research | premium | 2 | $0.0246 | **$0.0123** |
+| seo-meta-generator | fast | 14 | $0.0144 | $0.0010 |
+| post-caption-generator | premium | 14 | $0.0101 | $0.0007 |
+| ad-headline-ab | fast | 2 | $0.0044 | $0.0022 |
+
+**Two runs of one tool = 46% of all spend.** Keyword Research costs ~12× a meta generation. A
+"200 generations" allowance is worth $0.14 in the meta generator and $2.46 in keyword research —
+**margin is a function of tool mix, not just volume.**
+
+### Soft observation — not filed as a defect
+
+Keyword Research was seeded with *"beginner yoga classes Dallas"* and its top primaries came back
+as *"online yoga classes for beginners"* and *"beginner yoga online"* — the **local** intent in the
+seed was dropped in favour of online/national terms. Single observation, not reproduced, so it is
+recorded here rather than filed. Worth a dedicated local-intent test case in the next pass.
+
+---
+
 ## I. Still open — ranked
 
 | # | Finding | Sev | Owner |
 |---|---|---|---|
 | **D-32** | Annual plan unbuyable for existing monthly customers | **S2** | Stripe portal config (owner) + code |
+| **D-34** | Our own brand name hardcoded into customer SEO copy (5/5 runs) | **S2** | **FIXED-LOCAL — needs push + deploy + live re-verify** |
+| **D-35** | D-1 character-count fix only fired on ~60% of runs (contradictory prompt guards) | **S3** | **FIXED-LOCAL — needs push + deploy + ≥5-run live re-verify** |
 | **D-12/13** | Quota check-then-act and daily-counter insert races | **S3** | code — needs transaction/atomic upsert + load test |
 | **D-6** | CSP still not shipped (Report-Only first) | **S3** | code |
 | **D-33** | "SHIJO AI" missing its dot on all Stripe surfaces | S4 | Stripe Dashboard (owner) |

@@ -21,6 +21,11 @@
 // Matches e.g.  **Title Tag (58 characters):**   or   - **Title Tag (58 chars):**
 const COUNT_CLAIM = /(\(\s*)(\d+)(\s*(?:characters|chars)\s*\))/i;
 
+// Matches a label that names what is being measured but states no number:
+//   "Title Tag:"   "**Meta Description:**"   "- Title Tag :"
+// Capture 1 is everything up to the colon, capture 2 is the trailing decoration.
+const BARE_LABEL = /^(\s*[-*+]?\s*\**\s*(?:Title Tag|Meta Description))\s*:(\**\s*)$/i;
+
 /** Strip the decoration a model puts around a line so we count the real text. */
 function unwrap(line: string): string {
   return line
@@ -66,8 +71,15 @@ export function correctCharacterCounts(text: string): string {
   const lines = text.split('\n');
 
   for (let i = 0; i < lines.length; i++) {
-    const m = lines[i].match(COUNT_CLAIM);
-    if (!m) continue;
+    const hasClaim = COUNT_CLAIM.test(lines[i]);
+
+    // D-35: the model does not reliably emit the "(N characters)" label, so we
+    // cannot only *rewrite* it — we must also be able to *insert* it. A bare
+    // "Title Tag:" / "Meta Description:" heading is treated as a label with a
+    // missing number. Without this the whole mechanism is a coin flip: across
+    // five live runs the label appeared on three.
+    const bare = hasClaim ? null : lines[i].match(BARE_LABEL);
+    if (!hasClaim && !bare) continue;
 
     // The counted string is the next non-empty line.
     let j = i + 1;
@@ -77,7 +89,9 @@ export function correctCharacterCounts(text: string): string {
     const actual = unwrap(lines[j]).length;
     if (actual === 0) continue;
 
-    lines[i] = lines[i].replace(COUNT_CLAIM, `$1${actual}$3`);
+    lines[i] = hasClaim
+      ? lines[i].replace(COUNT_CLAIM, `$1${actual}$3`)
+      : lines[i].replace(BARE_LABEL, `$1 (${actual} characters):$2`);
   }
 
   return lines.join('\n');
@@ -98,11 +112,28 @@ IMPORTANT — factual constraints:
   qualifications, awards, ratings, review counts, years in business, customer
   numbers, or guarantees that were not supplied.
 - Do not state scarcity ("limited spots", "filling fast") unless the input says so.
-- Do NOT state character counts, word counts or any other measurement of your
-  own output. Any number you write would be an estimate presented as a fact,
-  and language models cannot count characters reliably.
 - Where a detail would strengthen the copy but was not provided, leave a clearly
   marked placeholder such as [YOUR CREDENTIAL] rather than inventing one.`;
+
+
+/**
+ * Appended ONLY to tools that are NOT in COUNTED_TOOLS.
+ *
+ * D-35 (2026-08-23 retest): this clause used to live inside ACCURACY_GUARD, which
+ * is appended to every prompt — including seo-meta-generator, whose LENGTH_LABEL_GUARD
+ * asks for exactly the label this forbids. The two contradicted, the model picked a
+ * side non-deterministically, and across five live runs the "(N characters)" label
+ * appeared on only three. On the other two the tool stated no length at all and
+ * correctCharacterCounts() had nothing to rewrite — silently reverting to the D-1
+ * behaviour the whole mechanism exists to prevent.
+ *
+ * The prohibition is correct WHERE NOTHING RECOMPUTES THE NUMBER. Where something
+ * does, it must not apply.
+ */
+export const NO_SELF_MEASUREMENT_GUARD = `
+- Do NOT state character counts, word counts or any other measurement of your
+  own output. Any number you write would be an estimate presented as a fact,
+  and language models cannot count characters reliably.`;
 
 
 /**
@@ -111,7 +142,7 @@ IMPORTANT — factual constraints:
  * drift onto an adjacent line.
  */
 export const LENGTH_LABEL_GUARD = `
-- Label each length as "Title Tag (N characters):" or
+- You MUST label each length as "Title Tag (N characters):" or
   "Meta Description (N characters):" on the line immediately BEFORE the text it
   describes, with the text alone on the next line. The number is recomputed from
   the real string after generation, so do not labour over it — but keep the

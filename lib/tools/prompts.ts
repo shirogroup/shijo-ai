@@ -63,7 +63,7 @@ Deliver:
 Page topic: ${i.topic}
 Target keyword: ${i.keyword}
 Page type: ${i.pageType || 'blog post'}
-Brand name: ${i.brand || 'Shijo.ai'}
+Brand name: ${i.brand || 'not specified'}
 
 Generate 5 variations of:
 - Title tag (50-60 characters) — include keyword, compelling hook

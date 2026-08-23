@@ -2232,3 +2232,102 @@ An audit that does not re-audit its own patches ships a smaller number of bigger
 `git status` in the Cowork sandbox creates `.git/index.lock`, which the sandbox is then not
 allowed to unlink — this had blocked commits repeatedly across sessions. **Use
 `git --no-optional-locks status`.** Verified: it leaves no lock behind.
+
+---
+
+## §53 — RETEST (2026-08-23, second pass): two new defects in already-verified code
+
+Full detail: `docs/testing/2026-08-23-shijo-findings-register.md` §H2.
+
+### §53.1 Why this section exists
+
+Re-ran the regression suite against production **after every fix batch was marked LIVE**. Found two
+new defects, both in code that had already been verified. This is the strongest argument in the
+whole engagement for the retest phase, and it is now Phase 11b/11c of the method doc.
+
+### §53.2 🔴 D-34 — our own brand name is hardcoded into customer SEO copy — CONFIRMED
+
+`lib/tools/prompts.ts:66` was `Brand name: ${i.brand || 'Shijo.ai'}`.
+
+`brand` is an **optional** field on the SEO Meta Generator. Left blank — the common case — the
+prompt told the model the customer's brand was **Shijo.ai**, and the model wrote it into the title
+tags and meta descriptions the customer pastes onto their own site.
+
+**Reproduced 5 of 5 runs, 35 occurrences, 5 unrelated verticals** (yoga / leather goods / plumbing /
+meal-prep / bookkeeping). One run put it in the **title tag**: *"Handmade Leather Wallets for Men |
+Free Shipping by Shijo.ai"*.
+
+**Not a model fabrication — our own template.** Every other brand default in the same file degrades
+neutrally (`'not specified'` L91, `'the business'` L176, `'the newsletter'` L192). Exactly one named
+our product, and it was the tool that writes the text Google displays.
+
+**FIXED-LOCAL:** `${i.brand || 'not specified'}`; all three `'e.g. Shijo.ai'` placeholders in
+`registry.ts` → `'e.g. Acme Studio'`.
+
+### §53.3 🟠 D-35 — the D-1 character-count fix only fired on ~60% of runs — CONFIRMED
+
+`correctCharacterCounts()` could only **rewrite** an existing `(N characters)` label, never insert
+one — so it depended on the model emitting the label, while `ACCURACY_GUARD` (appended to *every*
+prompt) explicitly said *"Do NOT state character counts."* The two contradicted; the model picked a
+side per-run.
+
+| Run | Vertical | Label | Counts |
+|---|---|---|---|
+| 1 | yoga | **no** | no length stated at all |
+| 2 | leather wallets | yes | 10/10 exact |
+| 3 | plumbing | **no** | no length stated at all |
+| 4 | meal prep | yes | 10/10 exact |
+| 5 | bookkeeping | yes | 10/10 exact |
+
+Perfect when it fired (**30/30**), absent otherwise — silently reverting to the D-1 behaviour.
+
+**FIXED-LOCAL, both halves:** prohibition split out into `NO_SELF_MEASUREMENT_GUARD`, and
+`route.ts` now appends **either** `LENGTH_LABEL_GUARD` **or** `NO_SELF_MEASUREMENT_GUARD`, never
+both; and `correctCharacterCounts()` now **inserts** a missing label, so the outcome no longer
+depends on model compliance. Unit-tested 4/4 against the real failing shapes (bare labels,
+wrong-count labels, bold/bulleted decoration, prose control).
+
+### §53.4 ⚠️ PROCESS RULE — verify probabilistic fixes probabilistically
+
+**The original D-1 verification ran the tool ONCE, scored 10/10, and marked it LIVE.** A fix that
+works 60% of the time passes a single verification 60% of the time.
+
+> **Any fix on a path that runs through a language model must be verified across ≥5 runs on
+> genuinely different inputs, and the register must record the RATE, not the best result.**
+
+Corollary now in the method doc: **audit hardcoded defaults**, and **test the empty-optional path**.
+Every `||` fallback in a prompt template is a claim the product makes whenever the user stays
+silent — and silence is the common case.
+
+### §53.5 Still holding on retest — CONFIRMED
+
+D-3 (400 + `missingFields[]`), D-8 (400 over 20k chars), D-25 (disclaimer present), D-4 (0
+fabrications across 5 fresh generations), D-24 (Ad Headline A/B correctly states no counts),
+D-27 (cost arithmetic spot-checked: 395 in / 1,559 out premium = $0.02457 ✓ matches recorded
+$0.0246).
+
+**Unchanged and still open:** D-32 (portal still "Cancel subscription" only) and D-33 (still
+"SHIJO AI" without the dot). Neither Stripe Dashboard change has been made yet.
+
+### §53.6 Observed unit economics — real data, not ceilings
+
+The $7.34 / $55.05 figures in §52.4 are **worst-case ceilings**. Observed average across 32 priced
+generations: **$0.0021**.
+
+| Tool | Tier | Gens | Cost | Per gen |
+|---|---|---|---|---|
+| keyword-research | premium | 2 | $0.0246 | **$0.0123** |
+| seo-meta-generator | fast | 14 | $0.0144 | $0.0010 |
+| post-caption-generator | premium | 14 | $0.0101 | $0.0007 |
+| ad-headline-ab | fast | 2 | $0.0044 | $0.0022 |
+
+**Two runs of one tool = 46% of all spend.** Keyword Research costs ~12× a meta generation. A "200
+generations" allowance is worth $0.14 in the meta generator and $2.46 in keyword research —
+**margin is a function of tool mix, not just volume.** Worth revisiting if usage skews to premium
+tools.
+
+### §53.7 Soft observation — not filed
+
+Keyword Research seeded with *"beginner yoga classes Dallas"* returned top primaries *"online yoga
+classes for beginners"* / *"beginner yoga online"* — **local intent dropped**. Single observation,
+not reproduced. Add a dedicated local-intent test case next pass.

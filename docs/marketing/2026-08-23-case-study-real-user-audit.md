@@ -9,7 +9,14 @@
 We gave our own SEO tool a simple job — tell the user how long a title tag is — and it got the
 answer wrong **five times out of five**, every time in the direction that mattered.
 
-Here is how we found that, what else came up, and the method we now use before anything ships.
+Then we fixed it, verified the fix, marked it done — and a retest a few hours later showed the fix
+was only firing on 3 runs out of 5.
+
+Here is how we found all of that, what else came up, and the method we now use before anything
+ships.
+
+*Updated after a second full pass against production. Two findings in this document exist only
+because we retested work that was already marked green.*
 
 ---
 
@@ -77,6 +84,37 @@ There's a general rule buried in this one, and it applies to every AI product on
 Character counts, word counts, item counts, prices, dates, totals. If a deterministic function can
 produce it, a deterministic function should.
 
+### …and then the retest found the fix was only firing 60% of the time
+
+We came back a few hours later and ran the same tool five times across five unrelated businesses
+— yoga, leather goods, emergency plumbing, meal-prep delivery, bookkeeping.
+
+| | Label emitted? | Counts correct |
+|---|---|---|
+| Run 1 — yoga | **no** | — no length stated at all |
+| Run 2 — leather wallets | yes | 10 / 10 exact |
+| Run 3 — emergency plumbing | **no** | — no length stated at all |
+| Run 4 — meal prep | yes | 10 / 10 exact |
+| Run 5 — bookkeeping | yes | 10 / 10 exact |
+
+When the label appears, the correction is flawless — **30 out of 30 exact**. But on two runs in
+five the tool stated no length whatsoever, silently handing the user back the manual counting the
+product exists to remove.
+
+The cause was our own two instructions arguing with each other. The accuracy rule we'd added for
+Finding 2 says *"do not state character counts — you cannot count reliably."* The label rule the
+correction depends on says *"keep the `(N characters)` label; the number is recomputed afterwards."*
+Both were appended to the same prompt. The model picks a side, and which side it picks varies run
+to run.
+
+**This is the finding we'd have missed entirely without a retest**, and it's the most transferable
+one in this document. Our original verification ran once, saw 10/10, and marked it done. A fix that
+works 60% of the time passes a single verification 60% of the time.
+
+> **Verify a probabilistic fix probabilistically.** If the thing you patched runs through a
+> language model, one green run is not a pass — run it five times across genuinely different inputs
+> and report the rate, not the best result.
+
 ---
 
 ## Finding 2 — It invented a credential
@@ -104,7 +142,48 @@ remaining fabricated credentials.
 
 ---
 
-## Finding 3 — Estimates dressed up as data
+## Finding 3 — We were putting our own brand into the customer's copy
+
+The retest turned up something worse than an invented credential, and it wasn't the AI's fault at
+all.
+
+Maya's meta descriptions came back reading:
+
+> *"Start your yoga journey with **Shijo.ai's** 6-week beginner course in Dallas this October."*
+>
+> *"Looking for beginner yoga classes in Dallas? **Shijo.ai** offers a complete 6-week course…"*
+
+That is our product name, inserted into a yoga studio's search-result copy. If Maya had shipped
+it, her Google listing would have been advertising us.
+
+We ran it four more times across four unrelated businesses. **Every single run.** Thirty-five
+occurrences across five generations — leather goods, emergency plumbing, meal-prep delivery,
+bookkeeping. One run put it in the title tag itself: *"Handmade Leather Wallets for Men | Free
+Shipping by Shijo.ai."*
+
+The cause was one line in our own prompt template:
+
+```
+Brand name: ${i.brand || 'Shijo.ai'}
+```
+
+Brand Name is an **optional** field on that form. Leave it blank — as most people will, on a form
+with two required fields and two optional ones — and the template doesn't fall back to a neutral
+placeholder. It falls back to *us*.
+
+The tell was sitting right there in the same file. Every other tool that takes a brand degrades
+gracefully: `'not specified'`, `'the business'`, `'the newsletter'`. Exactly one of them names our
+product, and it's the tool that writes the text Google displays.
+
+Nobody typed that maliciously. Someone wrote a plausible-looking example value while building the
+template, and it became the production default for every customer who didn't override it.
+
+> **Audit your defaults, not just your outputs.** A hardcoded fallback is a claim your product
+> makes on every request where the user stayed silent — and silence is the common case.
+
+---
+
+## Finding 4 — Estimates dressed up as data
 
 Our Keyword Research tool returned intent and competition ratings for every keyword. They read
 like search data. They were not — they were the model's inference from the phrasing.
@@ -120,7 +199,7 @@ A confident number with no source behind it is worse than no number.
 
 ---
 
-## Finding 4 — The most expensive bug was a button that didn't exist
+## Finding 5 — The most expensive bug was a button that did not exist
 
 The free tier gives three generations a day. We used all three, then asked for a fourth.
 
@@ -136,7 +215,7 @@ We have no idea how many people that cost us, because they left without a trace.
 
 ---
 
-## Finding 5 — We were selling a discount nobody could buy
+## Finding 6 — We were selling a discount nobody could buy
 
 We offer 20% off for annual billing: $278/year instead of $348. The number is correct and the
 Stripe price is configured properly — we checked it at live checkout.
@@ -165,7 +244,7 @@ working routes and one broken one still looks fine from the outside.
 
 ---
 
-## Finding 6 — Our own ads were making claims our code contradicted
+## Finding 7 — Our own ads were making claims our code contradicted
 
 Live Google Ads copy, checked line by line against the source of truth:
 
@@ -186,7 +265,7 @@ page, and it needs it on a schedule.
 
 ---
 
-## Finding 7 — We couldn't tell what anything cost
+## Finding 8 — We could not tell what anything cost
 
 An AI product's gross margin is an API bill. Ours was unmeasurable.
 
@@ -206,6 +285,25 @@ The first thing it told us was our actual unit economics, which we had never mea
 | Pro | $199/mo | $55.05 at 1,500 generations | **~72%** |
 
 Healthy — but we'd been guessing, and "healthy" and "guessing" are not a business.
+
+Those are ceilings, calculated at the most expensive model for every generation. Once real data
+accumulated, the picture got more interesting. Across 32 priced generations the **observed**
+average was **$0.0021** — and the spend was wildly concentrated:
+
+| Tool | Model tier | Generations | Cost | Per generation |
+|---|---|---|---|---|
+| Keyword Research | premium | 2 | $0.0246 | **$0.0123** |
+| SEO Meta Generator | fast | 14 | $0.0144 | $0.0010 |
+| Post Caption Generator | premium | 14 | $0.0101 | $0.0007 |
+| Ad Headline A/B | fast | 2 | $0.0044 | $0.0022 |
+
+**Two runs of one tool accounted for 46% of all spend.** Keyword Research costs roughly 12× a meta
+generation, because it's on the premium model *and* it writes long.
+
+That changes how you'd think about the plan limits. A "200 generations" allowance is not one
+number — it's worth $0.14 if the customer lives in the meta generator and $2.46 if they live in
+keyword research. Margin is a function of tool mix, not just volume, and you cannot see that until
+you price each call individually.
 
 One footnote worth keeping, because it's the honest kind: the first version of that internal
 dashboard divided total spend by *every* generation, including the 33 that predated cost tracking
@@ -231,9 +329,23 @@ Across three deploys in one day:
 - A promo-code field switched off until an actual coupon exists, so it can't reject people mid-payment
 - Per-generation cost tracking and an internal margin view
 
-Still open, and we'd rather say so than not: two concurrency races found by reading code that need
-parallel load to reproduce properly, and the annual-switch path from Finding 5, which needs a
-change on both our side and our payment provider's.
+**Written after the retest, not yet deployed at the time of writing:**
+
+- **Finding 3, the brand default** — now falls back to `'not specified'`, matching every other
+  brand field in the file. The example placeholders on the form were changed off our own name too.
+- **Finding 1, the 60% label rate** — the two contradicting prompt rules are now mutually
+  exclusive, and more importantly the correction no longer *depends* on the model at all: where the
+  label is missing, the code now inserts it rather than only rewriting it. Unit-tested against the
+  exact output shapes that failed, including bold and bulleted variants, with prose left untouched.
+
+**Still open, and we'd rather say so than not:**
+
+- **The annual-switch path in Finding 6**, which needs a change on both our side and our payment
+  provider's.
+- **Two concurrency races** found by reading code, which need parallel load to reproduce properly.
+
+We're publishing the open list on purpose. A case study that only shows resolved bugs is a
+marketing document; the useful version tells you what the audit found this morning.
 
 ---
 
@@ -257,8 +369,14 @@ If you want to run this on your own product:
 9. **Ask what one generation costs and what the margin is at the plan limit.** "We can't tell" is
    a finding.
 10. **Check your ads against the fact table.**
-11. **Verify fixes on production, not in the diff** — and then audit your fixes as hostilely as you
+11. **Audit your hardcoded defaults.** Every `||` fallback in a prompt template is a claim your
+    product makes whenever the user stays silent — and silence is the common case.
+12. **Verify fixes on production, not in the diff** — and then audit your fixes as hostilely as you
     audited the bugs.
+13. **Verify probabilistic fixes probabilistically.** Anything that runs through a language model
+    needs five runs across genuinely different inputs, and you report the rate, not the best one.
+14. **Retest days later.** Two of the findings above only exist because we came back and ran the
+    suite again after everything was marked green.
 
 ---
 
@@ -281,9 +399,14 @@ forever, no card required.*
 
 - [ ] Confirm every figure against `docs/testing/2026-08-23-shijo-findings-register.md`
 - [ ] Confirm the unit-economics table still matches current model pricing
-- [ ] Confirm Findings 4, 6 and 7 are still described in the past tense (all fixed and live)
-- [ ] Confirm Finding 5 is still accurate at time of posting — if the annual switch has shipped,
-      move it to "what we changed" and say so
+- [ ] Confirm Findings 5, 7 and 8 are still described in the past tense (all fixed and live)
+- [ ] **Findings 1, 3 and 6 are described as OPEN.** Re-run the five-vertical meta test and the
+      annual-switch test immediately before posting. If any has shipped, move it to "what we
+      changed" and update the "still open" list — do not publish a fixed bug as open, or an open
+      bug as fixed
+- [ ] Decide deliberately whether to publish Finding 3 (our brand in customer copy) before it is
+      fixed. It is the strongest item in the piece and also the most embarrassing. Fixing it first
+      is a one-line change
 - [ ] No AI vendor named anywhere (per brand policy — vendor disclosure belongs in the Privacy
       Policy sub-processor list, /security and /ai-compliance only)
 - [ ] SHIJO.AI used throughout; SHIRO Technologies LLC appears nowhere in customer-facing copy
