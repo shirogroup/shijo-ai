@@ -2673,3 +2673,74 @@ Two bad records in one register: a half-fix marked complete, and a security clai
 Both were found only by re-checking work already marked green.
 
 > **"Fixed" is a claim, and claims need the same evidence standard as bugs.**
+
+---
+
+## §58 — D-39 and D-5b VERIFIED LIVE; D-5 fully closed (2026-08-24)
+
+`HEAD == origin/main == 48c7a84`, 0/0, clean. Deploy of `5c17ec3` proved **before** testing by a
+deterministic non-model probe: the bundle contains `"No generations left"`, a string that exists
+only in that commit.
+
+### §58.1 D-39 → LIVE — CONFIRMED
+
+| Probe | Before | After |
+|---|---|---|
+| `price_1…` ids across all loaded chunks | **8** | **0** |
+| …in `layout-*.js` (loaded on every page) | 8 | **0** |
+| …across the billing page's 10 chunks | — | **0** |
+| `sk_live_` / AI-vendor keys | 0 | **0** |
+
+Layout chunk hash changed (`8a89456c…` → `3670000a…`), so it was rebuilt, not cached.
+**Regression passed:** plan names still render ("Standard" and "Enterprise" both present in the
+billing bundle) — `PLAN_DISPLAY_NAME` works from `lib/stripe/plan-names.ts`.
+
+**Rule going forward:** keep `lib/stripe/plan-names.ts` free of price ids, secrets and any
+server-side constant. Client components import plan names from THERE, never from
+`lib/stripe/products.ts`. The two API routes that need `STRIPE_PRICE_IDS` still import it directly,
+which is correct.
+
+### §58.2 D-5b → LIVE, and D-5 is now closed on BOTH halves — CONFIRMED
+
+Tested by stubbing `/api/usage` to report `remaining: 0`. **This is the methodological point:** the
+button keys off the *usage reading*, not the error response, so the earlier attempt — which stubbed
+only `/api/generate` — could never have exercised it. Stub the state the component actually reads.
+
+| | Before | After |
+|---|---|---|
+| Label at zero | "Generate with AI" | **"No generations left"** |
+| `disabled` | `false` | **`true`** |
+| Tooltip | none | "You have used all of your generations for this period." |
+| Requests fired by 3 further clicks | **3** | **0** |
+| Upsell CTA in error box | present | present → `/dashboard/billing` |
+
+**Regression passed:** back on real usage (133 of 200 remaining) the button reads "Generate with AI"
+and is enabled. The lock engages only at zero; `limit === -1` (unlimited) and the pre-fetch `null`
+state are both excluded.
+
+### §58.3 ⚠️ Stale record corrected in place — the D-7 note
+
+The register's inline D-7 note still asserted *"a live scan of the deployed client bundle (16 JS
+chunks) found zero Stripe price IDs exposed"* — the claim retracted in §57.2. Corrected in place
+rather than left to contradict §H5, and the S3 conclusion re-grounded on the server-side allowlist.
+
+**Lesson: retracting a claim in one section does not retract it everywhere it was repeated.** Grep
+for the claim, not just the finding id.
+
+### §58.4 Position now
+
+**Closed and verified live:** D-1, D-2, D-3, D-4, D-5 (both halves), D-6 (CSP still outstanding),
+D-7, D-8, D-9, D-10, D-11, D-14, D-15, D-16, D-17, D-18, D-19, D-21, D-23, D-24, D-25, D-27, D-30,
+D-31, D-34, D-35, D-39, D-5b.
+
+**Still open:** D-32 (Stripe portal + code) · D-33 (Stripe business name) · D-36 (webhook delivery —
+**highest priority, money can leak silently**) · D-37 (quota period vs billing anniversary —
+decision) · D-38 (email verification — decision) · D-12/D-13 (concurrency) · D-6 CSP · Ads
+"free trial" wording · unaudited Ads callouts/lead form/call asset · sandbox `CREDITS_*` ids.
+
+**Coverage gaps are catalogued in register §H6** — signup, email verification, password reset, free
+tier, completing payment/annual/cancellation, webhook delivery, account deletion, data export,
+contact form, concurrency, mobile, cross-browser. **The public case study must not claim coverage
+of any of these.**
+
+**Scenario 2 (B2B SaaS persona for shiroapps.com) still not started.**

@@ -14,6 +14,10 @@
 | `7ff5366` | Admin layout; avg-cost calculation corrected over unpriced rows |
 | `3582d5d` | Methodology doc, public case study, register through D-33, KB §52 (docs only) |
 | `52cc9bf` | **D-34 / D-35** — brand default neutralised; count-label guards de-conflicted + label insertion |
+| `e168f12` | Full regression sweep; D-36/37/38 filed (docs only) |
+| `e75d31e` | Evidence-grade pass; two self-corrections; case study rewritten (docs only) |
+| `5c17ec3` | **D-39 / D-5b** — `plan-names.ts` split out of `products.ts`; Generate disabled at quota |
+| `48c7a84` | Register: coverage gaps §H6 (docs only) |
 
 ---
 
@@ -23,8 +27,8 @@
 but their detail was lost when the working context rolled over and it is not recoverable from the
 transcript, the commits, or the repo. They are recorded here as gaps rather than reconstructed
 from memory. **Do not reuse those numbers**, and do not assume they were trivial — assume nothing
-about them at all. Total findings assigned: **38** — D-34/D-35 from the retest (§H2), D-36/D-37/D-38
-from the full regression sweep (§H4). Documented below: **34**.
+about them at all. Total findings assigned: **39** — D-34/D-35 from the retest (§H2), D-36/D-37/D-38 from the full
+regression sweep (§H4), D-39 + D-5b from the evidence-grade pass (§H5). Documented below: **35**.
 
 ---
 
@@ -35,7 +39,7 @@ from the full regression sweep (§H4). Documented below: **34**.
 | **D-1** | **Title-tag character counts wrong on every output.** SEO Meta Generator states a length for each title; all 5 overstated by 6–15 chars. Meta descriptions accurate to ±1 — titles specifically wrong. A 60-char limit is the entire reason the number is shown. | claimed 58/56/57/54/60 → actual **52/44/43/39/47**. Reproduced on a second run (claimed 58 → actual 45). | **S2** | Stop asking the model to count. `correctCharacterCounts()` recomputes from the real string after generation. | **LIVE** — re-tested on production: **10/10 exact** |
 | **D-3** | **Required fields not enforced server-side.** `POST /api/generate` with `inputs:{}` returned 200, consumed a generation, billed real tokens. The `required:true` flags in the registry were honoured by the form only. | `{"toolId":"seo-meta-generator","inputs":{}}` → **200**, `remaining=0`, output began *"Since the page topic and target keyword are undefined…"* | **S2** | Validate required fields from the registry in the route; 400 with `missingFields[]`. | **LIVE** |
 | **D-4** | **Tools invent factual claims the user never supplied.** Meta description asserted "**with certified instructors**"; another "Expert guidance, affordable pricing"; captions "Spots are filling up!". Maya supplied none of these. Scarcity puffery is arguable; **a credential claim is not**. | Run 1, SEO Meta Generator + Post Caption Generator | **S2** | `ACCURACY_GUARD` appended to every prompt — no invented credentials, certifications, awards, ratings, counts or scarcity; visible `[YOUR CREDENTIAL]` placeholders instead. | **LIVE** — verified across ~64,000 chars from all 12 tools, zero fabrications remaining |
-| **D-5** | **The limit-reached upsell had nothing to click.** At the highest-intent moment in the product the box said "Upgrade now" and contained **zero** links or buttons. Generate stayed enabled so the user could keep failing. | 0 clickable elements in the error box; `Generate` still `enabled:true` | **S2** (revenue) | CTA inside the box → `/dashboard/billing`; **and** disable Generate at 0 remaining. | ⚠️ **PARTIALLY LIVE** — CTA shipped and verified (§H5); **Generate is still enabled** (`disabled={loading}` only). Tracked as **D-5b**. |
+| **D-5** | ✅ **The limit-reached upsell had nothing to click.** At the highest-intent moment in the product the box said "Upgrade now" and contained **zero** links or buttons. Generate stayed enabled so the user could keep failing. | 0 clickable elements in the error box; `Generate` still `enabled:true` | **S2** (revenue) | CTA inside the box → `/dashboard/billing`; **and** disable Generate at 0 remaining. | **LIVE (both halves)** — CTA verified §H5; Generate now disables and relabels at zero, verified §H7. |
 | **D-25** | **Keyword Research presented estimates as measured search data.** Intent and competition ratings read like search-tool output; they were model inference from phrasing. A marketer reading "competition: low" reasonably assumes a source. | `lib/tools/prompts.ts` | **S2** | Forced opening disclaimer that intent/competition are estimates not measured data, pointer to a live-data keyword tool, and an outright prohibition on stating volume figures. | **LIVE** |
 | **D-8** | **No input length cap.** Textarea fields went into the prompt unbounded. Output capped by `max_tokens`; input capped by nothing. | `app/api/generate/route.ts` | **S3** | `MAX_FIELD_CHARS = 20,000` per field, enforced server-side, 400 over the limit. | **LIVE** |
 | **D-9** | **Usage counter goes stale in the UI.** Showed "1 of 3 left" while the server had recorded 3 of 3. Corrected only on reload. Affects anyone with two tabs open. | UI vs `/api/usage` (`used:3, remaining:0`) | S4 | `usageTick` bumped in `finally` — refetch after **every** attempt, not only successful ones. | **LIVE** |
@@ -53,10 +57,15 @@ from the full regression sweep (§H4). Documented below: **34**.
 | **D-6** | **Security headers absent.** Only `strict-transport-security` was sent. No framing protection ⇒ `/dashboard` was embeddable (clickjacking). | live header scan | **S3** | `headers()` in `next.config.ts`: X-Frame-Options, X-Content-Type-Options, Referrer-Policy, Permissions-Policy. **CSP deliberately deferred** — the site loads GTM, gtag, Ahrefs and Stripe, so it must go out Report-Only first. | **LIVE** (CSP still outstanding) |
 | **D-7** | **`/api/billing/checkout` had no priceId allowlist.** Accepted a client-supplied `priceId` *and* `mode` and forwarded both to Stripe. Sibling route `/api/stripe/create-checkout` did validate. | bogus priceId → **500** (Stripe rejected it, we didn't). bogus plan on the sibling → **400 "Invalid plan selected"**. | **S3** ↓ | Explicit 3-price allowlist + `mode` validation. **Deliberately not** `Object.values(STRIPE_PRICE_IDS)` — that also holds the paused `ENTERPRISE_*` prices and sandbox `CREDITS_*` ids, and allowlisting them would have silently re-enabled self-serve Enterprise. | **LIVE** |
 
-> **D-7 severity correction, on the record.** This was initially called **S1** from code reading.
-> A live scan of the deployed client bundle (16 JS chunks) found **zero Stripe price IDs exposed**,
-> so it was never directly exploitable. Downgraded to **S3** and reported as a downgrade. "Not
-> discoverable" is still not an access control, which is why it was fixed anyway.
+> **D-7 severity correction — AND a correction to that correction.** D-7 was initially called
+> **S1** from code reading, then downgraded to **S3** on the stated grounds that "a live scan of the
+> deployed client bundle found zero Stripe price IDs exposed."
+>
+> ❌ **That scan was wrong** — see §H5 / D-39. A complete chunk enumeration found **8** price ids in
+> `layout-*.js`. The **S3 conclusion still stands**, but on the correct grounds: the server-side
+> allowlist enforces which prices are purchasable, not obscurity. Re-verified live — bogus,
+> Enterprise and bad-mode requests all → **400**. (The price ids have since been removed from the
+> bundle anyway: D-39, verified live §H7.)
 
 ### Untested — carried forward
 
@@ -705,14 +714,55 @@ paying-user product surface** thoroughly. It is **not** an end-to-end test of th
 
 ---
 
+## H7. D-39 and D-5b VERIFIED LIVE after `5c17ec3` — 2026-08-24
+
+`HEAD == origin/main == 48c7a84`, 0/0, clean. Deploy proved first by a deterministic non-model
+probe: the deployed bundle contains `"No generations left"` — a string that exists only in
+`5c17ec3`.
+
+### D-39 → **LIVE**
+
+| Probe | Before | After |
+|---|---|---|
+| `price_1…` ids across all loaded chunks | **8** | **0** |
+| …specifically in `layout-*.js` (loaded on every page) | 8 | **0** |
+| …across the billing page's 10 chunks | — | **0** |
+| `sk_live_` / AI-vendor keys | 0 | **0** |
+
+The layout chunk hash changed (`8a89456c…` → `3670000a…`), confirming it was rebuilt rather than
+cached. **Regression check passed:** plan names still render — "Standard" and "Enterprise" are both
+present in the billing bundle — so `PLAN_DISPLAY_NAME` works from its new client-safe module.
+
+### D-5b → **LIVE**, and D-5 is now fully closed
+
+Tested by stubbing `/api/usage` to report `remaining: 0` (the button keys off the usage reading, not
+off the error response — stubbing only `/api/generate`, as the first attempt did, would not have
+exercised it).
+
+| | Before | After |
+|---|---|---|
+| Button label at zero | "Generate with AI" | **"No generations left"** |
+| `disabled` | `false` | **`true`** |
+| Tooltip | none | "You have used all of your generations for this period." |
+| Requests fired by 3 further clicks | **3** | **0** |
+| Upsell CTA in the error box | present | present → `/dashboard/billing` |
+
+**Regression check passed:** restored to real usage (133 of 200 remaining), the button reads
+"Generate with AI" and is enabled. The lock only engages at zero, and `limit === -1` (unlimited) and
+the pre-fetch `null` state are both excluded by the guard.
+
+**D-5 status: LIVE (both halves).**
+
+---
+
 ## I. Still open — ranked
 
 | # | Finding | Sev | Owner |
 |---|---|---|---|
 | **D-36** | Subscription status stale — Stripe active, our DB `incomplete`. Suspect webhook delivery; the same channel carries payment-failed and cancellation | **S2** | Stripe webhook logs (owner) → then code |
 | **D-32** | Annual plan unbuyable for existing monthly customers | **S2** | Stripe portal config (owner) + code |
-| ~~**D-39**~~ | 8 Stripe price IDs shipped in the client bundle via a barrel module | S4 | **FIXED-LOCAL `5c17ec3`** — `lib/stripe/plan-names.ts` split out, 6 client components repointed. Needs push + deploy + bundle re-scan. |
-| ~~**D-5b**~~ | Generate button still enabled at quota limit — half of D-5 never shipped | S4 | **FIXED-LOCAL `5c17ec3`** — disabled + relabelled "No generations left" when a real usage reading reports 0 on a metered plan. Needs push + deploy + forced-403 re-test. |
+
+
 | **D-37** | Quota resets Sep 1 (calendar) but billing renews Sep 23 (anniversary) — 400 generations in the first paid period | **S3** | product decision + code |
 | **D-38** | Paid admin account has `emailVerified: false` — verification gates nothing | S4 | **product decision** |
 | **D-12/13** | Quota check-then-act and daily-counter insert races | **S3** | code — needs transaction/atomic upsert + load test |
