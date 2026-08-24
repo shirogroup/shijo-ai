@@ -23,8 +23,8 @@
 but their detail was lost when the working context rolled over and it is not recoverable from the
 transcript, the commits, or the repo. They are recorded here as gaps rather than reconstructed
 from memory. **Do not reuse those numbers**, and do not assume they were trivial — assume nothing
-about them at all. Total findings assigned: **35** — D-34 and D-35 were added by the retest in
-§H2. Documented below: **31**.
+about them at all. Total findings assigned: **38** — D-34/D-35 from the retest (§H2), D-36/D-37/D-38
+from the full regression sweep (§H4). Documented below: **34**.
 
 ---
 
@@ -380,7 +380,8 @@ At 56 total generations:
    new unpriced rows are ever created, so a *correct* implementation must report a constant. I had
    the inference exactly backwards.
 
-**No defect. No D-36.** The SQL query below is retained anyway as a cheap independent confirmation
+**No defect — nothing was filed.** (The number D-36 was later assigned to an unrelated, real finding
+in §H4; it is *not* this.) The SQL query below is retained as a cheap independent confirmation
 if anyone wants it, but it is no longer blocking:
 
 ```sql
@@ -400,11 +401,153 @@ frozen query; three observations plus the arithmetic showed it was simply consta
 ---
 
 
+## H4. FULL REGRESSION SWEEP — 2026-08-23, on `07171c1` (product code = `52cc9bf`)
+
+`HEAD == origin/main == 07171c1`, 0/0, worktree clean. `07171c1` and `5ba4993` are docs-only, so
+the deployed product code is `52cc9bf`.
+
+### All 12 tools — every one generated successfully
+
+Single fixed scenario (Maya / Lotus Flow Studio, Dallas, 6-week beginner course, $149, October).
+**12/12 succeeded, 64,041 characters, 90 seconds wall-clock.**
+
+Model tier matched the registry on all 12 — **10 Sonnet, 2 Haiku** (`seo-meta-generator`,
+`ad-headline-ab`), confirming D-11's corrected comment against live behaviour.
+
+| Metric | Result |
+|---|---|
+| Brand injections ("Shijo") | **0** across all 12 |
+| `"not specified"` leaks | **0** |
+| Character-count labels | 10, **10/10 exact** |
+| Stray counts on the other 11 tools | **0** — D-24 scoping holds |
+| Invented scarcity | **0** |
+| Fabricated credentials | **0 real hits** (see below) |
+| Placeholders emitted instead of invented facts | **52** |
+
+**The two "certified" regex hits were both false positives, checked in context:**
+
+1. `seo-content-brief` — *"[IF APPLICABLE: Content reviewed by certified yoga instructor - RYT
+   credential]"* — an explicitly conditional bracketed recommendation.
+2. `ai-overview-optimizer` — *"**Certified Instructors** / All beginner classes taught by
+   [INSTRUCTOR NAME], [CERTIFICATION LEVEL] registered with [CERTIFICATION BODY]…"* — a fill-in
+   template where every fact is a placeholder.
+
+Both are exactly the behaviour `ACCURACY_GUARD` was written to produce. **Zero assertions of fact
+the user did not supply.**
+
+### API guards — 10/10 pass
+
+| Probe | Expected | Actual |
+|---|---|---|
+| `billing/checkout` bogus priceId | 400 | **400** "Invalid plan selected" |
+| `billing/checkout` Enterprise priceId | 400 | **400** — paused plan stays unbuyable |
+| `billing/checkout` mode `setup` | 400 | **400** "Invalid checkout mode" |
+| `billing/checkout` no priceId | 400 | **400** "Missing required field: priceId" |
+| `create-checkout` plan `enterprise` | 400 | **400** |
+| `create-checkout` interval `weekly` | 400 | **400** "Invalid billing interval" |
+| `create-checkout` growth + annual | 400 | **400** "not available on that billing interval yet" |
+| `generate` empty required fields | 400 | **400** + `missingFields[]` |
+| `generate` 25,000-char field | 400 | **400** "Too long (limit 20,000 characters)" |
+| `generate` unknown toolId | 400 | **400** |
+
+### Auth, routing and crawl surfaces — all pass
+
+- **Unauthenticated API:** 401 on all 6 routes (`generate`, `usage`, `admin/usage`,
+  `billing/portal`, `billing/checkout`, `stripe/create-checkout`).
+- **Route protection:** `/dashboard`, `/dashboard/billing`, `/admin/usage`, `/admin/users` all land
+  on `/login?redirect=%2F…` — same-origin and URL-encoded.
+- **Security headers (D-6):** `strict-transport-security: max-age=63072000` ·
+  `x-frame-options: SAMEORIGIN` · `x-content-type-options: nosniff` ·
+  `referrer-policy: strict-origin-when-cross-origin` ·
+  `permissions-policy: camera=(), microphone=(), geolocation=(), interest-cohort=()`.
+  **CSP still absent** — known and deliberate, Report-Only first.
+- **robots.txt:** disallows `/api/`, `/admin/`, `/dashboard/`.
+- **sitemap.xml:** 13 URLs, **0 non-www**, **0 gated paths leaked**.
+- **404:** real 404 status.
+- **D-25:** disclaimer present verbatim; no volume figures stated.
+- **Billing page:** "Standard Plan" in sidebar (D-21) · "Best Value" not "Most Popular" (D-14) ·
+  "or $278/year (save 20%)" is a **button** (D-17) · Enterprise "Coming Soon" (D-18).
+
+### Not re-testable this pass
+
+**D-5** (limit-reached upsell) needs an exhausted quota; the account is on Standard with 149 of 200
+remaining. **D-2** (open redirect) fires only after a successful login, so it cannot be exercised
+without signing out of the owner's live session — source unchanged since it was verified.
+
+---
+
+### 🔴 D-36 (NEW, S2) — subscription status is stale: Stripe says active, our DB says `incomplete`
+
+`/api/auth/me` and `/api/admin/users` both report `subscriptionStatus: "incomplete"` for the only
+paying customer. Stripe's own billing portal for the same customer shows an **active** subscription,
+a **paid** $29.00 invoice dated Aug 23, and next billing date Sept 23.
+
+`planTier` is correctly `pro`, so access is not affected today — **which is precisely why this is
+easy to miss and dangerous to leave.**
+
+Stripe creates a subscription as `incomplete` and moves it to `active` when the first payment
+confirms. Our `customer.subscription.created` handler ran; the follow-up
+`customer.subscription.updated` evidently did not. The handlers themselves look correct
+(`lib/stripe/webhook-handlers.ts` writes `subscription.status` on created, updated and deleted), so
+the suspicion falls on **webhook delivery**, not handler logic.
+
+**Why S2 and not cosmetic:** the same endpoint delivers `invoice.payment_failed` and
+`customer.subscription.deleted`. If updates are not landing, **a customer who cancels or whose card
+fails keeps paid access indefinitely**, and the admin panel shows the operator a status that is
+simply wrong.
+
+**To confirm:** Stripe Dashboard → Developers → Webhooks → the `www.shijo.ai/api/webhooks/stripe`
+endpoint → check delivery attempts for `customer.subscription.updated` around 2026-08-23. Look for
+non-2xx responses or an event type not selected on the endpoint. Then replay the failed event.
+
+### 🟠 D-37 (NEW, S3) — quota resets on the calendar month, billing renews on the anniversary
+
+`/api/usage` reports `resetLabel: "Resets Sep 1"` while Stripe reports next billing **Sept 23**.
+
+A customer subscribing on the 23rd gets a full 200 generations for 8 days, then a fresh 200 on
+Sep 1 — **400 generations inside their first billing period**, against a plan sold as "200
+generations per month". At the observed cost mix this is real money, and at the Pro tier
+(1,500/month) it is 3,000 generations for one payment.
+
+Related to the still-undecided **D-22**. Both come down to one question that has never been
+answered: **does a "month" mean a calendar month or a billing period?** Pick one and make the
+quota, the copy and the reset label agree.
+
+### 🟡 D-38 (NEW, S4 — needs a decision) — paid admin account has `emailVerified: false`
+
+`/api/auth/me` reports `emailVerified: false` for an account that is an admin and has paid. Email
+verification is therefore not enforced for either paid access or admin access.
+
+Not filed as a defect because it may well be deliberate — but it should be a **decision on the
+record**, not an accident. If verification is meant to gate anything, it currently gates nothing.
+
+### Unit economics — better sample after the full 12-tool run
+
+| | Value |
+|---|---|
+| Priced generations | 35 |
+| Total API cost | **$0.3453** |
+| **Average per generation** | **$0.0099** |
+
+This is a far more representative figure than the earlier $0.0021, which was dominated by cheap
+Haiku meta runs. At $0.0099 × 200, a Standard customer running the full tool mix at their plan
+limit costs **≈$1.97/month against $29 revenue — roughly 93% gross margin**, well inside the
+$7.34 worst-case ceiling in §H.
+
+Cost stays concentrated in the long-form Sonnet tools: `keyword-research` $0.0489 over 3 runs
+(**$0.0163 each**) versus `seo-meta-generator` $0.0482 over 27 (**$0.0018 each**) — a **9× spread
+per generation**. Margin remains a function of tool mix, not volume.
+
+---
+
 ## I. Still open — ranked
 
 | # | Finding | Sev | Owner |
 |---|---|---|---|
+| **D-36** | Subscription status stale — Stripe active, our DB `incomplete`. Suspect webhook delivery; the same channel carries payment-failed and cancellation | **S2** | Stripe webhook logs (owner) → then code |
 | **D-32** | Annual plan unbuyable for existing monthly customers | **S2** | Stripe portal config (owner) + code |
+| **D-37** | Quota resets Sep 1 (calendar) but billing renews Sep 23 (anniversary) — 400 generations in the first paid period | **S3** | product decision + code |
+| **D-38** | Paid admin account has `emailVerified: false` — verification gates nothing | S4 | **product decision** |
 | **D-12/13** | Quota check-then-act and daily-counter insert races | **S3** | code — needs transaction/atomic upsert + load test |
 | **D-6** | CSP still not shipped (Report-Only first) | **S3** | code |
 | **D-33** | "SHIJO AI" missing its dot on all Stripe surfaces | S4 | Stripe Dashboard (owner) |

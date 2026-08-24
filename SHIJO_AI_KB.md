@@ -2474,3 +2474,95 @@ Added to `docs/testing/2026-08-23-real-user-audit-methodology.md` §3.
 
 **No product impact** — `5ba4993` and this commit are documentation only. Everything running in
 production is `52cc9bf`, which carries the D-34/D-35 fixes and is confirmed deployed.
+
+---
+
+## §56 — FULL REGRESSION SWEEP on `07171c1` — 3 new findings (2026-08-23)
+
+Full detail: `docs/testing/2026-08-23-shijo-findings-register.md` §H4.
+`HEAD == origin/main == 07171c1`, 0/0, worktree clean. `07171c1` and `5ba4993` are **docs-only**,
+so deployed product code is `52cc9bf`.
+
+### §56.1 Everything previously fixed still holds — CONFIRMED
+
+**All 12 tools ran: 12/12 success, 64,041 characters, 90 s.** Model tiers matched the registry —
+**10 Sonnet / 2 Haiku** — confirming D-11 against live behaviour.
+
+| Metric | Result |
+|---|---|
+| Brand injections ("Shijo") | **0** across all 12 |
+| `"not specified"` leaks | **0** |
+| Character-count labels | 10, **10/10 exact** |
+| Stray counts on the other 11 tools | **0** (D-24 scoping holds) |
+| Invented scarcity | **0** |
+| Fabricated credentials | **0 real hits** |
+| Placeholders emitted instead of invented facts | **52** |
+
+Two "certified" regex hits were **false positives**, checked in context: one an
+`[IF APPLICABLE: …]` bracketed recommendation in `seo-content-brief`, one a fill-in template in
+`ai-overview-optimizer` where every fact is a `[PLACEHOLDER]`. Exactly what ACCURACY_GUARD is for.
+
+**API guards 10/10 pass** — bogus priceId, Enterprise priceId, bad mode, missing priceId, plan
+`enterprise`, interval `weekly`, growth+annual, empty required fields, 25k-char field, unknown
+toolId: all **400** with correct messages.
+
+**Auth/routing/crawl all pass** — 401 on all 6 APIs unauthenticated; 4/4 gated routes land on
+`/login?redirect=%2F…` (same-origin, encoded); all 4 security headers present (CSP still absent,
+known); robots correct; sitemap 13 URLs / 0 non-www / 0 gated; real 404; D-25 disclaimer verbatim;
+billing page shows "Standard Plan", "Best Value", clickable annual button, Enterprise "Coming Soon".
+
+**Not re-testable this pass:** D-5 (needs exhausted quota — 149 of 200 remaining) and D-2 (fires
+only after a successful login; would require signing out of the owner's live session).
+
+### §56.2 🔴 D-36 (NEW, S2) — subscription status stale: Stripe active, our DB `incomplete`
+
+`/api/auth/me` **and** `/api/admin/users` both report `subscriptionStatus: "incomplete"` for the
+only paying customer. Stripe's portal for that same customer shows an **active** subscription, a
+**paid** $29.00 invoice dated Aug 23, and next billing Sept 23.
+
+`planTier` is correctly `pro` so access works today — **which is why it is easy to miss and
+dangerous to leave.**
+
+Stripe creates a subscription `incomplete` and moves it to `active` on first payment confirmation.
+`customer.subscription.created` clearly ran; the follow-up `customer.subscription.updated` did not.
+Handlers in `lib/stripe/webhook-handlers.ts` look correct (they write `subscription.status` on
+created / updated / deleted, and all six event types are switched on), so suspicion falls on
+**webhook delivery, not handler logic**.
+
+**Why S2:** the same endpoint carries `invoice.payment_failed` and `customer.subscription.deleted`.
+If updates are not landing, **a customer who cancels or whose card fails keeps paid access
+indefinitely**, and the admin panel shows the operator a wrong status.
+
+**To confirm (owner):** Stripe Dashboard → Developers → Webhooks → the
+`www.shijo.ai/api/webhooks/stripe` endpoint → delivery attempts for
+`customer.subscription.updated` around 2026-08-23. Look for non-2xx, or the event type not being
+selected on the endpoint. Then replay.
+
+### §56.3 🟠 D-37 (NEW, S3) — quota resets on the calendar month, billing renews on the anniversary
+
+`/api/usage` says `resetLabel: "Resets Sep 1"`; Stripe says next billing **Sept 23**.
+
+A customer subscribing on the 23rd gets 200 generations for 8 days, then a fresh 200 on Sep 1 —
+**400 generations inside their first billing period** on a plan sold as "200 per month". At Pro
+(1,500/mo) that is 3,000 for one payment.
+
+Same root question as the still-open **D-22**: **does "month" mean calendar month or billing
+period?** Decide once, then make quota, copy and reset label agree.
+
+### §56.4 🟡 D-38 (NEW, S4 — decision) — paid admin account has `emailVerified: false`
+
+Email verification currently gates neither paid access nor admin access. May be deliberate — but it
+should be a decision on the record rather than an accident.
+
+### §56.5 Unit economics — much better sample after the full 12-tool run
+
+35 priced generations, **$0.3453** total, **avg $0.0099/generation** — far more representative than
+the earlier $0.0021, which was dominated by cheap Haiku meta runs.
+
+At $0.0099 × 200, a Standard customer running the full tool mix at their plan limit costs
+**≈$1.97/month against $29 revenue — ~93% gross margin**, comfortably inside the $7.34 worst-case
+ceiling in §52.4.
+
+Spend stays concentrated in long-form Sonnet tools: `keyword-research` $0.0489 / 3 runs
+(**$0.0163 each**) vs `seo-meta-generator` $0.0482 / 27 runs (**$0.0018 each**) — a **9× spread**.
+Margin is a function of tool mix, not volume.
