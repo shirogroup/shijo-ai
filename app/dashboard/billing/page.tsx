@@ -4,7 +4,7 @@ import { useState, Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
 import { Check, Crown, Zap, Sparkles, Loader2, CheckCircle, XCircle, ExternalLink } from 'lucide-react';
-import { PLAN_DISPLAY_NAME } from '@/lib/stripe/products';
+import { PLAN_DISPLAY_NAME } from '@/lib/stripe/plan-names';
 
 const plans = [
   {

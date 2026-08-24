@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { Zap, TrendingUp, Infinity } from 'lucide-react';
-import { PLAN_DISPLAY_NAME } from '@/lib/stripe/products';
+import { PLAN_DISPLAY_NAME } from '@/lib/stripe/plan-names';
 
 interface UsageData {
   plan: string;

@@ -103,12 +103,11 @@ export const PLAN_FEATURES = {
 // does NOT match the customer-facing name for 'pro'/'growth', see the
 // naming note at the top of this file. Import this anywhere a plan name
 // is shown as text instead of raw-capitalizing/rendering the internal key.
-export const PLAN_DISPLAY_NAME: Record<string, string> = {
-  free: 'Free',
-  pro: 'Standard',
-  growth: 'Pro',
-  enterprise: 'Enterprise',
-};
+// Moved to ./plan-names (D-39) so client components can import plan names
+// without dragging STRIPE_PRICE_IDS into the browser bundle. Re-exported here
+// for existing server-side importers. Do NOT import this from a client
+// component — import from '@/lib/stripe/plan-names' instead.
+export { PLAN_DISPLAY_NAME } from './plan-names';
 
 export const CREDIT_PACKS = [
   {

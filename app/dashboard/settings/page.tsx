@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import { Settings, User, Mail, Shield, Download, Trash2, AlertTriangle, X } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
-import { PLAN_DISPLAY_NAME } from '@/lib/stripe/products';
+import { PLAN_DISPLAY_NAME } from '@/lib/stripe/plan-names';
 
 export default function SettingsPage() {
   const { user, logout } = useAuth();

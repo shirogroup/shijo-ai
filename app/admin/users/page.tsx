@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { ShieldAlert, Loader2, ShieldCheck, Search } from 'lucide-react';
-import { PLAN_DISPLAY_NAME } from '@/lib/stripe/products';
+import { PLAN_DISPLAY_NAME } from '@/lib/stripe/plan-names';
 
 interface AdminUser {
   id: string;

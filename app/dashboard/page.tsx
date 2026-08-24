@@ -7,7 +7,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { Wand2, Sparkles, ArrowRight, Crown, Zap, CheckCircle2, XCircle } from 'lucide-react';
 import UsageMeter from '@/components/dashboard/UsageMeter';
 import { TOOLS, CATEGORIES, type PlanAccess, type ToolCategory } from '@/lib/tools/registry';
-import { PLAN_DISPLAY_NAME } from '@/lib/stripe/products';
+import { PLAN_DISPLAY_NAME } from '@/lib/stripe/plan-names';
 
 const categoryOrder: ToolCategory[] = ['social', 'seo', 'ads', 'email'];
 

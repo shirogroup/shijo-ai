@@ -39,6 +39,10 @@ export default function ToolPage({
   const [upgradePrompt, setUpgradePrompt] = useState('');
   const [copied, setCopied] = useState(false);
   const [usage, setUsage] = useState<UsageData | null>(null);
+  // True only when we have a real usage reading that says zero remaining on a
+  // metered plan. Unlimited plans report limit === -1; before the first fetch
+  // resolves `usage` is null. Neither should disable the button.
+  const outOfQuota = !!usage && usage.limit !== -1 && usage.remaining <= 0;
   // Bumped after every generate attempt. Keying the refetch on `result` alone
   // meant a *blocked* generation never refreshed the counter, and a generation
   // made in another tab (or via the API) left this one showing a stale number —
@@ -280,15 +284,29 @@ export default function ToolPage({
                 </div>
               )}
 
+              {/* D-5b (2026-08-24). The original D-5 finding had two halves: the
+                  limit-reached box had nothing to click, AND this button stayed
+                  enabled so a user at their limit could keep pressing it and keep
+                  failing. Only the first half shipped; a live test forcing the real
+                  403 response found the button still enabled and three further
+                  clicks all firing requests. `limit === -1` is the unlimited tier,
+                  and `usage` is null until the first fetch resolves — neither counts
+                  as being out of quota. */}
               <button
                 onClick={handleGenerate}
-                disabled={loading}
-                className="w-full bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 disabled:from-gray-600 disabled:to-gray-600 text-white font-semibold py-3 px-6 rounded-xl transition-all flex items-center justify-center gap-2 text-sm mt-2"
+                disabled={loading || outOfQuota}
+                title={outOfQuota ? 'You have used all of your generations for this period.' : undefined}
+                className="w-full bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 disabled:from-gray-600 disabled:to-gray-600 disabled:cursor-not-allowed text-white font-semibold py-3 px-6 rounded-xl transition-all flex items-center justify-center gap-2 text-sm mt-2"
               >
                 {loading ? (
                   <>
                     <RefreshCw className="w-4 h-4 animate-spin" />
                     Generating...
+                  </>
+                ) : outOfQuota ? (
+                  <>
+                    <Sparkles className="w-4 h-4" />
+                    No generations left
                   </>
                 ) : (
                   <>
