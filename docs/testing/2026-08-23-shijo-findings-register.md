@@ -678,14 +678,41 @@ Standard ($29, 200/mo): avg-mix **≈$2.76 → ~90% margin**; worst case (200× 
 
 ---
 
+## H6. COVERAGE — what has NOT been tested end to end
+
+Stated plainly so the case study cannot over-claim. The audit has covered the **authenticated,
+paying-user product surface** thoroughly. It is **not** an end-to-end test of the business.
+
+| Area | Status | Why |
+|---|---|---|
+| Registration / signup | ❌ never re-tested | Account creation was done by the owner in run 1; cannot be automated here |
+| Email verification | ❌ never tested | The one live account has `emailVerified: false` (D-38) |
+| Password reset | ⚠️ owner-confirmed once, never re-tested | Requires inbox access |
+| Free-tier experience | ⚠️ run 1 only | No free account available this pass; the live account is on Standard |
+| Completing a payment | ⚠️ run 1 only ($29 monthly) | Requires a real card charge |
+| Completing the **annual** purchase | ❌ never | Would double-charge the owner |
+| Cancellation / downgrade | ❌ never | Would cancel the only live subscription |
+| Webhook delivery | ❌ never | **This is D-36** — needs the Stripe delivery log |
+| Account deletion (`/api/account/delete`) | ❌ never | Destructive |
+| Data export (`/api/account/export`) | ❌ never | Untested route |
+| Contact form / support tickets | ❌ never | Would send real messages |
+| Concurrency (D-12/13) | ❌ never | Needs parallel load, not a browser |
+| Mobile / responsive | ❌ never | No device testing performed |
+| Google Ads callouts, lead form, call asset | ❌ never | Stated in §E as a coverage gap |
+| Cross-browser | ❌ never | Chrome only |
+
+**Anything the public case study says about these areas must be framed as run-1 anecdote or omitted.**
+
+---
+
 ## I. Still open — ranked
 
 | # | Finding | Sev | Owner |
 |---|---|---|---|
 | **D-36** | Subscription status stale — Stripe active, our DB `incomplete`. Suspect webhook delivery; the same channel carries payment-failed and cancellation | **S2** | Stripe webhook logs (owner) → then code |
 | **D-32** | Annual plan unbuyable for existing monthly customers | **S2** | Stripe portal config (owner) + code |
-| **D-39** | 8 Stripe price IDs shipped in the client bundle via a barrel module (`PLAN_DISPLAY_NAME` co-located with `STRIPE_PRICE_IDS`) — retracts the "zero price IDs" claim | S4 | code — split the module |
-| **D-5b** | Generate button still enabled at quota limit — half of D-5 never shipped | S4 | code |
+| ~~**D-39**~~ | 8 Stripe price IDs shipped in the client bundle via a barrel module | S4 | **FIXED-LOCAL `5c17ec3`** — `lib/stripe/plan-names.ts` split out, 6 client components repointed. Needs push + deploy + bundle re-scan. |
+| ~~**D-5b**~~ | Generate button still enabled at quota limit — half of D-5 never shipped | S4 | **FIXED-LOCAL `5c17ec3`** — disabled + relabelled "No generations left" when a real usage reading reports 0 on a metered plan. Needs push + deploy + forced-403 re-test. |
 | **D-37** | Quota resets Sep 1 (calendar) but billing renews Sep 23 (anniversary) — 400 generations in the first paid period | **S3** | product decision + code |
 | **D-38** | Paid admin account has `emailVerified: false` — verification gates nothing | S4 | **product decision** |
 | **D-12/13** | Quota check-then-act and daily-counter insert races | **S3** | code — needs transaction/atomic upsert + load test |
