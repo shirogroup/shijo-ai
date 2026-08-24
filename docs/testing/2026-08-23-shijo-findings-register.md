@@ -35,7 +35,7 @@ from the full regression sweep (§H4). Documented below: **34**.
 | **D-1** | **Title-tag character counts wrong on every output.** SEO Meta Generator states a length for each title; all 5 overstated by 6–15 chars. Meta descriptions accurate to ±1 — titles specifically wrong. A 60-char limit is the entire reason the number is shown. | claimed 58/56/57/54/60 → actual **52/44/43/39/47**. Reproduced on a second run (claimed 58 → actual 45). | **S2** | Stop asking the model to count. `correctCharacterCounts()` recomputes from the real string after generation. | **LIVE** — re-tested on production: **10/10 exact** |
 | **D-3** | **Required fields not enforced server-side.** `POST /api/generate` with `inputs:{}` returned 200, consumed a generation, billed real tokens. The `required:true` flags in the registry were honoured by the form only. | `{"toolId":"seo-meta-generator","inputs":{}}` → **200**, `remaining=0`, output began *"Since the page topic and target keyword are undefined…"* | **S2** | Validate required fields from the registry in the route; 400 with `missingFields[]`. | **LIVE** |
 | **D-4** | **Tools invent factual claims the user never supplied.** Meta description asserted "**with certified instructors**"; another "Expert guidance, affordable pricing"; captions "Spots are filling up!". Maya supplied none of these. Scarcity puffery is arguable; **a credential claim is not**. | Run 1, SEO Meta Generator + Post Caption Generator | **S2** | `ACCURACY_GUARD` appended to every prompt — no invented credentials, certifications, awards, ratings, counts or scarcity; visible `[YOUR CREDENTIAL]` placeholders instead. | **LIVE** — verified across ~64,000 chars from all 12 tools, zero fabrications remaining |
-| **D-5** | **The limit-reached upsell had nothing to click.** At the highest-intent moment in the product the box said "Upgrade now" and contained **zero** links or buttons. Generate stayed enabled so the user could keep failing. | 0 clickable elements in the error box; `Generate` still `enabled:true` | **S2** (revenue) | "See plans & upgrade" button inside the box, linking to `/dashboard/billing`. | **LIVE** |
+| **D-5** | **The limit-reached upsell had nothing to click.** At the highest-intent moment in the product the box said "Upgrade now" and contained **zero** links or buttons. Generate stayed enabled so the user could keep failing. | 0 clickable elements in the error box; `Generate` still `enabled:true` | **S2** (revenue) | CTA inside the box → `/dashboard/billing`; **and** disable Generate at 0 remaining. | ⚠️ **PARTIALLY LIVE** — CTA shipped and verified (§H5); **Generate is still enabled** (`disabled={loading}` only). Tracked as **D-5b**. |
 | **D-25** | **Keyword Research presented estimates as measured search data.** Intent and competition ratings read like search-tool output; they were model inference from phrasing. A marketer reading "competition: low" reasonably assumes a source. | `lib/tools/prompts.ts` | **S2** | Forced opening disclaimer that intent/competition are estimates not measured data, pointer to a live-data keyword tool, and an outright prohibition on stating volume figures. | **LIVE** |
 | **D-8** | **No input length cap.** Textarea fields went into the prompt unbounded. Output capped by `max_tokens`; input capped by nothing. | `app/api/generate/route.ts` | **S3** | `MAX_FIELD_CHARS = 20,000` per field, enforced server-side, 400 over the limit. | **LIVE** |
 | **D-9** | **Usage counter goes stale in the UI.** Showed "1 of 3 left" while the server had recorded 3 of 3. Corrected only on reload. Affects anyone with two tabs open. | UI vs `/api/usage` (`used:3, remaining:0`) | S4 | `usageTick` bumped in `finally` — refetch after **every** attempt, not only successful ones. | **LIVE** |
@@ -129,7 +129,7 @@ audited.
 | 404 | real 404 status on unknown paths |
 | "2 tools free" claim | consistent across the whole site (6 mentions, none saying 5) |
 | Client-side validation | names the missing fields specifically |
-| No Stripe price IDs in client | 16 JS chunks scanned, zero found |
+| ~~No Stripe price IDs in client~~ | ❌ **RETRACTED — this claim was false.** A complete chunk enumeration found **8** price IDs in `layout-*.js`. See §H5 / D-39. |
 | **Annual price in Stripe** | live checkout renders **"$278.00 per year"**, "$23.17 / month billed annually", "SHIJO.AI Standard", "All 12 AI marketing tools, 200 generations/month, advanced AI models". $348 → $278 = **20.1%**, so "Save 20%" is honest |
 | **Stripe Link / pay-by-phone** | Working. "Confirm it's you → code sent to (•••) ••• ••92 → Send code to email instead → Pay without Link" all present. It did **not** appear on the customer's *first* purchase because they weren't enrolled in Link yet — Stripe saved the card to Link **during** that purchase. Both checkout routes pass the same `customer` id. **Not a defect.** |
 | Password reset | "send reset link" flow confirmed working by the account owner |
@@ -540,12 +540,152 @@ per generation**. Margin remains a function of tool mix, not volume.
 
 ---
 
+## H5. EVIDENCE-GRADE VERIFICATION PASS — 2026-08-24, on `e168f12` (product code `52cc9bf`)
+
+Run under an explicit "assume nothing" brief, to make the public case study defensible. Every claim
+re-derived from primary evidence. **Two of this register's own records turned out to be wrong.**
+
+### Provenance established BEFORE any behavioural test
+
+`HEAD == origin/main == e168f12`, 0/0, worktree clean. Last code-touching commit: `52cc9bf`.
+Deploy proved by a deterministic non-model probe: the deployed client bundle contains
+`"e.g. Acme Studio"` ×3 and the pre-`52cc9bf` string `"e.g. Shijo.ai"` ×0.
+
+### Fact table re-derived from source (not from these notes)
+
+12 tools · 2 `minPlan: 'free'` (post-caption-generator, seo-meta-generator) · 10 `pro` ·
+10 sonnet / 2 haiku · free 3/day forced haiku · pro 200/mo · growth 1500/mo · enterprise unlimited
+with fair-use cap. **All prior figures in this register confirmed correct.**
+
+### All 12 tools — VERIFIED
+
+12/12 success, **63,393 chars, 77 s**. Model tier matched the registry on all 12.
+**0 brand injections · 0 fabricated assertions · 56 placeholders · 10/10 counts exact · 0 stray
+counts on the 11 non-counted tools · 0 invented scarcity.**
+
+Three "certified" regex hits, all read in context, all bracketed templates → false positives.
+
+### 🔴 CORRECTION 1 — D-5 was recorded as LIVE; only half of it shipped
+
+D-5's original text had two halves: no upsell CTA, **and** "the Generate button stays enabled so the
+user can keep failing." The register marked the whole finding **LIVE**.
+
+Tested properly for the first time by intercepting `/api/generate` to force the real limit-reached
+response shape (`403` + `upgradePrompt`) against the live UI — a 200-generation plan cannot be
+practically exhausted.
+
+| Half | Status |
+|---|---|
+| Upgrade CTA in the error box | ✅ **LIVE** — renders `<a href="/dashboard/billing">See plans & upgrade</a>` |
+| Generate disabled at limit | ❌ **NEVER FIXED** — `disabled: false`; 3 further clicks all fired requests |
+
+`components/dashboard/ToolPage.tsx` has `disabled={loading}` only. **D-5 status corrected to
+PARTIALLY LIVE.** Remaining work: disable or relabel Generate at 0 remaining.
+
+### 🔴 CORRECTION 2 — D-39 (NEW, S4) — the "zero price IDs in the client" claim was false
+
+This register asserted, and the case study published: *"No Stripe price IDs in client — 16 JS chunks
+scanned, zero found."* **Wrong.**
+
+Enumerating every chunk the app actually loads (via `performance.getEntriesByType('resource')`
+rather than `script[src]`, which is what the earlier scan must have used) finds **8 Stripe price IDs
+in `layout-*.js`** — all of `STRIPE_PRICE_IDS`, including the paused `ENTERPRISE_*` and the sandbox
+`CREDITS_*` ids. One was matched against the known `PRO_ANNUAL` constant to rule out a false
+positive.
+
+**Mechanism — a barrel-module leak.** Six client components import from `lib/stripe/products.ts`,
+and **every one imports only `PLAN_DISPLAY_NAME`**; no client file references `STRIPE_PRICE_IDS` at
+all. Same module ⇒ bundler ships the lot. Introduced in `fcd06fa` (the pricing restructure), so it
+**predates this audit** — D-21's fix added one more importer but did not cause it.
+
+**Fix:** move `PLAN_DISPLAY_NAME` into its own module with no server-side constants; point the six
+client components at it.
+
+**Impact on D-7's severity:** D-7 was downgraded S1 → S3 with the stated reason "no price IDs are
+exposed in the client." **That reason was false.** The S3 conclusion still stands — but on the
+*correct* grounds, which the code comment already gives: the server-side allowlist, not obscurity.
+Re-verified today: bogus IDs, Enterprise IDs and invalid modes all → **400**.
+
+Also scanned: **0 `sk_live_` keys, 0 AI-vendor API keys** in the bundle.
+
+### D-2 — verified in the deployed artifact for the first time
+
+Previously "not testable without signing out." Instead, the anonymous `/login` bundle (9 chunks,
+517,821 bytes) was scanned. The guard is present as a single expression containing all six
+structural elements: reads the `redirect` param, `startsWith("/")`, negated `startsWith("//")`,
+`/dashboard` fallback, ternary, `location.href` assignment. **D-2 confirmed LIVE.**
+
+### Everything else re-verified
+
+API guards 10/10 → 400. Unauthenticated: 401 on all 6 routes. Route protection: 4/4 →
+`/login?redirect=%2F…`. All 4 security headers present (CSP still absent, known). robots.txt correct.
+Sitemap 13 URLs, 0 non-www, 0 gated. Real 404. D-25 disclaimer verbatim, 0 volume figures.
+Homepage: 12 internal links, **0 broken**.
+
+**Public-site claim audit vs registry:** "5 free tools" **0** · "2 free tools" 6 · "12 tools"
+consistent · "visibility tracking" **0** · AI vendor named **0 times on marketing pages**, present
+only on `/security` and `/ai-compliance` — exactly the disclosure policy.
+
+**Two potential findings investigated and dissolved:**
+- `/pricing` returns 404 — but nothing links to it; the sidebar "Pricing & Plans" points to
+  `/dashboard/billing` (200).
+- "free trial" on `/lp` and `/ai-marketing-tools` — it is an FAQ answer stating *"Is there a free
+  trial? No trial needed — the Free plan is free forever with 2 tools and 3 generations."*
+  **Accurate.** The "free trial" wording problem is confined to Google Ads copy.
+
+### Still open, re-confirmed today
+
+**D-32** all three paths still closed (portal offers only "Cancel subscription"; API → 400 "You are
+already on the pro plan"). **D-33** still "SHIJO AI" without the dot. **D-36** `subscriptionStatus:
+"incomplete"` while Stripe shows an active subscription, paid $29.00 invoice dated Aug 23, next
+billing Sept 23. **D-37** `resetLabel: "Resets Sep 1"` vs billing Sept 23. **D-38**
+`emailVerified: false`.
+
+### 👁 WATCH ITEM — not filed, single observation, did not reproduce
+
+One earlier `ai-overview-optimizer` run produced suggested page copy reading *"Lotus Flow Studio
+beginner classes are taught exclusively by Yoga Alliance certified instructors holding
+[RYT-200/RYT-500] credentials"* — credential *level* bracketed, certification itself asserted flat,
+attached to the named business, in copy the user is meant to paste.
+
+**Re-ran the tool 3× (yoga / dentistry / roofing): did not reproduce.** 2 of 3 produced fully
+bracketed templates (`"Certified by [CERTIFICATION BODY] with [SPECIFIC CREDENTIAL]"`), 1 produced
+none. Per this register's own rule, one observation is an anecdote — **not filed**. Add a targeted
+test for unbracketed credential claims in *suggested page copy* (as distinct from ad/meta copy,
+where ACCURACY_GUARD is proven).
+
+### Unit economics — best sample yet
+
+**51 priced generations · $0.7028 · avg $0.0138/generation.** Per-tool spread **14.6×**:
+
+| Tool | $/generation |
+|---|---|
+| ai-overview-optimizer | **0.0268** |
+| audience-targeting | 0.0211 |
+| email-sequence-generator | 0.0210 |
+| keyword-research | 0.0195 |
+| seo-content-brief | 0.0158 |
+| landing-page-copy | 0.0155 |
+| faq-generator | 0.0096 |
+| ad-copy-generator | 0.0073 |
+| newsletter-generator | 0.0072 |
+| post-caption-generator | 0.0035 |
+| ad-headline-ab | 0.0032 |
+| seo-meta-generator | **0.0018** |
+
+Standard ($29, 200/mo): avg-mix **≈$2.76 → ~90% margin**; worst case (200× the dearest tool)
+**$5.35 → ~82%**. Both inside the $7.34 ceiling in §H. **Margin is a function of tool mix.**
+
+---
+
 ## I. Still open — ranked
 
 | # | Finding | Sev | Owner |
 |---|---|---|---|
 | **D-36** | Subscription status stale — Stripe active, our DB `incomplete`. Suspect webhook delivery; the same channel carries payment-failed and cancellation | **S2** | Stripe webhook logs (owner) → then code |
 | **D-32** | Annual plan unbuyable for existing monthly customers | **S2** | Stripe portal config (owner) + code |
+| **D-39** | 8 Stripe price IDs shipped in the client bundle via a barrel module (`PLAN_DISPLAY_NAME` co-located with `STRIPE_PRICE_IDS`) — retracts the "zero price IDs" claim | S4 | code — split the module |
+| **D-5b** | Generate button still enabled at quota limit — half of D-5 never shipped | S4 | code |
 | **D-37** | Quota resets Sep 1 (calendar) but billing renews Sep 23 (anniversary) — 400 generations in the first paid period | **S3** | product decision + code |
 | **D-38** | Paid admin account has `emailVerified: false` — verification gates nothing | S4 | **product decision** |
 | **D-12/13** | Quota check-then-act and daily-counter insert races | **S3** | code — needs transaction/atomic upsert + load test |

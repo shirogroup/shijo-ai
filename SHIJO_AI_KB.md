@@ -2566,3 +2566,110 @@ ceiling in §52.4.
 Spend stays concentrated in long-form Sonnet tools: `keyword-research` $0.0489 / 3 runs
 (**$0.0163 each**) vs `seo-meta-generator` $0.0482 / 27 runs (**$0.0018 each**) — a **9× spread**.
 Margin is a function of tool mix, not volume.
+
+---
+
+## §57 — EVIDENCE-GRADE PASS: two of our OWN records were wrong (2026-08-24)
+
+Run under an explicit "assume nothing" brief to make the public case study defensible.
+Full detail: `docs/testing/2026-08-23-shijo-findings-register.md` §H5.
+
+`HEAD == origin/main == e168f12`, clean. Product code = `52cc9bf`. Deploy proved **before** any
+behavioural test by a deterministic non-model probe: bundle contains `"e.g. Acme Studio"` ×3 and
+the pre-`52cc9bf` string `"e.g. Shijo.ai"` ×0.
+
+### §57.1 🔴 CORRECTION 1 — D-5 was marked LIVE; only half shipped
+
+D-5 had two halves: no upsell CTA, **and** "Generate stays enabled so the user can keep failing."
+The register marked the whole thing LIVE.
+
+Tested properly for the first time by intercepting `/api/generate` to force the real limit-reached
+response (`403` + `upgradePrompt`) against the live UI — a 200-generation plan can't be exhausted.
+
+- ✅ CTA **is** live: `<a href="/dashboard/billing">See plans & upgrade</a>`
+- ❌ Generate button **still enabled** — `disabled: false`; 3 further clicks all fired requests.
+  `ToolPage.tsx` has `disabled={loading}` only.
+
+**D-5 → PARTIALLY LIVE. Remaining half tracked as D-5b (S4).**
+
+### §57.2 🔴 CORRECTION 2 — D-39 (NEW, S4): the "zero price IDs in client" claim was FALSE
+
+The register asserted and the case study published: *"No Stripe price IDs in client — 16 JS chunks
+scanned, zero found."* **Wrong.**
+
+Enumerating every chunk the app actually loads (`performance.getEntriesByType('resource')` rather
+than `script[src]`, which the earlier scan must have used) finds **8 Stripe price IDs in
+`layout-*.js`** — all of `STRIPE_PRICE_IDS`, including paused `ENTERPRISE_*` and sandbox
+`CREDITS_*`. One matched against the known `PRO_ANNUAL` constant to rule out a false positive.
+
+**Barrel-module leak.** Six client components import from `lib/stripe/products.ts` and **every one
+imports only `PLAN_DISPLAY_NAME`** — no client file references `STRIPE_PRICE_IDS`. Same module ⇒
+bundler ships everything. Introduced in `fcd06fa` (pricing restructure) — **predates this audit**;
+D-21's fix added an importer but did not cause it.
+
+**Fix:** split `PLAN_DISPLAY_NAME` into its own module; repoint the six client components.
+
+**Impact on D-7:** D-7 was downgraded S1 → S3 with the stated reason "no price IDs are exposed in
+the client." **That reason was false.** The S3 conclusion survives, but on the correct grounds —
+the server-side allowlist, not obscurity. Re-verified: bogus / Enterprise / bad-mode all → 400.
+
+Also scanned: **0 `sk_live_`, 0 AI-vendor keys** in the bundle.
+
+### §57.3 D-2 verified in the deployed artifact for the first time
+
+Previously "untestable without signing out." Scanned the anonymous `/login` bundle (9 chunks,
+517,821 bytes): the guard is present as one expression with all six structural elements — reads
+`redirect`, `startsWith("/")`, negated `startsWith("//")`, `/dashboard` fallback, ternary,
+`location.href`. **D-2 CONFIRMED LIVE.**
+
+### §57.4 Everything else re-verified — CONFIRMED
+
+Fact table re-derived from source: **12 tools / 2 free / 10 pro / 10 sonnet / 2 haiku** — all prior
+figures correct. All 12 tools: **63,393 chars, 77 s, 0 brand injections, 0 fabrications, 56
+placeholders, 10/10 counts exact, 0 stray counts, 0 scarcity.** API guards 10/10 → 400.
+Unauthenticated 401 ×6. Route protection 4/4. All 4 security headers (CSP still absent, known).
+robots, sitemap (13 URLs, 0 non-www, 0 gated), real 404, D-25 disclaimer verbatim.
+Homepage: 12 internal links, **0 broken**.
+
+**Public-site claims vs registry:** "5 free tools" **0** · "2 free tools" 6 · "12 tools" consistent
+· "visibility tracking" **0** · AI vendor **0 mentions on marketing pages**, present only on
+`/security` and `/ai-compliance` — exactly the disclosure policy.
+
+**Two potential findings investigated and DISSOLVED** (verified, not assumed):
+- `/pricing` 404 — nothing links to it; sidebar "Pricing & Plans" → `/dashboard/billing` (200).
+- "free trial" on `/lp` — it is an FAQ answer: *"Is there a free trial? No trial needed — the Free
+  plan is free forever with 2 tools and 3 generations."* **Accurate.** The wording problem is
+  confined to Google Ads copy.
+
+### §57.5 👁 WATCH ITEM — not filed (single observation, did not reproduce)
+
+One `ai-overview-optimizer` run produced suggested page copy: *"…taught exclusively by Yoga Alliance
+certified instructors holding [RYT-200/RYT-500] credentials"* — level bracketed, certification
+asserted flat, attached to the named business. **Re-ran 3× (yoga/dentistry/roofing): did not
+reproduce** (2 fully bracketed, 1 none). One observation is an anecdote — not filed. Add a targeted
+test for unbracketed credential claims in *suggested page copy*, which is a different surface from
+ad/meta copy where ACCURACY_GUARD is proven.
+
+### §57.6 Unit economics — best sample yet
+
+**51 priced generations · $0.7028 · avg $0.0138/gen.** Per-tool spread **14.6×**: ai-overview-
+optimizer **$0.0268** → seo-meta-generator **$0.0018**.
+
+Standard ($29 / 200): avg-mix **≈$2.76 → ~90% margin**; worst case (200× dearest tool) **$5.35 →
+~82%**. Both inside the $7.34 ceiling in §52.4.
+
+### §57.7 Still open, re-confirmed
+
+**D-32** (all 3 paths closed) · **D-33** (still "SHIJO AI") · **D-36** (`incomplete` vs Stripe
+active + paid invoice) · **D-37** ("Resets Sep 1" vs billing Sept 23) · **D-38**
+(`emailVerified: false`) · **D-39** · **D-5b** · **D-12/13** · **D-6** CSP · Ads "free trial"
+wording · unaudited Ads callouts/lead form/call asset · sandbox `CREDITS_*` ids.
+
+**Scenario 2 (B2B SaaS persona for shiroapps.com) still not started.**
+
+### §57.8 METHOD RULE — re-audit findings, not just code
+
+Two bad records in one register: a half-fix marked complete, and a security claim that didn't hold.
+Both were found only by re-checking work already marked green.
+
+> **"Fixed" is a claim, and claims need the same evidence standard as bugs.**
