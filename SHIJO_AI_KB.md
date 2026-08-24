@@ -2744,3 +2744,139 @@ contact form, concurrency, mobile, cross-browser. **The public case study must n
 of any of these.**
 
 **Scenario 2 (B2B SaaS persona for shiroapps.com) still not started.**
+
+---
+
+## §59 — Decisions taken, fixes shipped, and the standing access/test procedure (2026-08-24)
+
+### §59.1 ✅ DECISION — "200 generations a month" means a BILLING month
+
+Owner decision, 2026-08-24. Settles **D-37** and **D-22** together.
+
+**Implemented in `d7b767f`:** paid-plan usage is counted from
+`subscriptions.currentPeriodStart` rather than the 1st of the calendar month, and the reset label
+uses the real `currentPeriodEnd`.
+
+Before: allowance reset on the 1st while billing renewed on the anniversary, so subscribing on the
+23rd gave **400 generations inside one billing period** (3,000 on the $199 tier).
+
+**Fallback, deliberate:** if the period start is missing or in the future, it falls back to the
+calendar month — the OLD, more generous behaviour. A metering gap must never lock a paying customer
+out of generations they are entitled to; erring the other way could.
+
+⚠️ **DEPENDENCY: this is only as correct as D-36.** The period boundary comes from Stripe webhooks.
+While `customer.subscription.updated` is not landing, `currentPeriodStart` can be stale or absent
+and the fallback carries the load. **D-37 is not fully closed until D-36 is.**
+
+### §59.2 ✅ DECISION — email verification stays unenforced (D-38)
+
+Owner decision: no need to verify the account. Verification gates **neither paid access nor admin
+access**, and that is now intentional rather than accidental.
+
+**Consequence to keep in view:** anyone who signs up with an address they do not control still gets
+a working free account. Password reset is the only flow that proves address ownership. If abuse
+ever appears via disposable addresses, this is the first thing to revisit.
+
+### §59.3 ✅ DECISION — annual billing HIDDEN on the site until Stripe is fixed
+
+Owner decision. Shipped in `d7b767f` as `ANNUAL_BILLING_ENABLED = false` in
+`app/dashboard/billing/page.tsx`. Hides the monthly/annual toggle and the "or $278/year (save 20%)"
+button; `billingInterval` is forced to `'monthly'` through a single choke point so every annual
+branch stays intact.
+
+**Trade-off, on the record:** annual **is** purchasable today by a **new signup**. Hiding it gives
+that revenue up in the meantime. Accepted as better than advertising a discount most viewers cannot
+take.
+
+**TO RESTORE — one line, `true`.** Do it once (a) "Customers can switch plans" is on in the Stripe
+customer portal with the three prices added, and (b) D-32b has shipped.
+
+### §59.4 Also shipped in `d7b767f`
+
+- **D-13 FIXED** — the free-plan daily counter was select-then-insert-or-update. Two concurrent
+  generations both saw no row, both inserted, and `uniq_daily_limits` rejected the second **after
+  the model call was already paid for**: the customer lost a billed generation and the counter
+  under-counted. Now a single atomic `onConflictDoUpdate`.
+- **D-6 second half** — `Content-Security-Policy-Report-Only` shipped. It changes nothing the
+  browser loads; it only reports what an enforcing policy would block. **Do not skip to enforcing** —
+  browse home, pricing, a tool and checkout with the console open, collect violations, add the real
+  hosts, and only then rename the header.
+- **Sandbox `CREDITS_*` ids emptied** out of the live constant.
+- **Contact form** now names the missing fields instead of always returning "All fields are
+  required." — it said that even when name, email and message *were* supplied and only subject was
+  missing, which reads as a broken form.
+
+### §59.5 🔐 ACCESS PROCEDURE — how to sign in (NO CREDENTIALS ARE STORED HERE)
+
+**Rule, non-negotiable: no password, reset link, session cookie or API key is ever written into
+this KB, the repo, or any doc.** This repo is a git history — anything committed here is permanent
+and readable by anyone with access. What follows is the *procedure*; the secret itself lives in the
+owner's password manager and nowhere else.
+
+**Route 1 — password**
+1. Go to `https://www.shijo.ai/login`.
+2. Enter the account email and its password from the password manager.
+3. On success you land on `/dashboard` (or on the `?redirect=` path, which is restricted to
+   same-origin paths — see D-2).
+
+**Route 2 — reset link (works as a de-facto magic link)**
+1. `https://www.shijo.ai/forgot-password`, enter the email, submit.
+2. Open the emailed link, set a password, and you are signed in.
+3. This is the only flow that proves control of the address — relevant because verification is not
+   enforced (§59.2).
+
+**Route 3 — Stripe Link, at payment only.** Not a site login. At checkout, Link recognises the
+email and offers "Confirm it's you" with a code to the saved phone, plus "Send code to email
+instead" and "Pay without Link". Link enrolment happens **during** the first card payment, which is
+why it did not appear on the very first purchase.
+
+**Session:** JWT, 7 days, httpOnly + secure + sameSite=lax. Signing in again in a new browser does
+not end the old session.
+
+**For an assistant driving the browser:** the owner signs in; the assistant works inside the
+already-authenticated session. An assistant must not create accounts, type passwords or enter
+verification codes, and must never be given the password in chat.
+
+### §59.6 🔁 STANDING PRE-FLIGHT — human-executed, required for EVERY new case study
+
+Owner instruction, 2026-08-24: these are **out of scope for the case study's claims**, but they
+**must be tested by a human each time a new case study is produced**. They cannot be automated from
+here — they mean creating accounts, reading an inbox, charging a card, or cancelling a live
+subscription.
+
+| # | Check | Pass looks like |
+|---|---|---|
+| 1 | Create a brand-new account | Lands on the dashboard as `free`, 2 tools, 3/day |
+| 2 | Verification email | Arrives; link works (even though nothing is gated on it — §59.2) |
+| 3 | Password reset | Email arrives, link sets a password, session starts |
+| 4 | Exhaust the free tier | 4th generation blocked; Generate **disabled** and labelled "No generations left"; upgrade CTA present |
+| 5 | Pay for Standard, real card | Checkout completes; plan flips to Standard; **`subscriptionStatus` reads `active`, not `incomplete`** (D-36) |
+| 6 | Buy the annual plan | Only once annual is un-hidden (§59.3) — $278/yr, correct dates |
+| 7 | Switch monthly → annual | Only once the portal allows plan switching (D-32) |
+| 8 | Cancel | Access ends at period end; DB status follows Stripe |
+| 9 | Delete the account | Data gone; export first if it needs checking |
+
+**The case study must not claim coverage of anything in this table unless it was actually run.**
+
+### §59.7 Coverage closed this pass — CONFIRMED
+
+- **Concurrency accounting** — 10 simultaneous generations: **10/10 succeeded, counter moved 67 →
+  77, zero lost writes.** `usage_logs` is append-only insert, so the accounting is inherently safe
+  under concurrency. **What remains untested is D-12's boundary** — whether N concurrent requests
+  at 199/200 all pass the check — which needs the quota genuinely exhausted (~133 generations,
+  ~$1.80). Offered, not done.
+- **Data export (`/api/account/export`)** — 200, JSON, `content-disposition` set, 39,151 bytes, 12
+  sections (profile, acceptances, subscriptions, credits, usage logs, quota, keywords, clusters,
+  briefs, audits…). **No password hash, no secret keys.** Good GDPR route.
+- **Contact form validation** — 400 on empty and on partially-filled. Error message improved
+  (§59.4). A full submission was **not** sent: it would deliver a real message, so it needs an
+  explicit go-ahead.
+
+### §59.8 ❌ Mobile/responsive — NOT TESTABLE with current tooling
+
+`resize_window` resized the browser window but **not the rendering viewport**: after resizing to
+390×844 the page still reported `innerWidth: 1520` and `matchMedia('(max-width: 640px)')` was
+**false**. No device-metrics emulation is available.
+
+**Recorded as untestable, not as passing.** Needs a real device or DevTools device mode. Do not let
+the case study imply mobile coverage.

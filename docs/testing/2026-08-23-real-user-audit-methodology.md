@@ -33,7 +33,7 @@ inputs, and check what comes back against reality.
 | **Nothing is "fixed" until it is live.** | A local edit is not shipped. Check `HEAD` against `origin/main`, then read the deployed page. |
 | **Every number the product states about itself is a claim under test.** | Character counts, search volumes, competition scores, tool counts, "most popular" badges. |
 | **Severity is assigned by consequence, not by category.** | A dead button at the upgrade moment (S2) outranks a missing security header (S3), because one loses revenue every day and the other needs an attacker. |
-| **Downgrade findings publicly when the evidence downgrades them.** | One finding in the first run was called S1 from code reading; a live check of 16 JS bundles showed the value was never exposed to the client. It was downgraded to S3 in writing. |
+| **Downgrade findings publicly when the evidence downgrades them — and re-check the evidence itself.** | A finding was called S1 from code reading, then downgraded to S3 because "a scan showed the value was never exposed to the client." **That scan was later found to be wrong** — it had missed most of the bundles. The S3 verdict survived on other grounds, but the stated reason was false and had been published. Retract in writing, in every place the claim was repeated. |
 
 ---
 
@@ -292,6 +292,38 @@ Two rules that keep the scale honest:
   flagged as a stale query on two readings when a third reading plus the arithmetic showed it was
   simply *correct and constant*. Both were caught, but only because they were re-checked before
   being fixed. **A retracted finding costs a paragraph; a "fixed" non-bug costs a deploy.**
+
+---
+
+## 3b. The human-executed pre-flight
+
+Some of the most important paths cannot be driven by an assistant, and pretending otherwise is how
+a case study ends up claiming coverage it doesn't have. These require a person: they mean creating
+accounts, reading an inbox, charging a real card, or cancelling a live subscription.
+
+**Run this list by hand every time you produce a new case study.** Nothing in it may be claimed in
+writing unless it was actually run this time.
+
+| # | Check | Pass looks like |
+|---|---|---|
+| 1 | Create a brand-new account | Correct free-tier defaults on first load |
+| 2 | Verification email | Arrives and the link works |
+| 3 | Password reset | Email arrives, link sets a password, session starts |
+| 4 | Exhaust the free tier | Blocked cleanly; the action control disables; the upgrade path is present and clickable |
+| 5 | Pay, with a real card on the live account | Plan flips; **the stored subscription status matches the provider's** |
+| 6 | Buy every purchasable billing interval | Correct amounts and dates at checkout |
+| 7 | Switch between intervals as an existing customer | Actually reachable, and prorated correctly |
+| 8 | Cancel | Access ends when it should; your database follows the provider |
+| 9 | Delete the account | Data is gone — export first if it needs inspecting |
+
+Step 5's status check is worth calling out. It is the step that catches a webhook that has quietly
+stopped arriving — a failure with no user-visible symptom, on the same channel that carries
+cancellations and failed payments.
+
+**Also record what your tooling genuinely cannot do.** In the first run, browser window resizing
+did not change the rendering viewport — the page still reported a desktop width and the mobile
+media query was false — so mobile was recorded as *untestable*, not as passing. An honest gap beats
+a fabricated tick.
 
 ---
 
