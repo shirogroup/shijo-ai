@@ -6,6 +6,28 @@ import { useAuth } from '@/contexts/AuthContext';
 import { Check, Crown, Zap, Sparkles, Loader2, CheckCircle, XCircle, ExternalLink } from 'lucide-react';
 import { PLAN_DISPLAY_NAME } from '@/lib/stripe/plan-names';
 
+/**
+ * Annual billing is HIDDEN on the site as of 2026-08-24, by decision, until the
+ * Stripe side is fixed.
+ *
+ * Why: an existing monthly customer cannot reach the annual plan by ANY route
+ * (D-32) — the card shows inert "Current Plan" text, the checkout API returns
+ * 400 "You are already on the pro plan" because the guard compares plan without
+ * interval, and the Stripe customer portal has plan switching turned off. The
+ * 20%-off offer was therefore advertised to exactly the people who could not
+ * buy it.
+ *
+ * TRADE-OFF, on the record: annual IS purchasable today by a NEW signup, and
+ * hiding it gives that revenue up in the meantime. That was the accepted call —
+ * better to sell nothing than to advertise a discount most viewers cannot take.
+ *
+ * TO RESTORE: set this to true. That is the whole change. Do it once
+ * (a) "Customers can switch plans" is enabled in the Stripe customer portal
+ * with the three prices added, and (b) D-32b has shipped so the card offers a
+ * real switch instead of dead text.
+ */
+const ANNUAL_BILLING_ENABLED = false;
+
 const plans = [
   {
     name: 'Free',
@@ -90,7 +112,12 @@ function BillingContent() {
   const [loadingPlan, setLoadingPlan] = useState<string | null>(null);
   const [loadingPortal, setLoadingPortal] = useState(false);
   const [error, setError] = useState('');
-  const [billingInterval, setBillingInterval] = useState<'monthly' | 'annual'>('monthly');
+  const [billingIntervalRaw, setBillingInterval] = useState<'monthly' | 'annual'>('monthly');
+  // Single choke point: while annual is hidden (D-32) the rest of this component
+  // can keep its annual branches intact and simply never see 'annual'. Flipping
+  // ANNUAL_BILLING_ENABLED back to true restores all of them at once, with no
+  // other edit.
+  const billingInterval = ANNUAL_BILLING_ENABLED ? billingIntervalRaw : 'monthly';
 
   const isSuccess = searchParams.get('success') === 'true';
   const isCanceled = searchParams.get('canceled') === 'true';
@@ -228,7 +255,8 @@ function BillingContent() {
         )}
       </div>
 
-      {/* Monthly / Annual toggle */}
+      {/* Monthly / Annual toggle — hidden while ANNUAL_BILLING_ENABLED is false (D-32) */}
+      {ANNUAL_BILLING_ENABLED && (
       <div className="flex items-center justify-center gap-3 mb-8">
         <span className={`text-sm font-medium ${billingInterval === 'monthly' ? 'text-white' : 'text-gray-400'}`}>
           Monthly
@@ -253,6 +281,7 @@ function BillingContent() {
           Save 20%
         </span>
       </div>
+      )}
 
       {/* Pricing cards */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
@@ -303,7 +332,7 @@ function BillingContent() {
                         <span className="text-gray-500 text-sm">forever</span>
                       )}
                     </div>
-                    {plan.annualPrice && billingInterval === 'monthly' && (
+                    {ANNUAL_BILLING_ENABLED && plan.annualPrice && billingInterval === 'monthly' && (
                       // Was a plain <p>. A buyer reading "or $278/year (save 20%)"
                       // had no way to act on it from here — the only path to the
                       // annual price was a toggle above the cards, and Stripe

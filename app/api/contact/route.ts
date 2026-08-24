@@ -31,8 +31,22 @@ export async function POST(req: NextRequest) {
       captchaAnswer?: string | number;
     };
 
-    if (!name?.trim() || !email?.trim() || !subject?.trim() || !message?.trim()) {
-      return NextResponse.json({ error: 'All fields are required.' }, { status: 400 });
+    // Was a flat "All fields are required." for any missing field — including
+    // when the caller HAD supplied name, email and message and only the subject
+    // was absent, which reads as though the form is broken. /api/generate
+    // already names its missing fields; this now matches.
+    const missingFields = [
+      !name?.trim() && 'Name',
+      !email?.trim() && 'Email',
+      !subject?.trim() && 'Subject',
+      !message?.trim() && 'Message',
+    ].filter(Boolean) as string[];
+
+    if (missingFields.length > 0) {
+      return NextResponse.json(
+        { error: `Please fill in: ${missingFields.join(', ')}`, missingFields },
+        { status: 400 }
+      );
     }
     const safeReason = reason && VALID_REASONS.has(reason as any) ? reason : 'general';
     if (!EMAIL_RE.test(email.trim())) {

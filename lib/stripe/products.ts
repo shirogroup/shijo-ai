@@ -24,10 +24,16 @@ export const STRIPE_PRICE_IDS = {
   GROWTH_MONTHLY: 'price_1Tv5SpHTpiuftGGEMu4TdOzs', // displayed as "Pro" — new 2026-07-19, no annual price yet
   ENTERPRISE_MONTHLY: 'price_1TCQNAHTpiuftGGEtIcqclbd', // paused — not in VALID_PLANS, kept for when Enterprise relaunches
   ENTERPRISE_ANNUAL: 'price_1TuEaNHTpiuftGGE9r0fRkWI',
-  // ⚠️ SANDBOX IDs — replace with LIVE IDs when created
-  CREDITS_10: 'price_1SrTjgHF4DsT3nuc1a646JL5',
-  CREDITS_50: 'price_1SrTjiHF4DsT3nucBXGXeP7s',
-  CREDITS_100: 'price_1SrTjkHF4DsT3nucxXEFQXHz',
+  // Credit-pack price ids REMOVED 2026-08-24. They were SANDBOX values sitting
+  // in the live constant: they would have failed against the live Stripe key if
+  // anything had ever used them, and they were being shipped to the browser in
+  // the client bundle (D-39). CREDIT_PACKS_ENABLED is false and no code path
+  // reaches them.
+  // To ship credit packs: create LIVE products in Stripe, put the new ids here,
+  // and flip CREDIT_PACKS_ENABLED.
+  CREDITS_10: '',
+  CREDITS_50: '',
+  CREDITS_100: '',
 } as const;
 
 export const STRIPE_PRODUCT_IDS = {

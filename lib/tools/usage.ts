@@ -15,8 +15,8 @@
  */
 
 import { db } from '@/db';
-import { users, usageLogs, dailyLimits } from '@/db/schema';
-import { eq, and, sql, count } from 'drizzle-orm';
+import { users, usageLogs, dailyLimits, subscriptions } from '@/db/schema';
+import { eq, and, sql, count, desc } from 'drizzle-orm';
 import { getToolById, getFreeTools } from '@/lib/tools/registry';
 import { calculateCostUsd } from '@/lib/ai/pricing';
 import type { PlanAccess, ModelTier } from '@/lib/tools/registry';
@@ -173,7 +173,7 @@ export async function checkToolAccess(
 
   if (plan === 'pro') {
     // Monthly limit check
-    const monthStart = getMonthStart();
+    const monthStart = await getBillingWindowStart(userId);
     const [row] = await db
       .select({ total: count() })
       .from(usageLogs)
@@ -215,7 +215,7 @@ export async function checkToolAccess(
     // handled by an earlier `if` in this function falls through to the
     // Enterprise fair-use logic, which would silently treat a Growth
     // user as unlimited-with-a-3000-cap instead of capping at 1,500.
-    const monthStart = getMonthStart();
+    const monthStart = await getBillingWindowStart(userId);
     const [row] = await db
       .select({ total: count() })
       .from(usageLogs)
@@ -330,40 +330,29 @@ export async function recordToolUsage(
     },
   });
 
-  // Increment daily counter (free plan)
+  // Increment daily counter (free plan).
+  //
+  // D-13 FIX (2026-08-24). This was select-then-insert-or-update. Two
+  // generations finishing at the same moment both saw no row, both tried to
+  // INSERT, and the `uniq_daily_limits` unique index rejected the second one.
+  // That throw landed AFTER the model call had already been made and paid for,
+  // so the customer lost a generation they had been billed for — and the
+  // counter under-counted, letting them exceed their daily allowance.
+  //
+  // A single atomic upsert removes the window entirely: Postgres resolves the
+  // conflict itself and increments in the same statement, so concurrent writers
+  // serialise instead of colliding. `excluded` is not referenced because the
+  // increment is always exactly one.
   if (plan === 'free') {
     const today = new Date().toISOString().split('T')[0];
-    const existing = await db
-      .select()
-      .from(dailyLimits)
-      .where(
-        and(
-          eq(dailyLimits.userId, userId),
-          eq(dailyLimits.feature, 'ai-tools'),
-          eq(dailyLimits.date, today)
-        )
-      )
-      .limit(1);
 
-    if (existing.length > 0) {
-      await db
-        .update(dailyLimits)
-        .set({ usageCount: sql`${dailyLimits.usageCount} + 1` })
-        .where(
-          and(
-            eq(dailyLimits.userId, userId),
-            eq(dailyLimits.feature, 'ai-tools'),
-            eq(dailyLimits.date, today)
-          )
-        );
-    } else {
-      await db.insert(dailyLimits).values({
-        userId,
-        feature: 'ai-tools',
-        date: today,
-        usageCount: 1,
+    await db
+      .insert(dailyLimits)
+      .values({ userId, feature: 'ai-tools', date: today, usageCount: 1 })
+      .onConflictDoUpdate({
+        target: [dailyLimits.userId, dailyLimits.feature, dailyLimits.date],
+        set: { usageCount: sql`${dailyLimits.usageCount} + 1` },
       });
-    }
   }
 }
 
@@ -406,7 +395,7 @@ export async function getUsageStats(userId: string): Promise<UsageStats> {
   }
 
   if (plan === 'pro') {
-    const monthStart = getMonthStart();
+    const monthStart = await getBillingWindowStart(userId);
     const [row] = await db
       .select({ total: count() })
       .from(usageLogs)
@@ -425,7 +414,7 @@ export async function getUsageStats(userId: string): Promise<UsageStats> {
       used,
       limit: limits.monthlyGenerations,
       remaining: limits.monthlyGenerations - used,
-      resetLabel: `Resets ${getNextMonthLabel()}`,
+      resetLabel: await getBillingResetLabel(userId),
     };
   }
 
@@ -433,7 +422,7 @@ export async function getUsageStats(userId: string): Promise<UsageStats> {
     // Same shape as 'pro' above, against growth's own limit. Must stay
     // ABOVE the Enterprise fallthrough below for the same reason noted
     // in checkToolAccess.
-    const monthStart = getMonthStart();
+    const monthStart = await getBillingWindowStart(userId);
     const [row] = await db
       .select({ total: count() })
       .from(usageLogs)
@@ -452,7 +441,7 @@ export async function getUsageStats(userId: string): Promise<UsageStats> {
       used,
       limit: limits.monthlyGenerations,
       remaining: limits.monthlyGenerations - used,
-      resetLabel: `Resets ${getNextMonthLabel()}`,
+      resetLabel: await getBillingResetLabel(userId),
     };
   }
 
@@ -468,6 +457,76 @@ export async function getUsageStats(userId: string): Promise<UsageStats> {
 }
 
 // ─── Helpers ─────────────────────────────────────────────────────────
+
+/**
+ * Start of the window a paid plan's allowance is counted over.
+ *
+ * D-37 (decision, 2026-08-24): "200 generations a month" means a BILLING
+ * month, not a calendar month.
+ *
+ * Before this, the allowance reset on the 1st while billing renewed on the
+ * signup anniversary. Someone subscribing on the 23rd got 200 generations for
+ * eight days and then a fresh 200 on the 1st — 400 inside a single billing
+ * period they paid once for. On the $199 tier that was 3,000.
+ *
+ * The period boundary comes from Stripe, via `subscriptions.currentPeriodStart`,
+ * which is written by the customer.subscription.created/updated webhook
+ * handlers.
+ *
+ * ⚠️ DEPENDENCY: that makes this only as correct as webhook delivery. D-36 is
+ * an open finding — a subscription showing `incomplete` in our database while
+ * Stripe reports it active — which points at updates not landing. If the period
+ * start is missing or somehow in the future, we fall back to the calendar month
+ * rather than counting from an unknown boundary. That fallback is the OLD, more
+ * generous behaviour: it can never lock a paying customer out of generations
+ * they are entitled to. Erring the other way could.
+ */
+async function getBillingWindowStart(userId: string): Promise<string> {
+  try {
+    const [sub] = await db
+      .select({ start: subscriptions.currentPeriodStart })
+      .from(subscriptions)
+      .where(eq(subscriptions.userId, userId))
+      .orderBy(desc(subscriptions.currentPeriodStart))
+      .limit(1);
+
+    if (sub?.start) {
+      const start = new Date(sub.start);
+      if (!Number.isNaN(start.getTime()) && start.getTime() <= Date.now()) {
+        return start.toISOString();
+      }
+    }
+  } catch {
+    // Never let a metering lookup break a generation the customer paid for.
+  }
+  return getMonthStart();
+}
+
+/**
+ * Label for when the allowance next refills. Mirrors getBillingWindowStart:
+ * the real period end when we know it, the 1st of next month when we don't.
+ */
+async function getBillingResetLabel(userId: string): Promise<string> {
+  try {
+    const [sub] = await db
+      .select({ end: subscriptions.currentPeriodEnd })
+      .from(subscriptions)
+      .where(eq(subscriptions.userId, userId))
+      .orderBy(desc(subscriptions.currentPeriodEnd))
+      .limit(1);
+
+    if (sub?.end) {
+      const end = new Date(sub.end);
+      if (!Number.isNaN(end.getTime()) && end.getTime() > Date.now()) {
+        return `Resets ${end.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}`;
+      }
+    }
+  } catch {
+    // fall through
+  }
+  return `Resets ${getNextMonthLabel()}`;
+}
+
 function getMonthStart(): string {
   const now = new Date();
   return new Date(now.getFullYear(), now.getMonth(), 1).toISOString();
