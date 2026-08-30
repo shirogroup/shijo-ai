@@ -30,6 +30,16 @@ const baseUrl = 'https://www.shijo.ai';
       priority: 1,
     },
     {
+      // Public, unauthenticated GEO visibility checker. Added 2026-08-29.
+      // Only new public URL in this pass — /pricing and /features are NOT
+      // added here: they are 404s on production and listing them would
+      // point crawlers at dead pages.
+      url: `${baseUrl}/geo`,
+      lastModified: new Date(),
+      changeFrequency: 'weekly',
+      priority: 0.8,
+    },
+    {
       url: `${baseUrl}/terms`,
       lastModified: new Date(),
       changeFrequency: 'yearly',

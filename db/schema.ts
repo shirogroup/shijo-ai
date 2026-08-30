@@ -634,3 +634,87 @@ export const keywordsRelations = relations(keywords, ({ one, many }) => ({
   searchVolume: many(searchVolume),
   serpResults: many(serpResults),
 }));
+
+// ========================================
+// PUBLIC GEO CHECKER (/geo)
+// ========================================
+// Added 2026-08-29 for the public, unauthenticated GEO visibility checker.
+//
+// These two tables are ADDITIVE and standalone. They are NOT referenced by
+// any of the 12 dashboard tools, and nothing above this comment was altered
+// to add them. Note the deliberate absence of a foreign key to users: /geo
+// is anonymous by design, so scans are keyed by IP-day, not by account.
+//
+// Not to be confused with the pre-existing `ai_visibility`, `ai_simulations`
+// and `aeo_scores` tables above — those belong to older/unshipped work and
+// are untouched here.
+
+export const geoScans = pgTable('geo_scans', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  // What the visitor typed.
+  businessName: varchar('business_name', { length: 255 }).notNull(),
+  websiteUrl: varchar('website_url', { length: 500 }),
+  city: varchar('city', { length: 255 }),
+  // Normalised host used for domain-mention matching.
+  domain: varchar('domain', { length: 255 }),
+  // Resolved identity from Google Places (null when unresolved).
+  placeId: varchar('place_id', { length: 255 }),
+  resolvedName: varchar('resolved_name', { length: 255 }),
+  placeTypes: jsonb('place_types'),
+  identityResolved: boolean('identity_resolved').default(false).notNull(),
+  // Scoring snapshot. score is null when band = 'insufficient', so a missing
+  // score is never silently rendered as a real zero.
+  score: integer('score'),
+  band: varchar('band', { length: 20 }),
+  promptCount: integer('prompt_count').default(0).notNull(),
+  cellsAnswered: integer('cells_answered').default(0).notNull(),
+  cellsMentioned: integer('cells_mentioned').default(0).notNull(),
+  enginesAttempted: integer('engines_attempted').default(0).notNull(),
+  enginesAnswered: integer('engines_answered').default(0).notNull(),
+  // Rate-limit key: first hop of x-forwarded-for. Paired with utcDay for the
+  // 1-scan-per-IP-per-UTC-day cap.
+  ipAddress: varchar('ip_address', { length: 64 }).notNull(),
+  utcDay: date('utc_day').notNull(),
+  // Conservative cost estimate for the daily budget guard. NOT a billing
+  // figure and never shown to a user.
+  estimatedCostUsd: decimal('estimated_cost_usd', { precision: 10, scale: 4 }).default('0').notNull(),
+  durationMs: integer('duration_ms'),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+}, (table) => ({
+  // Drives the per-IP daily cap check.
+  ipDayIdx: index('idx_geo_scans_ip_day').on(table.ipAddress, table.utcDay),
+  // Drives the daily budget sum.
+  dayIdx: index('idx_geo_scans_utc_day').on(table.utcDay),
+  createdAtIdx: index('idx_geo_scans_created_at').on(table.createdAt),
+}));
+
+export const geoScanCells = pgTable('geo_scan_cells', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  scanId: uuid('scan_id').notNull().references(() => geoScans.id, { onDelete: 'cascade' }),
+  engine: varchar('engine', { length: 30 }).notNull(), // openai | gemini | perplexity | claude | dataforseo
+  prompt: text('prompt').notNull(),
+  mentioned: boolean('mentioned').default(false).notNull(),
+  matchedOn: jsonb('matched_on'), // ('name' | 'domain')[]
+  snippet: text('snippet'),
+  citations: jsonb('citations'), // string[]
+  // Set when the cell failed or was skipped. A row with errorMessage set is
+  // excluded from scoring — it is "unavailable", never a false negative.
+  errorMessage: text('error_message'),
+  skipped: boolean('skipped').default(false).notNull(),
+  latencyMs: integer('latency_ms'),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+}, (table) => ({
+  scanIdx: index('idx_geo_scan_cells_scan').on(table.scanId),
+  engineIdx: index('idx_geo_scan_cells_engine').on(table.engine),
+}));
+
+export const geoScansRelations = relations(geoScans, ({ many }) => ({
+  cells: many(geoScanCells),
+}));
+
+export const geoScanCellsRelations = relations(geoScanCells, ({ one }) => ({
+  scan: one(geoScans, {
+    fields: [geoScanCells.scanId],
+    references: [geoScans.id],
+  }),
+}));

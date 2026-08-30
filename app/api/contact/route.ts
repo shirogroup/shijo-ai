@@ -48,11 +48,28 @@ export async function POST(req: NextRequest) {
         { status: 400 }
       );
     }
+    // TypeScript cannot narrow through the missingFields array/filter/length
+    // check above, so name/email/subject/message are still typed
+    // `string | undefined` at this point even though the guard has already
+    // returned 400 if any of them were absent. Bind them once as trimmed,
+    // non-optional values instead of repeating a non-null assertion at each
+    // of the dozen call sites below.
+    //
+    // Added 2026-08-29. Without this the file produced 14 TS18048
+    // "possibly undefined" errors, which fail `next build` (next.config.ts
+    // does not set typescript.ignoreBuildErrors). Introduced by d7b767f and
+    // never caught because that commit was not pushed. Behaviour is
+    // unchanged: same fields, same trimming, same 400s, same order.
+    const safeName = (name as string).trim();
+    const safeEmail = (email as string).trim();
+    const safeSubject = (subject as string).trim();
+    const safeMessage = (message as string).trim();
+
     const safeReason = reason && VALID_REASONS.has(reason as any) ? reason : 'general';
-    if (!EMAIL_RE.test(email.trim())) {
+    if (!EMAIL_RE.test(safeEmail)) {
       return NextResponse.json({ error: 'Enter a valid email address.' }, { status: 400 });
     }
-    if (message.trim().length > 5000) {
+    if (safeMessage.length > 5000) {
       return NextResponse.json({ error: 'Message is too long (5000 character max).' }, { status: 400 });
     }
     if (!captchaToken || captchaAnswer === undefined || captchaAnswer === null || !verifyCaptcha(captchaToken, captchaAnswer)) {
@@ -67,10 +84,10 @@ export async function POST(req: NextRequest) {
       .insert(supportTickets)
       .values({
         userId: session?.userId ?? null,
-        name: name.trim(),
-        email: email.trim(),
-        subject: subject.trim(),
-        message: message.trim(),
+        name: safeName,
+        email: safeEmail,
+        subject: safeSubject,
+        message: safeMessage,
         reason: safeReason,
       })
       .returning();
@@ -84,23 +101,23 @@ export async function POST(req: NextRequest) {
     // actually attempted before the function ends.
     const reasonLabel = REASON_OPTIONS.find((r) => r.value === safeReason)?.label ?? 'General Question';
 
-    const confirmation = buildTicketReceivedEmail(name.trim(), {
-      subject: subject.trim(),
-      message: message.trim(),
+    const confirmation = buildTicketReceivedEmail(safeName, {
+      subject: safeSubject,
+      message: safeMessage,
       ticketId: ticket.id,
       reasonLabel,
     });
     const notification = buildTicketNotificationEmail({
-      name: name.trim(),
-      email: email.trim(),
-      subject: subject.trim(),
-      message: message.trim(),
+      name: safeName,
+      email: safeEmail,
+      subject: safeSubject,
+      message: safeMessage,
       ticketId: ticket.id,
       reasonLabel,
     });
 
     await Promise.allSettled([
-      sendEmail({ to: email.trim(), subject: confirmation.subject, html: confirmation.html }).catch((err) =>
+      sendEmail({ to: safeEmail, subject: confirmation.subject, html: confirmation.html }).catch((err) =>
         console.error('Contact confirmation email failed:', err)
       ),
       sendEmail({ to: SUPPORT_INBOX, subject: notification.subject, html: notification.html }).catch((err) =>
