@@ -288,10 +288,22 @@ echo "  PASS: $PASS   FAIL: $FAIL   WARN: $WARN"
 echo
 if [ $FAIL -eq 0 ]; then
   echo "  All required checks passed."
-  echo "  Remaining before /geo works in production:"
-  echo "    1. run docs/manual-db-changes/2026-08-29-geo-checker-tables.sql in Neon"
-  echo "    2. add the MISSING keys above in Vercel"
-  echo "    3. commit and push"
+  echo
+  # Derive what is genuinely outstanding instead of printing a fixed list.
+  # The previous hard-coded footer kept telling the user to run the SQL, add
+  # the keys and push long after all three were done, which is worse than
+  # saying nothing — a checklist that lies gets ignored.
+  if [ "${1:-}" != "--live-scan" ]; then
+    echo "  NOT YET PROVEN: that the five engine keys in Vercel actually work."
+    echo "  Nothing above tests them. Re-run with --live-scan to find out."
+  elif printf '%s' "${RESP:-}" | grep -q '"reason":"ip_cap"'; then
+    echo "  NOT YET PROVEN: the five engine keys — the daily scan for this IP"
+    echo "  was already used, so --live-scan could not reach them. The cap"
+    echo "  resets at 00:00 UTC; re-run after that from an IP that has not"
+    echo "  scanned today."
+  else
+    echo "  Engine keys were exercised live this run — see section 12 above."
+  fi
   exit 0
 else
   echo "  $FAIL check(s) failed — see FAIL lines above."
