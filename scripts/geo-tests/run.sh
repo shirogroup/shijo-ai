@@ -80,12 +80,28 @@ for suite in "$HERE"/suites/[0-9]*.mjs; do
   echo "############################################################"
   echo "# $name"
   echo "############################################################"
-  # Suites log expected server-side errors via console.error; keep them out of
-  # the way but never hide an actual assertion failure.
-  if node "$suite" 2>&1 | grep -vE "^\s+at |^\[geo\] "; then :; fi
-  if [ "${PIPESTATUS[0]}" != "0" ]; then
+  # Capture to a file rather than piping. Piping made the suite's exit status
+  # depend on PIPESTATUS surviving an intervening command, which is fragile and
+  # was silently reporting the wrong result on some shells. Run it plainly,
+  # keep the real status, then filter for display only.
+  OUT="$BUILD/$name.out"
+  # Run node with a path RELATIVE to the app root, same reason as the esbuild
+  # calls above. MSYS2_ARG_CONV_EXCL='*' stops Git Bash rewriting arguments,
+  # which is what makes the `@/db` alias survive — but it also means an
+  # absolute MSYS path like /c/Users/... is handed to node.exe verbatim, and
+  # Windows resolves that against the current drive as C:\c\Users\... A
+  # relative path needs no conversion on any platform.
+  #
+  # Safe for the suites' own imports: ESM resolves '../.build/x.mjs' against
+  # the module's own URL, not the process cwd, so the cd does not affect them.
+  ( cd "$ROOT" && node "$REL/suites/$name" ) >"$OUT" 2>&1
+  STATUS=$?
+  # Suites deliberately log expected server-side errors via console.error;
+  # hide that noise, but never hide assertion output.
+  grep -vE "^\s+at |^\[geo\] " "$OUT" || true
+  if [ "$STATUS" != "0" ]; then
     FAILED=$((FAILED + 1))
-    echo "  >>> $name FAILED"
+    echo "  >>> $name FAILED (exit $STATUS) — full output: $OUT"
   fi
 done
 

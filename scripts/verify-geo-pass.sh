@@ -155,19 +155,24 @@ else
 fi
 
 # ---------------------------------------------------------------------------
-hdr "8. Environment keys (names only — values are never read or printed)"
+hdr "8. LOCAL .env keys (names only — values are never read or printed)"
+echo "  NOTE: this section inspects your LOCAL .env / .env.local ONLY."
+echo "  It says NOTHING about production. Keys set in the Vercel dashboard"
+echo "  will correctly show as 'not in local .env' here. That is expected and"
+echo "  is not a failure — it is why none of these count toward PASS/FAIL."
+echo "  Production keys are proven only by section 12 (--live-scan)."
+echo
 ENVF=""
 [ -f .env.local ] && ENVF=".env.local"
 [ -f .env ] && ENVF="$ENVF .env"
 for v in ANTHROPIC_API_KEY OPENAI_API_KEY GEMINI_API_KEY PERPLEXITY_API_KEY \
          DATAFORSEO_LOGIN DATAFORSEO_PASSWORD GOOGLE_PLACES_API_KEY GEO_DAILY_BUDGET_USD; do
   if [ -n "$ENVF" ] && grep -qhE "^$v=" $ENVF 2>/dev/null; then
-    echo "  present   $v"
+    echo "  in local .env      $v"
   else
-    echo "  MISSING   $v   (engine degrades to 'not checked')"
+    echo "  not in local .env  $v   (fine if set in Vercel; only affects 'npm run dev')"
   fi
 done
-echo "  note: local .env is not what production uses — confirm these in Vercel too."
 
 # ---------------------------------------------------------------------------
 hdr "9. Git state"
@@ -243,22 +248,28 @@ if [ "${1:-}" = "--live-scan" ]; then
     [ "$BAND" = "unverified" ] && bad "band=unverified — identity gate tripped, prompts were generic"
 
     # ── Vercel function-timeout headroom ──────────────────────────────────
-    # app/api/geo/scan/route.ts declares maxDuration = 120, which requires a
-    # Vercel PRO plan. Hobby hard-caps functions at 60s: past that the function
-    # is killed mid-scan and the visitor gets a failure, not a partial result.
-    # Track the trend here so the upgrade happens before that starts biting.
+    # CORRECTED 2026-08-30 against the official limits page (last updated
+    # 2026-08-24). With Fluid compute — the default for new projects — the
+    # duration ceiling is:
+    #     Hobby: 300s default AND maximum
+    #     Pro:   300s default, 800s maximum, 1800s extended (beta)
+    # An earlier version of this script asserted a 60s Hobby cap. That figure
+    # predates Fluid compute and was wrong. maxDuration = 120 in
+    # app/api/geo/scan/route.ts is therefore valid on Hobby, and the real
+    # ceiling to track is 300s.
+    # Verify Fluid compute is on: Project Settings -> Functions.
     MS=$(printf '%s' "$RESP" | grep -oE '"durationMs":[0-9]+' | tail -1 | cut -d: -f2)
     if [ -n "${MS:-}" ]; then
       SEC=$(( MS / 1000 ))
-      echo "        scan duration: ${SEC}s (Hobby ceiling 60s, Pro 300s)"
-      if   [ "$MS" -ge 60000 ]; then
-        bad "duration ${SEC}s EXCEEDS the 60s Hobby cap — on Hobby this scan is being killed. Upgrade to Pro."
-      elif [ "$MS" -ge 45000 ]; then
-        bad "duration ${SEC}s is within 15s of the 60s Hobby cap — upgrade to Pro now, not later."
-      elif [ "$MS" -ge 30000 ]; then
-        warn "duration ${SEC}s is over half the 60s Hobby cap — plan the Pro upgrade."
+      echo "        scan duration: ${SEC}s (route maxDuration 120s; platform ceiling 300s)"
+      if   [ "$MS" -ge 120000 ]; then
+        bad "duration ${SEC}s EXCEEDS the route's own maxDuration of 120s — scans are being killed with a 504. Raise maxDuration or cut MAX_PROMPTS."
+      elif [ "$MS" -ge 90000 ]; then
+        bad "duration ${SEC}s is within 30s of the route's 120s maxDuration — raise it (Hobby allows up to 300s) or reduce prompts."
+      elif [ "$MS" -ge 60000 ]; then
+        warn "duration ${SEC}s is over half the route's 120s maxDuration — watch this as engines get slower."
       else
-        ok "duration ${SEC}s leaves comfortable headroom under the 60s Hobby cap"
+        ok "duration ${SEC}s leaves comfortable headroom under the 120s route limit"
       fi
     fi
   elif echo "$RESP" | grep -q '"reason":"ip_cap"'; then
