@@ -13,6 +13,10 @@ const pages = [
   { href: '/admin/signups', label: 'Signups' },
   { href: '/admin/tickets', label: 'Tickets' },
   { href: '/admin/terms', label: 'Terms' },
+  // Added 2026-08-30 — vendor health, budget and scan history for the public
+  // /geo checker. Read-mostly; the one write action (an admin test scan) is
+  // capped separately from the public per-IP limit.
+  { href: '/admin/geo-health', label: 'GEO / QA' },
 ];
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
