@@ -12,6 +12,15 @@
 # ============================================================================
 set -uo pipefail
 
+# ── Git Bash / MSYS2 path mangling ─────────────────────────────────────────
+# MSYS rewrites any argument that looks like a Unix path into a Windows one.
+# That turns esbuild's `--alias:@/db=...` into `--alias:@C:/Program Files/Git/db=...`,
+# so the alias never matches, esbuild falls through to the REAL db/index.ts,
+# and the build dies on `drizzle-orm/neon-serverless`. Disabling conversion for
+# this script is the fix; it is a no-op on Linux and macOS.
+export MSYS_NO_PATHCONV=1
+export MSYS2_ARG_CONV_EXCL='*'
+
 HERE="$(cd "$(dirname "$0")" && pwd)"
 ROOT="$(cd "$HERE/../.." && pwd)"
 BUILD="$HERE/.build"
@@ -35,17 +44,28 @@ else
     exit 1
   fi
 fi
-echo "esbuild: $($ESBUILD --version)"
+# "$ESBUILD" must stay quoted — the repo path contains a space ("AI Agent"),
+# and unquoted it split into `/c/Users/AI` + `Agent/...`.
+echo "esbuild: $("$ESBUILD" --version)"
 
-bundle() {          # bundle <entry-name> <db-stub>
-  "$ESBUILD" "$HERE/entries/$1.ts" \
-    --bundle --format=esm --platform=node \
-    --outfile="$BUILD/$1.mjs" \
-    --alias:@/db="$HERE/stubs/$2" \
-    --alias:@/db/schema="$HERE/stubs/schema.js" \
-    --alias:drizzle-orm="$HERE/stubs/drizzle.js" \
-    --alias:@="$ROOT" \
-    --log-level=error || { echo "ERROR: bundling $1 failed"; exit 1; }
+# Every path handed to esbuild is RELATIVE to the app root, and we cd there
+# first. Absolute paths cannot be used portably here: MSYS2_ARG_CONV_EXCL='*'
+# above stops Git Bash rewriting `@/db`, but it also stops it rewriting
+# `/c/Users/...` into `C:/Users/...`, which a Windows esbuild.exe needs.
+# Relative paths sidestep both problems and behave identically on Linux/macOS.
+# esbuild resolves alias targets against the current working directory, which
+# is exactly why the cd matters.
+REL="scripts/geo-tests"
+
+bundle() {          # bundle <entry-name> <db-stub-filename>
+  ( cd "$ROOT" && "$ESBUILD" "$REL/entries/$1.ts" \
+      --bundle --format=esm --platform=node \
+      --outfile="$REL/.build/$1.mjs" \
+      --alias:@/db="./$REL/stubs/$2" \
+      --alias:@/db/schema="./$REL/stubs/schema.js" \
+      --alias:drizzle-orm="./$REL/stubs/drizzle.js" \
+      --alias:@=. \
+      --log-level=error ) || { echo "ERROR: bundling $1 failed"; exit 1; }
 }
 
 echo "Bundling real lib/geo sources ..."

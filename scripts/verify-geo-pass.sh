@@ -241,6 +241,26 @@ if [ "${1:-}" = "--live-scan" ]; then
     BAND=$(printf '%s' "$RESP" | grep -oE '"band":"[a-z]+"' | tail -1 | cut -d'"' -f4)
     echo "        band: ${BAND:-unknown}"
     [ "$BAND" = "unverified" ] && bad "band=unverified — identity gate tripped, prompts were generic"
+
+    # ── Vercel function-timeout headroom ──────────────────────────────────
+    # app/api/geo/scan/route.ts declares maxDuration = 120, which requires a
+    # Vercel PRO plan. Hobby hard-caps functions at 60s: past that the function
+    # is killed mid-scan and the visitor gets a failure, not a partial result.
+    # Track the trend here so the upgrade happens before that starts biting.
+    MS=$(printf '%s' "$RESP" | grep -oE '"durationMs":[0-9]+' | tail -1 | cut -d: -f2)
+    if [ -n "${MS:-}" ]; then
+      SEC=$(( MS / 1000 ))
+      echo "        scan duration: ${SEC}s (Hobby ceiling 60s, Pro 300s)"
+      if   [ "$MS" -ge 60000 ]; then
+        bad "duration ${SEC}s EXCEEDS the 60s Hobby cap — on Hobby this scan is being killed. Upgrade to Pro."
+      elif [ "$MS" -ge 45000 ]; then
+        bad "duration ${SEC}s is within 15s of the 60s Hobby cap — upgrade to Pro now, not later."
+      elif [ "$MS" -ge 30000 ]; then
+        warn "duration ${SEC}s is over half the 60s Hobby cap — plan the Pro upgrade."
+      else
+        ok "duration ${SEC}s leaves comfortable headroom under the 60s Hobby cap"
+      fi
+    fi
   elif echo "$RESP" | grep -q '"reason":"ip_cap"'; then
     warn "daily scan already used from this IP — cannot verify keys live today"
   else
