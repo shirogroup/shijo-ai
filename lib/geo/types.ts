@@ -112,8 +112,16 @@ export interface ScanScore {
   enginesAnswered: number;
   /** Engines asked for. */
   enginesAttempted: number;
-  /** Plain-language band for the UI. */
-  band: 'strong' | 'moderate' | 'weak' | 'absent' | 'insufficient';
+  /**
+   * Plain-language band for the UI.
+   *
+   * 'insufficient' — too few usable answers to compute a meaningful rate.
+   * 'unverified'   — Google Places could not confirm the business, so we do
+   *                  not know its category and the prompts were guesswork.
+   *                  Both suppress the numeric score rather than showing a
+   *                  confident zero we cannot stand behind.
+   */
+  band: 'strong' | 'moderate' | 'weak' | 'absent' | 'insufficient' | 'unverified';
 }
 
 export interface ScanResult {

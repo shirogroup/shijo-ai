@@ -121,7 +121,13 @@ export async function POST(req: NextRequest) {
           resolvedName: identity.resolved ? identity.displayName : null,
           placeTypes: identity.types,
           identityResolved: identity.resolved,
-          score: result.score.band === 'insufficient' ? null : result.score.score,
+          // Persist null, never 0, for bands where we deliberately withheld a
+          // number. Storing a real 0 here would later chart as "this business
+          // was invisible" when what actually happened is we could not measure.
+          score:
+            result.score.band === 'insufficient' || result.score.band === 'unverified'
+              ? null
+              : result.score.score,
           band: result.score.band,
           promptCount: prompts.length,
           cellsAnswered: result.score.answered,

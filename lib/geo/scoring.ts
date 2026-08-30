@@ -85,6 +85,46 @@ export function detectMention(
   return { mentioned: matchedOn.length > 0, matchedOn };
 }
 
+/**
+ * Detect an engine reply that is not actually an answer — typically a
+ * clarifying question back at the user ("Could you tell me what type of
+ * business you're looking for?").
+ *
+ * WHY THIS EXISTS (added 2026-08-30 after the first live scan): four of eight
+ * real Claude replies were clarifying questions naming no business at all, and
+ * every one was being scored as a legitimate "not mentioned". That is the same
+ * error as counting a failed request as a miss — absence of an answer is not
+ * evidence of absence from the answer. A non-answer must be excluded from
+ * scoring, not counted against the business.
+ *
+ * Deliberately conservative in the SAFE direction: we only exclude when the
+ * reply carries a clarification phrase AND contains no website/domain. A reply
+ * that names real businesses with their sites is never excluded, even if it
+ * also asks a follow-up question. Over-excluding costs us sample size (and
+ * lands honestly on 'insufficient'); under-excluding invents a miss.
+ */
+const CLARIFICATION_PATTERNS: RegExp[] = [
+  /could you (please )?(tell|let) me/i,
+  /can you (tell|clarify|specify|let) me/i,
+  /what (type|kind|sort) of/i,
+  /(I'd|I would) like to know (a bit )?more/i,
+  /(need|want|like) (a bit )?more (information|clarification|detail|context)/i,
+  /are you (looking for|interested in|asking about)/i,
+  /let me know (what|which|more|if)/i,
+  /to give you the most (relevant|accurate|useful)/i,
+];
+
+/** Anything that looks like a real website reference. */
+const DOMAIN_RE = /\b[a-z0-9][a-z0-9-]*\.(com|net|org|io|co|us|ai|app|biz|info)\b/i;
+
+export function looksLikeNonAnswer(text: string): boolean {
+  const t = (text || '').trim();
+  if (!t) return true;
+  // A reply that points at real websites is an answer, whatever else it says.
+  if (DOMAIN_RE.test(t)) return false;
+  return CLARIFICATION_PATTERNS.some((re) => re.test(t));
+}
+
 /** True when a cell produced a usable answer we can score. */
 function isScorable(cell: ScanCell): boolean {
   return !cell.error && !cell.skipped;
@@ -112,11 +152,30 @@ export function summariseEngines(
 
 export function scoreScan(
   cells: ScanCell[],
-  attempted: EngineId[]
+  attempted: EngineId[],
+  opts: { identityResolved?: boolean } = {}
 ): ScanScore {
   const scorable = cells.filter(isScorable);
   const mentions = scorable.filter((c) => c.mentioned).length;
   const enginesAnswered = new Set(scorable.map((c) => c.engine)).size;
+
+  // Identity gate. If Google Places could not confirm the business we do not
+  // know its category, so buildLocalPrompts fell back to the generic noun and
+  // asked "what are the best businesses in <city>?" — a question whose answer
+  // says nothing about this business. Reporting a confident 0 off that is
+  // worse than reporting nothing: the first live scan produced exactly this,
+  // scoring a yoga studio 0/100 against answers about AT&T and Texas
+  // Instruments. Show the grid, withhold the number.
+  if (opts.identityResolved === false) {
+    return {
+      score: 0,
+      answered: scorable.length,
+      mentions,
+      enginesAnswered,
+      enginesAttempted: attempted.length,
+      band: 'unverified',
+    };
+  }
 
   // Below this, the sample is too small for a percentage to mean anything.
   // Saying "0%" off two answers would overstate our confidence.
@@ -176,5 +235,10 @@ export const BAND_COPY: Record<ScanScore['band'], { title: string; detail: strin
     title: 'Not enough data',
     detail:
       'Too few engines returned a usable answer to calculate a meaningful score. Try again shortly.',
+  },
+  unverified: {
+    title: 'Business not confirmed',
+    detail:
+      'We could not confirm this business on Google Places, so we do not know what category it trades in and had to ask general questions. The answers below are real, but they are not a fair test of this business — so we are not showing a score. Check the business name and city spelling and try again.',
   },
 };

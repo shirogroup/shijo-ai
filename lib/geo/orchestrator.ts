@@ -4,7 +4,12 @@ import { geminiAdapter } from './engines/gemini';
 import { openaiAdapter } from './engines/openai';
 import { perplexityAdapter } from './engines/perplexity';
 import { EngineError, toSnippet, type EngineAdapter } from './engines/shared';
-import { detectMention, scoreScan, summariseEngines } from './scoring';
+import {
+  detectMention,
+  looksLikeNonAnswer,
+  scoreScan,
+  summariseEngines,
+} from './scoring';
 import {
   ENGINE_IDS,
   ENGINE_LABELS,
@@ -125,6 +130,24 @@ export async function runScan(params: {
     const started = Date.now();
     try {
       const answer = await ADAPTERS[job.engine].run(job.prompt, params.identity);
+
+      // The engine replied, but did it actually answer? A clarifying question
+      // names no business, so scoring it as "not mentioned" would invent a
+      // miss. Treat it as unavailable — same as a failed request.
+      if (looksLikeNonAnswer(answer.text)) {
+        const cell: ScanCell = {
+          engine: job.engine,
+          prompt: job.prompt,
+          mentioned: false,
+          matchedOn: [],
+          snippet: toSnippet(answer.text),
+          citations: answer.citations,
+          error: 'Engine asked a clarifying question instead of recommending.',
+          latencyMs: Date.now() - started,
+        };
+        return cell;
+      }
+
       const { mentioned, matchedOn } = detectMention(answer.text, params.identity);
       const cell: ScanCell = {
         engine: job.engine,
@@ -165,7 +188,12 @@ export async function runScan(params: {
   cells.push(...executed);
 
   const engines = summariseEngines(cells, attempted);
-  const score = scoreScan(cells, attempted);
+  // Pass identity resolution through: an unconfirmed business means the
+  // prompts were built from a generic category and the number would be
+  // meaningless. See the identity gate in scoreScan.
+  const score = scoreScan(cells, attempted, {
+    identityResolved: params.identity.resolved,
+  });
 
   return {
     identity: params.identity,

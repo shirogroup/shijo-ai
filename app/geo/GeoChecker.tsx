@@ -37,7 +37,12 @@ const BAND_STYLES: Record<string, string> = {
   weak: 'text-orange-600',
   absent: 'text-red-600',
   insufficient: 'text-muted-foreground',
+  unverified: 'text-muted-foreground',
 };
+
+/** Bands where we deliberately show no number. Rendering a confident 0 for
+ *  either of these would overstate what the scan actually established. */
+const NO_SCORE_BANDS = ['insufficient', 'unverified'];
 
 export function GeoChecker() {
   const [businessName, setBusinessName] = useState('');
@@ -162,7 +167,7 @@ export function GeoChecker() {
                 {result.identity.displayName}
               </strong>
             </p>
-            {result.score.band === 'insufficient' ? (
+            {NO_SCORE_BANDS.includes(result.score.band) ? (
               <p className="text-3xl font-bold text-muted-foreground">—</p>
             ) : (
               <p className={`text-6xl font-bold ${BAND_STYLES[result.score.band]}`}>

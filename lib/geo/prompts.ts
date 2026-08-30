@@ -97,6 +97,38 @@ export function categoryNoun(types: string[]): string {
 }
 
 /**
+ * Pluralise a category noun for the prompts that need it.
+ *
+ * Naive `${noun}s` is wrong for a meaningful share of the map above and the
+ * result is sent verbatim to five answer engines, so it is worth doing
+ * properly: "business" -> "businesss", "pharmacy" -> "pharmacys" and
+ * "travel agency" -> "travel agencys" all read as broken English and make
+ * the prompt look machine-generated, which is exactly the wrong signal when
+ * we are trying to imitate how a real person asks.
+ *
+ * Only the final word is inflected — "marketing agency" -> "marketing
+ * agencies", not "marketings agency".
+ */
+export function pluralise(noun: string): string {
+  const parts = noun.split(' ');
+  const last = parts[parts.length - 1];
+  let plural: string;
+
+  if (/[^aeiou]y$/i.test(last)) {
+    // pharmacy -> pharmacies, agency -> agencies, bakery -> bakeries
+    plural = `${last.slice(0, -1)}ies`;
+  } else if (/(s|x|z|ch|sh)$/i.test(last)) {
+    // business -> businesses, church -> churches, box -> boxes
+    plural = `${last}es`;
+  } else {
+    plural = `${last}s`;
+  }
+
+  parts[parts.length - 1] = plural;
+  return parts.join(' ');
+}
+
+/**
  * Build up to MAX_PROMPTS name-free local-intent prompts.
  *
  * Ordered by how commonly a real person phrases the question, so that a
@@ -104,18 +136,19 @@ export function categoryNoun(types: string[]): string {
  */
 export function buildLocalPrompts(identity: BusinessIdentity): string[] {
   const noun = categoryNoun(identity.types);
+  const nouns = pluralise(noun);
   const city = identity.city.trim();
   const where = city ? ` in ${city}` : '';
 
   const candidates = [
-    `What are the best ${noun}s${where}?`,
+    `What are the best ${nouns}${where}?`,
     `Can you recommend a good ${noun}${where}?`,
     `Which ${noun}${where} do people rate most highly?`,
     `I'm new to ${city || 'the area'} — which ${noun} should I go to?`,
     `What's the most popular ${noun}${where} right now?`,
-    `Compare the top ${noun}s${where}.`,
+    `Compare the top ${nouns}${where}.`,
     `Which ${noun}${where} is best for beginners?`,
-    `List a few well-reviewed ${noun}s${where} with their websites.`,
+    `List a few well-reviewed ${nouns}${where} with their websites.`,
   ];
 
   return dedupe(candidates).slice(0, MAX_PROMPTS);
