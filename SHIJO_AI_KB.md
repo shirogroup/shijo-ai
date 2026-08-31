@@ -1,6 +1,8 @@
 # SHIJO.AI — Knowledge Base / Status Reference
 
-**Last updated:** 2026-08-23 (§47 Ahrefs mined: backlink profile is 129 SPAM-labelled ref domains, 8 dofollow, incl. our own shiroapps.com; organic + AI-search footprint is ZERO; all audit errors collapse to /login. §48 Ads/GTM read-only audit: "Misconfigured" Purchase goal root-caused — no purchase tag in GTM AND no purchase event in the code; all 4 goals are Primary while PMax runs on them. ⚠️ 12 files still uncommitted — see §49)
+**Last updated:** 2026-08-30 — 🔴 **START AT §60.6.** Commit `7dad555` (paid-funnel fix) is on `origin/main` but its **Vercel build FAILED** on a missing Suspense boundary at `/register`. Production is unaffected (still serving `1302442`), but the funnel fix is not live. The fix is written locally in `components/auth/RegisterForm.tsx` and is **uncommitted**. §60 also covers the GEO checker, the Plus $79 tier, `/pricing` + `/features`, and one unverified Stripe env value (§60.4).
+
+**Previously updated:** 2026-08-23 (§47 Ahrefs mined: backlink profile is 129 SPAM-labelled ref domains, 8 dofollow, incl. our own shiroapps.com; organic + AI-search footprint is ZERO; all audit errors collapse to /login. §48 Ads/GTM read-only audit: "Misconfigured" Purchase goal root-caused — no purchase tag in GTM AND no purchase event in the code; all 4 goals are Primary while PMax runs on them. ⚠️ 12 files still uncommitted — see §49)
 
 ## 0. Vercel secret rotation — RESOLVED, was a false alarm (originally flagged 2026-07-17, closed 2026-07-19)
 
@@ -2880,3 +2882,142 @@ subscription.
 
 **Recorded as untestable, not as passing.** Needs a real device or DevTools device mode. Do not let
 the case study imply mobile coverage.
+
+---
+
+## §60 — GEO build, Plus $79 tier, /pricing, paid-funnel fix (2026-08-29 → 2026-08-30)
+
+**Read §60.6 first if you are picking this up cold — there is a red item.**
+
+### §60.1 What shipped and is LIVE — ✅ CONFIRMED
+
+Three commits reached `origin/main` and built successfully:
+
+| Commit | Content |
+|---|---|
+| `3926970` | GEO: entitlements, Plus plan, scan quality fixes |
+| `1302442` | Add `/pricing` and `/features`, surface Plus $79, fix stale SEO canonicals |
+
+`/geo` — public, unauthenticated AI-visibility checker. Queries five answer engines and reports
+whether the business is named. Caps: 1 scan per IP per UTC day, max 8 prompts,
+`GEO_DAILY_BUDGET_USD` (default 25). `/admin/geo-health` — vendor pings, budget, scan history,
+scan detail, admin test scans (`GEO_ADMIN_DAILY_SCAN_CAP`, default 5).
+
+`/pricing` and `/features` both existed as declared canonicals in `lib/seo-config.ts` while
+returning 404. Both are now real pages.
+
+### §60.2 Engine notes worth keeping — ✅ CONFIRMED by reading stored production DB cells
+
+- **Gemini** uses the **Interactions API** (`/v1beta/interactions`, `tools:[{type:'google_search'}]`,
+  `steps[] → model_output → url_citation` annotations). **NOT** `generateContent`. This was found by
+  reading real response bodies, not from docs.
+- **Perplexity Sonar is deprecated — supported until 2026-09-27.** A replacement is needed before then.
+- **Perplexity health ping** must NOT send `max_tokens: 1` → HTTP 400. It is now omitted.
+- `MAX_CONCURRENT_ENGINES = 3`. Gemini is sampled on 4 of 8 prompts (`ENGINE_PROMPT_SAMPLE`); unasked
+  prompts are recorded with an explicit reason string, never as a silent zero.
+- **Scoring invariant:** failed/skipped cells are excluded from the numerator **and** the denominator.
+  When identity cannot be resolved the band is `'unverified'` — never a confident 0.
+- ❓ **OPEN:** 3 of Gemini's 4 asked prompts still time out at 45s. Not investigated.
+
+### §60.3 Plan naming — internal key ≠ customer-facing name
+
+```
+internal 'pro'    → displayed "Standard"  ($29)
+internal 'plus'   → displayed "Plus"      ($79)   ← only tier where key and name match
+internal 'growth' → displayed "Pro"       ($199)
+```
+
+Always route through `PLAN_DISPLAY_NAME`. A hand-rolled ternary got this wrong twice in one screen
+(see §earlier Sidebar note). Do not duplicate the mapping.
+
+GEO monthly quotas (`lib/geo/entitlements.ts`): free 0, pro 4, plus 30, growth 100, enterprise 100.
+Quota counting filters `eq(geoScans.source, 'public')` so admin QA scans never consume a customer's
+allowance.
+
+### §60.4 Stripe — ⚠️ one value still unverified
+
+Two live products created (existing $29/$199 prices untouched):
+`STRIPE_PRICE_PLUS_MONTHLY` ($79/mo) and `STRIPE_PRICE_GEO_REPORT` ($39 one-off).
+
+- ✅ `STRIPE_PRICE_PLUS_MONTHLY` — corrected in Production and redeployed. A **test** price ID
+  (`price_1UAJiv…`) had been saved into Production against a **live** key. Caught only via Vercel's
+  **"Added" vs "Updated" timestamp column**, which is the sole readable evidence an edit landed —
+  sensitive env values cannot be read back after saving.
+- ❓ `STRIPE_PRICE_GEO_REPORT` — Production value **never verified**. May still hold the test ID
+  `price_1UAJl5…`. **Check this before building the $39 route.**
+
+There is only ONE Stripe key, live, on All Environments. There is no test key. Do not propose a
+Production/Preview env split on the assumption that one exists.
+
+### §60.5 The paid-funnel fix — commit `7dad555`
+
+**The bug:** clicking "Choose Plus" while logged out forced a signup and then dumped the user on an
+empty dashboard — no paywall, no $79 upgrade anywhere, no memory of what they had asked for.
+
+**Decision taken by Sri:** paid CTA goes **straight to Stripe**; the Free CTA stays free.
+
+Implementation — 9 files:
+
+- `lib/checkout-intent.ts` (new) — `parsePlanIntent()` validates `?plan=` against a hardcoded
+  allowlist `['pro','plus','growth']`. **It is a plan key, never a URL**, so it adds nothing to the
+  open-redirect surface. `'free'` is not in the allowlist, so "Start free" can never reach Stripe.
+- `lib/pricing-plans.ts` — CTA is now a discriminated union: `{kind:'link'}` | `{kind:'checkout'}` | null.
+- `app/pricing/PricingCta.tsx` (new) — POSTs create-checkout; on 401 → `/register?plan=<key>`.
+- `components/auth/LoginForm.tsx` / `RegisterForm.tsx` — resume checkout after auth. In LoginForm the
+  plan branch sits **before** the existing open-redirect guard, which is preserved verbatim.
+- `app/dashboard/billing/page.tsx` — Plus card ($79) added between Standard and Pro; complete-your-
+  upgrade banner accepts both `canceled=true` and `canceled=1`.
+- `components/dashboard/Sidebar.tsx` — upgrade control for `userPlan === 'pro'` only. Free users
+  already had an "Upgrade to Standard" card; an earlier comment claiming otherwise was false and has
+  been corrected.
+
+### §60.6 🔴 BUILD IS CURRENTLY FAILING — fix is written but NOT committed
+
+`7dad555` is on `origin/main` but **Vercel's build failed**:
+
+```
+⨯ useSearchParams() should be wrapped in a suspense boundary at page "/register"
+Error occurred prerendering page "/register"
+Export encountered an error on /register/page: /register, exiting the build.
+```
+
+**Cause: my own change.** I added `useSearchParams()` to `components/auth/RegisterForm.tsx`.
+`/register` is statically prerendered, so Next requires a Suspense boundary.
+
+✅ Production is **not** broken — Vercel keeps serving the last successful deploy (`1302442`).
+The funnel fix is simply **not live**.
+
+**Fix applied locally (uncommitted, tsc clean):** the boundary was placed **inside**
+`RegisterForm.tsx` rather than in `app/register/page.tsx`, because that page is on the ads/freeze
+list. The file now exports `RegisterForm` (a `<Suspense>` wrapper with a skeleton fallback) around a
+private `RegisterFormInner` that holds the hook. The page's `import { RegisterForm }` and
+`<RegisterForm />` are byte-identical to before. `git status` shows exactly one modified file.
+
+**Audited every other `useSearchParams()` consumer in the repo — all six already have a boundary**
+(`app/dashboard/billing`, `app/dashboard`, `app/reset-password`, `components/GoogleAnalytics`,
+`LoginForm` via `app/login/page.tsx`). `/register` was the only gap.
+
+### §60.7 ⚠️ METHOD RULE — tsc + lint do not catch prerender errors
+
+This build broke despite tsc 0 errors, lint clean, and 157 passing unit tests, because **only
+`next build` runs the prerender/export step**, and `next build` cannot run in the sandbox.
+Any change that adds a client hook (`useSearchParams`, `usePathname` in some cases) to a component
+rendered by a static page must be checked by hand against the Suspense requirement before pushing.
+Do not report "verified" on the strength of tsc alone.
+
+### §60.8 Sandbox limitations re-confirmed this session
+
+- Cannot reach `www.shijo.ai` via curl (`403 blocked-by-allowlist`)
+- Cannot push to GitHub (`could not read Username`) — hand the user the commands
+- Cannot delete `.git/*.lock` — user runs `rm .git/index.lock` in Git Bash (`rm`, not `del`)
+- `next dev` never finishes compiling
+- **Scripted string edits silently no-op.** Python `.replace()` failed on four separate files this
+  session because a display prefix inflated the indentation in my match strings. **Use the Edit
+  tool** — it errors on no-match instead of pretending to succeed.
+
+### §60.9 Deferred, explicitly not started
+
+- **$39 GEO Report route** — Checkout `mode:payment` + webhook branch + Resend delivery.
+  Verify `STRIPE_PRICE_GEO_REPORT` (§60.4) first.
+- **Gemini timeout investigation** (§60.2)
+- **Perplexity Sonar replacement** before 2026-09-27 (§60.2)

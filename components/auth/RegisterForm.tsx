@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { Suspense, useState } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
 import { parsePlanIntent, startCheckout } from '@/lib/checkout-intent';
@@ -9,7 +9,18 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 
-export function RegisterForm() {
+/**
+ * Inner form. Split out from the exported RegisterForm below purely so the
+ * Suspense boundary can live in THIS file.
+ *
+ * useSearchParams() opts a component out of static prerendering, and Next
+ * fails the build unless it sits inside a <Suspense>. /login solves this at
+ * the page level (app/login/page.tsx wraps <LoginForm/>), but app/register
+ * /page.tsx is not ours to change in this pass — so the boundary is here
+ * instead. The page's `import { RegisterForm }` and `<RegisterForm />` are
+ * untouched.
+ */
+function RegisterFormInner() {
   const { register } = useAuth();
   const searchParams = useSearchParams();
   // Checkout intent carried from /pricing. Validated against a hardcoded
@@ -183,5 +194,38 @@ export function RegisterForm() {
         </Button>
       </form>
     </>
+  );
+}
+
+/**
+ * Exported entry point. Same name and same props as before, so
+ * app/register/page.tsx does not change.
+ *
+ * The Suspense boundary is required: RegisterFormInner calls
+ * useSearchParams(), and /register is statically prerendered, so `next build`
+ * hard-fails with "useSearchParams() should be wrapped in a suspense
+ * boundary". That is what broke the build on commit 7dad555.
+ *
+ * The fallback mirrors the real form's vertical rhythm (4 fields + consent
+ * line + button) so the card does not jump when the client form hydrates.
+ */
+export function RegisterForm() {
+  return (
+    <Suspense
+      fallback={
+        <div className="space-y-4 animate-pulse" aria-hidden="true">
+          {[0, 1, 2, 3].map((i) => (
+            <div key={i} className="space-y-2">
+              <div className="h-4 w-24 rounded bg-gray-200" />
+              <div className="h-10 w-full rounded-md bg-gray-200" />
+            </div>
+          ))}
+          <div className="h-4 w-3/4 rounded bg-gray-200" />
+          <div className="h-10 w-full rounded-md bg-gray-200" />
+        </div>
+      }
+    >
+      <RegisterFormInner />
+    </Suspense>
   );
 }
