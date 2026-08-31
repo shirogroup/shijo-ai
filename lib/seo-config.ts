@@ -35,16 +35,24 @@ export const seoConfig = {
       keywords: ['AI SEO tools', 'keyword research tool', 'AI marketing tools'],
       canonical: 'https://www.shijo.ai',
     },
+    // REWRITTEN 2026-08-31, when /features and /pricing stopped being 404s.
+    //
+    // Both entries previously described capabilities that do not exist —
+    // clustering, intent classification, SERP analysis, rank tracking — while
+    // declaring canonicals for routes that returned 404. That combination was
+    // dead config, but it was one generatePageMetadata() call away from
+    // publishing fabricated feature claims against a dead URL. Both now
+    // describe the pages that actually exist.
     features: {
-      title: 'AI SEO Features | Keyword Research, Clustering & Search Volume Analysis - SHIJO.ai',
-      description: 'Explore SHIJO.ai\'s AI-powered SEO features: automated keyword research, clustering, intent classification, search volume checking, SERP analysis, and rank tracking. Enterprise-grade SEO tools.',
-      keywords: ['keyword research', 'keyword clustering', 'search volume checker', 'keyword difficulty'],
+      title: 'Features | 12 AI Marketing Tools + AI Visibility - SHIJO.AI',
+      description: 'Every SHIJO.AI feature: 12 AI marketing tools across SEO, ads, email and social, plus an AI visibility checker that shows whether answer engines name your business.',
+      keywords: ['ai marketing tools', 'ai visibility checker', 'seo content tools', 'ad copy generator'],
       canonical: 'https://www.shijo.ai/features',
     },
     pricing: {
-      title: 'AI Marketing Tools Pricing | Free, Pro & Enterprise Plans - SHIJO.ai',
-      description: 'Simple pricing for AI-powered marketing tools. Free plan with 2 tools and 3 generations/day. Standard at $29/mo or Pro at $199/mo unlocks all 12 tools with advanced AI models.',
-      keywords: ['AI marketing tools pricing', 'keyword research tool cost', 'affordable SEO software'],
+      title: 'Pricing | Free, Standard $29, Plus $79, Pro $199 - SHIJO.AI',
+      description: 'Simple pricing for AI-powered marketing tools. 2 tools free forever. Standard $29/mo, Plus $79/mo with 30 AI visibility scans, Pro $199/mo with multi-brand exports.',
+      keywords: ['AI marketing tools pricing', 'ai visibility tracking cost', 'affordable SEO software'],
       canonical: 'https://www.shijo.ai/pricing',
     },
     dashboard: {

@@ -30,10 +30,21 @@ const baseUrl = 'https://www.shijo.ai';
       priority: 1,
     },
     {
+      // Added 2026-08-31, when these stopped being 404s. lib/seo-config.ts had
+      // declared canonicals for both long before the routes existed.
+      url: `${baseUrl}/pricing`,
+      lastModified: new Date(),
+      changeFrequency: 'monthly',
+      priority: 0.9,
+    },
+    {
+      url: `${baseUrl}/features`,
+      lastModified: new Date(),
+      changeFrequency: 'monthly',
+      priority: 0.8,
+    },
+    {
       // Public, unauthenticated GEO visibility checker. Added 2026-08-29.
-      // Only new public URL in this pass — /pricing and /features are NOT
-      // added here: they are 404s on production and listing them would
-      // point crawlers at dead pages.
       url: `${baseUrl}/geo`,
       lastModified: new Date(),
       changeFrequency: 'weekly',

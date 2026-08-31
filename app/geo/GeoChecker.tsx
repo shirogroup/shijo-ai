@@ -13,6 +13,7 @@ import {
   X,
 } from 'lucide-react';
 import { BAND_COPY } from '@/lib/geo/scoring';
+import { GEO_DISCLAIMER } from '@/lib/pricing-plans';
 import {
   ENGINE_LABELS,
   type EngineId,
@@ -374,13 +375,8 @@ export function GeoChecker() {
               <strong className="text-foreground">
                 How to read this:
               </strong>{' '}
-              These results are API-grounded, not a logged-in consumer chat.
-              We query each engine&apos;s public API with web search enabled,
-              which is not identical to what a signed-in person sees in a
-              consumer app — those are personalised, carry conversation
-              history, and change over time. Treat this as a directional
-              signal at one moment, not a guaranteed ranking. Cells marked
-              “not checked” were not asked and are excluded from the score.
+              {GEO_DISCLAIMER} Cells marked “not checked” were not asked and
+              are excluded from the score.
             </p>
           </div>
 

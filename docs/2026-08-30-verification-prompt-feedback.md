@@ -381,3 +381,76 @@ Across three reviews the prompts have improved by moving up a ladder:
 Level 4 is where a prompt stops being instructions and starts being collaboration. It is also the
 only level that reliably produces one-pass fixes, because the expensive part — deciding what is
 actually broken — is already settled before any code is touched.
+
+---
+---
+
+# Fourth review — Phase A results, and the multi-phase prompts
+
+*2026-08-31, after deploying `3926970` (entitlements, Plus plan, scan quality fixes).*
+
+## The results, first
+
+| Fix | Before | After | Verdict |
+|---|---|---|---|
+| DataForSEO detector exemption | 4/8 scorable, 4 false "clarifying question" | **8/8, zero errors** | **Worked completely** |
+| Gemini sampling 4/8 | 3/8 scorable, 5 timeouts | 4 asked (1 ok, 3 timeout), 4 correctly "not asked" | **Mechanism works, problem doesn't** |
+| Scan duration | 172s | **146s** | Improved, still high |
+| Perplexity | 7 mentions | 7 mentions | Stable, best engine |
+
+**The DataForSEO fix is the clean win.** Exempting the engine rather than tightening patterns was
+the right call: zero errors across 8 cells, real AI Overview prose about Austin restaurants coming
+through as scorable answers.
+
+**Gemini is the honest failure.** The sampling mechanism worked exactly as designed — 4 prompts
+asked, 4 recorded as "Not asked", clearly distinguishable from failures. But of the 4 actually
+asked, **3 still timed out at exactly 45.00s**. Success rate went from 3/8 to 1/4. Sampling
+reduced the *cost* of Gemini being broken without fixing Gemini being broken.
+
+That is worth stating plainly rather than filing as a win. The fix did what it was designed to do
+and the underlying problem is untouched.
+
+## What the prompts got right
+
+**The measured-evidence pattern held.** Both fixes came from reading stored production data — cell
+snippets for the detector, per-cell latency for Gemini — not from guessing. The DataForSEO fix
+worked *because* the evidence identified the mechanism (editorial prose tripping a chat heuristic,
+with no domain to trigger the escape hatch).
+
+**"Do not raise maxDuration above 240"** was a good constraint. It forced sampling rather than
+another timeout increase, and sampling was the better answer even though it did not solve Gemini.
+A timeout raise would have hidden the problem behind a longer wait.
+
+**Phasing with explicit gates** worked. Phase A shipped and got verified before Phase B built on
+it. The alternative — one large commit — would have made this Gemini result impossible to
+attribute.
+
+## What the multi-phase prompts cost
+
+The A/B/C phase prompts each asked for more than fitted in one pass, and the >8-file rule kept
+firing. That rule is good, but it means a prompt that plans four phases will reliably stop in
+phase two. Two options, both fine, but worth choosing deliberately:
+
+- **Scope each prompt to one phase** and accept more round trips.
+- **Keep the multi-phase plan** as context but ask for only the next phase's work.
+
+The second is probably better: the plan is genuinely useful context even when only part of it gets
+built.
+
+## The environment-split mistake, which was mine
+
+I proposed a Production/Preview split for Stripe price ids without first checking whether a test
+Stripe key existed. It does not — `STRIPE_SECRET_KEY` is scoped All Environments and is the live
+key. So Preview is not a test environment, test-mode ids would fail everywhere, and the split I
+recommended could never have worked. That cost a round trip and some confusion.
+
+**The rule I should have applied:** before recommending a configuration split, verify the thing
+being split actually differs across the two sides. A prompt cannot reasonably catch this; it is
+the assistant's job.
+
+## Still open
+
+- **Gemini**: 3 of 4 asked prompts time out at 45s. Not a patience problem. Needs investigation of
+  the request itself, or dropping Gemini to 2 prompts, or accepting it as a partial engine.
+- **Duration 146s** against a 240s ceiling. Better than 172s but not comfortable.
+- `/pricing` and `/features` still 404; Plus is not purchasable.

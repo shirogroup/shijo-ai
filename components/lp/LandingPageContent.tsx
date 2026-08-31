@@ -26,6 +26,7 @@ const plans = [
 
 const faqs = [
   { q: 'What is SHIJO.AI?', a: 'SHIJO.AI is an all-in-one AI marketing platform for digital marketers, agencies, and small businesses — 12 tools covering keyword research, AI ad copy, email sequences, and social media captions.' },
+  { q: 'Do you check AI visibility?', a: 'Yes — SHIJO.AI includes an AI visibility checker that shows whether answer engines name your business when people ask for a recommendation.' },
   { q: 'Is there a free trial?', a: 'No trial needed — the Free plan is free forever with 2 tools and 3 generations a day, no credit card required. Upgrade whenever you’re ready.' },
   { q: 'Can I cancel anytime?', a: 'Yes. Cancel anytime from your dashboard; you keep access through the end of your current billing period.' },
   { q: 'Is my payment secure?', a: 'All payments are processed by Stripe. We never see or store your card details.' },

@@ -27,9 +27,13 @@ const promoCards = [
     icon: Tag,
     eyebrow: 'PRICING',
     title: 'Start Free, Upgrade Anytime',
-    bullets: ['2 tools free forever', 'Standard: $29/mo, all 12 tools', 'Pro: $199/mo, 1,500 gens/month'],
+    // Plus added 2026-08-31. The $29 and $199 figures either side are
+    // unchanged — this sidebar is ad-adjacent and those numbers are load-bearing.
+    bullets: ['2 tools free forever', 'Standard: $29/mo, all 12 tools', 'Plus: $79/mo, 30 AI visibility scans', 'Pro: $199/mo, 1,500 gens/month'],
     cta: 'See pricing',
-    href: '/#pricing',
+    // Now points at the real /pricing page rather than the homepage anchor,
+    // which is what this link always meant.
+    href: '/pricing',
     gradient: 'from-blue-600 to-cyan-600',
     glow: 'bg-blue-500',
   },
