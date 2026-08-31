@@ -4,6 +4,7 @@ import { Check, Minus } from 'lucide-react';
 import { Header } from '@/components/Header';
 import { Footer } from '@/components/Footer';
 import { GEO_DISCLAIMER, PRICING_PLANS } from '@/lib/pricing-plans';
+import { PricingCta } from './PricingCta';
 
 /**
  * /pricing — previously a 404.
@@ -88,7 +89,13 @@ export default function PricingPage() {
                   ))}
                 </ul>
 
-                {p.cta ? (
+                {p.cta?.kind === 'checkout' ? (
+                  <PricingCta
+                    planKey={p.cta.planKey}
+                    label={p.cta.label}
+                    highlight={p.highlight}
+                  />
+                ) : p.cta ? (
                   <Link
                     href={p.cta.href}
                     className={`block text-center rounded-xl px-5 py-3 text-sm font-semibold transition-colors ${

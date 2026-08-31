@@ -12,6 +12,8 @@
  * Prices here MUST match lib/stripe/products.ts PLAN_FEATURES exactly.
  */
 
+import type { CheckoutPlanKey } from './checkout-intent';
+
 export interface PricingPlan {
   /** Internal plan key, or null for the one-time report. */
   key: 'free' | 'pro' | 'plus' | 'growth' | 'enterprise' | 'report';
@@ -23,7 +25,16 @@ export interface PricingPlan {
   /** The GEO/AI-visibility line — the reason this page changed. */
   geo: string;
   features: string[];
-  cta: { label: string; href: string } | null;
+  /**
+   * How this plan's button behaves.
+   *   link     — ordinary navigation (Free, Enterprise). NEVER opens Stripe.
+   *   checkout — POST create-checkout, or /register?plan= when signed out.
+   * Free deliberately cannot be a 'checkout' — see PricingCta.
+   */
+  cta:
+    | { kind: 'link'; label: string; href: string }
+    | { kind: 'checkout'; label: string; planKey: CheckoutPlanKey }
+    | null;
   highlight?: boolean;
   comingSoon?: boolean;
 }
@@ -41,7 +52,8 @@ export const PRICING_PLANS: PricingPlan[] = [
       '3 generations per day',
       'No credit card required',
     ],
-    cta: { label: 'Start free', href: '/register' },
+    // Ordinary link, no plan param. A Free CTA must never reach Stripe.
+    cta: { kind: 'link', label: 'Start free', href: '/register' },
   },
   {
     key: 'pro', // displayed "Standard" — see lib/stripe/products.ts naming note
@@ -56,7 +68,7 @@ export const PRICING_PLANS: PricingPlan[] = [
       'Advanced AI models',
       'Scan history',
     ],
-    cta: { label: 'Choose Standard', href: '/dashboard/billing' },
+    cta: { kind: 'checkout', label: 'Choose Standard', planKey: 'pro' },
   },
   {
     key: 'plus',
@@ -71,7 +83,7 @@ export const PRICING_PLANS: PricingPlan[] = [
       'Advanced AI models',
       'One-click into the FAQ Generator and AI Overview Optimizer',
     ],
-    cta: { label: 'Choose Plus', href: '/dashboard/billing' },
+    cta: { kind: 'checkout', label: 'Choose Plus', planKey: 'plus' },
     highlight: true,
   },
   {
@@ -87,7 +99,7 @@ export const PRICING_PLANS: PricingPlan[] = [
       'Advanced AI models',
       'CSV and PDF export',
     ],
-    cta: { label: 'Choose Pro', href: '/dashboard/billing' },
+    cta: { kind: 'checkout', label: 'Choose Pro', planKey: 'growth' },
   },
   {
     key: 'report',
@@ -111,7 +123,7 @@ export const PRICING_PLANS: PricingPlan[] = [
     tagline: 'Not currently sold self-serve.',
     geo: 'Custom scan volume',
     features: ['All 12 AI marketing tools', 'Custom limits', 'Priority support'],
-    cta: { label: 'Contact us', href: '/contact' },
+    cta: { kind: 'link', label: 'Contact us', href: '/contact' },
     comingSoon: true,
   },
 ];

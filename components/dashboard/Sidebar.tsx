@@ -16,6 +16,7 @@ import {
   LogOut,
   User,
   Crown,
+  Sparkles,
 } from 'lucide-react';
 import { PLAN_DISPLAY_NAME } from '@/lib/stripe/plan-names';
 
@@ -176,6 +177,24 @@ export function Sidebar() {
             </p>
           </div>
         </div>
+        {/* Upgrade control for STANDARD users. Added 2026-08-31.
+            Free users already had the "Upgrade to Standard" card in the nav
+            above — but that card only renders for userPlan === 'free', so a
+            paying Standard customer had no upgrade path in the chrome at all,
+            and no plan mentioned Plus anywhere. This covers that gap without
+            duplicating the free card. Hidden for plus/growth/enterprise, who
+            have nothing above them to buy. */}
+        {userPlan === 'pro' && (
+          <Link href="/dashboard/billing" className="mt-3 block">
+            <Button
+              size="sm"
+              className="w-full justify-start bg-primary hover:bg-primary/90 text-white"
+            >
+              <Sparkles className="mr-2 h-4 w-4" />
+              Upgrade to Plus — $79/mo
+            </Button>
+          </Link>
+        )}
         <Button
           variant="ghost"
           size="sm"

@@ -1,7 +1,9 @@
 'use client';
 
 import { useState } from 'react';
+import { useSearchParams } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
+import { parsePlanIntent, startCheckout } from '@/lib/checkout-intent';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -9,6 +11,12 @@ import { Alert, AlertDescription } from '@/components/ui/alert';
 
 export function RegisterForm() {
   const { register } = useAuth();
+  const searchParams = useSearchParams();
+  // Checkout intent carried from /pricing. Validated against a hardcoded
+  // allowlist (pro | plus | growth) — it is a plan key, never a URL, so it
+  // cannot be turned into an open redirect. See lib/checkout-intent.ts.
+  // 'free' is not in the allowlist, so "Start free" can never land here.
+  const planIntent = parsePlanIntent(searchParams.get('plan'));
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -51,7 +59,22 @@ export function RegisterForm() {
         }
         // Small delay so GTM tags listening for the event above have a
         // moment to fire their pixel/beacon before the page navigates away.
-        setTimeout(() => {
+        setTimeout(async () => {
+          // Resume the checkout the visitor started on /pricing. Before this,
+          // the redirect was hardcoded to /dashboard, so someone who clicked
+          // "Choose Plus" was silently dropped on an empty dashboard with no
+          // paywall and no memory of what they had asked for.
+          if (planIntent) {
+            const result = await startCheckout(planIntent);
+            if (result.ok) return; // navigating to Stripe
+
+            // Checkout could not start (price id misconfigured, Stripe down,
+            // plan not purchasable on this environment). Do NOT strand them:
+            // send them to billing with the intent intact so the
+            // complete-your-upgrade banner offers the same action again.
+            window.location.href = `/dashboard/billing?canceled=1&plan=${planIntent}`;
+            return;
+          }
           window.location.href = '/dashboard';
         }, 250);
       } else {

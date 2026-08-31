@@ -5,6 +5,11 @@ import { useSearchParams } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
 import { Check, Crown, Zap, Sparkles, Loader2, CheckCircle, XCircle, ExternalLink } from 'lucide-react';
 import { PLAN_DISPLAY_NAME } from '@/lib/stripe/plan-names';
+import {
+  CHECKOUT_PLAN_LABEL,
+  CHECKOUT_PLAN_PRICE,
+  parsePlanIntent,
+} from '@/lib/checkout-intent';
 
 /**
  * Annual billing is HIDDEN on the site as of 2026-08-24, by decision, until the
@@ -59,6 +64,26 @@ const plans = [
     ],
     highlight: false,
     tier: 'pro', // internal key stays 'pro' — displayed as "Standard", see lib/stripe/products.ts
+    comingSoon: false,
+  },
+  {
+    // Added 2026-08-31. Sits between Standard and Pro so the ladder reads
+    // 29 -> 79 -> 199. tier is 'plus' — the one plan whose internal key and
+    // display name match, unlike 'pro'->Standard and 'growth'->Pro.
+    name: 'Plus',
+    price: 79,
+    annualPrice: undefined,
+    interval: 'month',
+    description: 'For tracking AI visibility seriously',
+    badge: null,
+    features: [
+      'All 12 AI marketing tools',
+      '200 generations per month',
+      '30 AI visibility scans per month',
+      'One-click into FAQ Generator & AI Overview Optimizer',
+    ],
+    highlight: false,
+    tier: 'plus',
     comingSoon: false,
   },
   {
@@ -120,8 +145,16 @@ function BillingContent() {
   const billingInterval = ANNUAL_BILLING_ENABLED ? billingIntervalRaw : 'monthly';
 
   const isSuccess = searchParams.get('success') === 'true';
-  const isCanceled = searchParams.get('canceled') === 'true';
+  // Accept both spellings: Stripe's cancel_url sends canceled=true, while the
+  // signup/login checkout-resume path sends canceled=1 when it could not reach
+  // Stripe at all. Both mean "they wanted to buy and did not".
+  const canceledRaw = searchParams.get('canceled');
+  const isCanceled = canceledRaw === 'true' || canceledRaw === '1';
   const upgradedPlan = searchParams.get('plan');
+  // The plan they were trying to buy when checkout was abandoned. Validated
+  // against the same allowlist the server uses, so a crafted ?plan= cannot
+  // make the banner advertise something we do not sell.
+  const pendingPlan = isCanceled ? parsePlanIntent(searchParams.get('plan')) : null;
 
   const handleUpgrade = async (tier: string) => {
     setError('');
@@ -200,13 +233,30 @@ function BillingContent() {
         </div>
       )}
 
-      {/* Canceled banner */}
+      {/* Canceled banner.
+          Was a passive "you can try again anytime" with nothing to click,
+          which stranded anyone who abandoned Stripe — the plan they had
+          chosen was thrown away. It now names that plan and re-offers it as
+          one button calling the same create-checkout. */}
       {isCanceled && (
-        <div className="bg-yellow-900/30 border border-yellow-700 rounded-xl p-4 mb-6 flex items-center gap-3">
+        <div className="bg-yellow-900/30 border border-yellow-700 rounded-xl p-4 mb-6 flex flex-col sm:flex-row sm:items-center gap-3">
           <XCircle className="w-5 h-5 text-yellow-400 flex-shrink-0" />
-          <p className="text-yellow-300 text-sm">
-            Checkout was canceled. No charges were made. You can try again anytime.
+          <p className="text-yellow-300 text-sm flex-1">
+            {pendingPlan
+              ? `Complete your upgrade to ${CHECKOUT_PLAN_LABEL[pendingPlan]} — ${CHECKOUT_PLAN_PRICE[pendingPlan]}. No charges were made.`
+              : 'Checkout was canceled. No charges were made. You can try again anytime.'}
           </p>
+          {pendingPlan && (
+            <button
+              onClick={() => handleUpgrade(pendingPlan)}
+              disabled={loadingPlan === pendingPlan}
+              className="shrink-0 rounded-lg bg-yellow-500 hover:bg-yellow-400 disabled:opacity-60 px-4 py-2 text-sm font-semibold text-gray-900"
+            >
+              {loadingPlan === pendingPlan
+                ? 'Starting…'
+                : `Complete upgrade to ${CHECKOUT_PLAN_LABEL[pendingPlan]}`}
+            </button>
+          )}
         </div>
       )}
 

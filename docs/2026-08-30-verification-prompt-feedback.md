@@ -454,3 +454,97 @@ the assistant's job.
   the request itself, or dropping Gemini to 2 prompts, or accepting it as a partial engine.
 - **Duration 146s** against a 240s ceiling. Better than 172s but not comfortable.
 - `/pricing` and `/features` still 404; Plus is not purchasable.
+
+---
+---
+
+# Fifth review — the Phase C / go-live prompt
+
+*2026-08-31, after deploying `1302442` (/pricing, /features, Plus $79, SEO canonicals).*
+
+## The result that matters
+
+`/pricing` and `/features` both return **200**. Plus $79 appears on the pricing page, the homepage
+grid and the contact sidebar. `$29` and `$199` are unchanged everywhere, `$99` appears nowhere, and
+`/ai-marketing-tools` was not touched at all.
+
+Then the checkout test returned this:
+
+> `Checkout failed: No such price: 'price_1UAJivHTpiuftGGE12I03iTL'; a similar object exists in
+> test mode, but a live mode key was used to make this request.`
+
+`price_1UAJiv…` is the **test** id. Production is still running it, despite it having been
+"updated". So the exact failure the prompt forbade — *"Do not put price_1UAJiv… or price_1UAJl5… in
+Production"* — is what actually happened, and the prompt's own test caught it.
+
+## Why this prompt worked
+
+### 1. It named the forbidden values literally
+
+> *"Do not put `price_1UAJiv…` or `price_1UAJl5…` in Production."*
+
+Earlier prompts named the wrong *approach* ("do not guess a second invalid string"). This one named
+the wrong *literal values*. That is the strongest version of the pattern, and it paid off twice:
+once as a constraint while building, and again as the thing that made the error message instantly
+legible — the id in the Stripe error was recognisable on sight as one of the two forbidden strings.
+
+### 2. It pre-authorised the diagnostic
+
+> *"If create-checkout errors, paste status + Stripe error type/message only."*
+
+Deciding in advance what to report on failure meant no round trip asking "should I share the error".
+It also bounded it — "type/message only" — so there was no question of dumping a response body
+containing a session token.
+
+### 3. It made a financial test safe by construction
+
+> *"checkout test that does NOT charge a card"* and *"Do not submit payment. Close the tab."*
+
+The test proved the configuration was broken **without any charge and without a card**. Creating a
+Checkout Session is a read-shaped operation; submitting it is not. Separating those two is the
+difference between a safe test and an irreversible one.
+
+### 4. It asked me to check its own assumption
+
+> *"I believe entitlements code is deployed. Tell me if Plus is missing from VALID_PLANS or
+> checkout."*
+
+The answer was that the **code was right and the configuration was wrong** — `VALID_PLANS.plus`,
+the webhook branch, `PLAN_DISPLAY_NAME.plus` and `PLAN_FEATURES.plus` were all correctly deployed.
+Asking the question separated two things that look identical from the outside ("Plus doesn't work")
+and would otherwise have sent me hunting through code that was fine.
+
+### 5. The ≤4-file escape hatch on the $39 report
+
+> *"if Checkout one-time + Resend HTML summary can reuse existing scan+email in ≤4 files, ship it."*
+
+A conditional scope with a measurable threshold. It needed more than 4 files, so it did not ship,
+and `/pricing` shows it as "Coming soon" with no CTA rather than advertising something that does not
+work. Without the threshold the likely outcome is a half-built report route.
+
+## The one thing to add
+
+**Env-var changes on Vercel do not apply to an already-running deployment.** Whatever the cause
+here — an unsaved edit, or a value changed after the build started — the general rule is worth
+encoding in future prompts:
+
+> After changing environment variables, trigger a redeploy before testing. Confirm the deployment
+> that is serving traffic was built after the variable changed.
+
+Vercel also makes sensitive values unreadable after saving, so there is no way to verify a value by
+inspection — by design. **The only verification is behavioural**, which is exactly what Step 4 did.
+That is worth recognising as a feature of the prompt rather than a gap: it did not ask me to confirm
+the value, it asked me to confirm the behaviour.
+
+## Pattern across five reviews
+
+The ladder from earlier reviews now has a fifth rung:
+
+1. Name the task.
+2. Name the failure mode.
+3. Name the wrong answer.
+4. Supply the diagnosis, require confirmation against a source.
+5. **Name the forbidden literal values, and pre-authorise the diagnostic for when it fails anyway.**
+
+Rung 5 assumes the instruction will be violated somewhere in the chain — by a human, a tool, or a
+stale deployment — and builds the detection into the same prompt. That is what happened here.

@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { useAuth } from '@/contexts/AuthContext';
+import { parsePlanIntent, startCheckout } from '@/lib/checkout-intent';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
@@ -26,6 +27,19 @@ export default function LoginForm() {
       const result = await login(email, password);
 
       if (result.success) {
+        // Resume a checkout started on /pricing. `?plan=` is a short opaque
+        // token validated against a hardcoded allowlist — deliberately NOT a
+        // URL, so it adds nothing to the open-redirect surface guarded below.
+        const planIntent = parsePlanIntent(searchParams.get('plan'));
+        if (planIntent) {
+          const checkout = await startCheckout(planIntent);
+          if (checkout.ok) return; // navigating to Stripe
+          // Could not start checkout — land on billing with the intent intact
+          // rather than stranding them.
+          window.location.href = `/dashboard/billing?canceled=1&plan=${planIntent}`;
+          return;
+        }
+
         // Only ever redirect to a same-origin path. `?redirect=` is
         // attacker-controllable: before this guard, /login?redirect=https://evil.example
         // sent a user who had just typed their real password on our real
@@ -121,7 +135,13 @@ export default function LoginForm() {
       <p className="text-center text-sm text-gray-600">
         Don&apos;t have an account?{' '}
         <Link
-          href="/register"
+          href={
+            // Carry any checkout intent across to signup, so a visitor who
+            // landed here from /pricing does not lose the plan they chose.
+            parsePlanIntent(searchParams.get('plan'))
+              ? `/register?plan=${parsePlanIntent(searchParams.get('plan'))}`
+              : '/register'
+          }
           className="font-semibold text-[#CC0000] hover:text-[#990000] transition-colors"
         >
           Sign up
