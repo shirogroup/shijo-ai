@@ -61,4 +61,22 @@ t('unverified has title + detail',
 t('unverified copy explains WHY there is no score',
   /could not confirm/i.test(G.BAND_COPY.unverified.detail));
 
+
+
+// ── Phase A regressions, added 2026-08-30 from live production evidence ──
+hdr('DataForSEO exemption (real AI Overview prose from the Franklin scan)');
+const OVERVIEW = `The top restaurants in Austin span legendary smoked meats, inventive modern Mexican, and upscale contemporary dining. No matter what type of barbecue you prefer, there is a spot for you.`;
+t('flagged as non-answer WITHOUT the engine arg (old behaviour)',
+  G.looksLikeNonAnswer(OVERVIEW) === true);
+t('NOT flagged when engine=dataforseo (the fix)',
+  G.looksLikeNonAnswer(OVERVIEW, 'dataforseo') === false);
+t('still flagged for a chat engine',
+  G.looksLikeNonAnswer(OVERVIEW, 'claude') === true);
+t('empty text is STILL a non-answer even for dataforseo',
+  G.looksLikeNonAnswer('', 'dataforseo') === true);
+t('whitespace-only still caught for dataforseo',
+  G.looksLikeNonAnswer('   \n ', 'dataforseo') === true);
+t('a real chat clarification is still caught',
+  G.looksLikeNonAnswer("I'd be happy to help! Could you tell me what type of business?", 'openai') === true);
+
 done();

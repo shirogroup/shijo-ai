@@ -142,6 +142,10 @@ export async function POST(req: NextRequest) {
           // the admin daily cap counts, and it keeps admin runs out of the
           // public per-IP cap entirely.
           ipAddress: adminScanKey(requester.id),
+          // source is now authoritative; the ip_address marker is still
+          // written so old rows and new rows classify identically.
+          userId: requester.id,
+          source: 'admin',
           utcDay: guard.utcDay,
           estimatedCostUsd: String(plannedCost),
           durationMs: result.durationMs,

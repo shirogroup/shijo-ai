@@ -13,6 +13,7 @@ import {
 import {
   ENGINE_IDS,
   ENGINE_LABELS,
+  ENGINE_PROMPT_SAMPLE,
   MAX_CONCURRENT_ENGINES,
   type BusinessIdentity,
   type EngineId,
@@ -121,8 +122,32 @@ export async function runScan(params: {
 
   const jobs: Job[] = [];
   for (const engine of runnable) {
+    // Per-engine prompt sampling (see ENGINE_PROMPT_SAMPLE). An engine that is
+    // far slower than the rest is asked a subset so it cannot dominate total
+    // scan duration. Prompts it was not asked are recorded explicitly rather
+    // than omitted, so the grid stays rectangular and the reason is visible —
+    // "not asked" and "asked but failed" must not look identical to a reader.
+    const sample = ENGINE_PROMPT_SAMPLE[engine];
+    const asked =
+      typeof sample === 'number' && sample < params.prompts.length
+        ? params.prompts.slice(0, sample)
+        : params.prompts;
+
     for (const prompt of params.prompts) {
-      jobs.push({ engine, prompt });
+      if (asked.includes(prompt)) {
+        jobs.push({ engine, prompt });
+      } else {
+        cells.push({
+          engine,
+          prompt,
+          mentioned: false,
+          matchedOn: [],
+          snippet: '',
+          citations: [],
+          skipped: true,
+          error: 'Not asked — this engine is sampled on a subset of prompts to keep scan time within limits.',
+        });
+      }
     }
   }
 
@@ -134,7 +159,7 @@ export async function runScan(params: {
       // The engine replied, but did it actually answer? A clarifying question
       // names no business, so scoring it as "not mentioned" would invent a
       // miss. Treat it as unavailable — same as a failed request.
-      if (looksLikeNonAnswer(answer.text)) {
+      if (looksLikeNonAnswer(answer.text, job.engine)) {
         const cell: ScanCell = {
           engine: job.engine,
           prompt: job.prompt,

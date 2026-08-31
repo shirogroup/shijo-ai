@@ -71,18 +71,25 @@ export type GuardResult =
 export async function checkGuards(
   ipAddress: string,
   plannedCostUsd: number,
-  now: Date = new Date()
+  now: Date = new Date(),
+  opts: { skipIpCap?: boolean } = {}
 ): Promise<GuardResult> {
   const utcDay = currentUtcDay(now);
   const budgetUsd = dailyBudgetUsd();
 
   try {
-    const [ipRow] = await db
-      .select({ count: sql<number>`count(*)::int` })
-      .from(geoScans)
-      .where(and(eq(geoScans.ipAddress, ipAddress), eq(geoScans.utcDay, utcDay)));
+    // skipIpCap is set for SIGNED-IN callers, who are metered against their
+    // plan's monthly allowance instead (see lib/geo/entitlements.ts). The
+    // budget guard below still runs — skipping the IP cap must never mean
+    // skipping the money guard.
+    const [ipRow] = opts.skipIpCap
+      ? [{ count: 0 }]
+      : await db
+          .select({ count: sql<number>`count(*)::int` })
+          .from(geoScans)
+          .where(and(eq(geoScans.ipAddress, ipAddress), eq(geoScans.utcDay, utcDay)));
 
-    if ((ipRow?.count ?? 0) >= SCANS_PER_IP_PER_UTC_DAY) {
+    if (!opts.skipIpCap && (ipRow?.count ?? 0) >= SCANS_PER_IP_PER_UTC_DAY) {
       return {
         allowed: false,
         reason: 'ip_cap',

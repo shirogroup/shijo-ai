@@ -25,6 +25,18 @@ const VALID_PLANS: Record<string, Partial<Record<'monthly' | 'annual', string>>>
   },
 };
 
+// 'plus' ($79, added 2026-08-31) is registered only when its price id is
+// actually present in the environment. STRIPE_PRICE_IDS.PLUS_MONTHLY is
+// env-driven because the product currently exists in the Stripe TEST sandbox
+// only — see the note in lib/stripe/products.ts. Registering it
+// unconditionally would let a customer reach a checkout for a price id that
+// is an empty string on this environment, which Stripe rejects with an opaque
+// error. Absent id => plan simply is not purchasable here, and the existing
+// "Invalid plan selected" 400 covers it.
+if (STRIPE_PRICE_IDS.PLUS_MONTHLY) {
+  VALID_PLANS.plus = { monthly: STRIPE_PRICE_IDS.PLUS_MONTHLY };
+}
+
 export async function POST(req: NextRequest) {
   try {
     // Auth check

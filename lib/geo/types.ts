@@ -148,6 +148,35 @@ export interface ScanRequest {
 /** Hard caps. These are product limits, not tuning knobs — raising
  *  MAX_PROMPTS multiplies cost by engine count. */
 export const MAX_PROMPTS = 8;
+
+/**
+ * Per-engine prompt sampling. An engine listed here is asked only the first N
+ * prompts; the rest become explicitly "not asked" cells.
+ *
+ * ADDED 2026-08-30 for Gemini, on measured evidence rather than as a guess.
+ * From the Franklin Barbecue scan, per-cell latency:
+ *
+ *   perplexity  avg  4.1s   openai  avg  5.6s   claude  avg 7.1s
+ *   dataforseo  avg  9.2s   gemini  avg 35.8s
+ *
+ * Gemini is 4-9x slower than every other engine. Its successful cells came
+ * back at 14.6s, 16.1s and 31.0s, and the five failures sat at exactly
+ * 45.00s — the ceiling. So it is not hanging; grounded search is genuinely
+ * slow and highly variable, and the tail runs past any reasonable timeout.
+ *
+ * Raising the timeout again was rejected: it would push total scan duration
+ * (already 172s against a 240s route ceiling) toward a 504, which fails the
+ * whole run instead of degrading into grey dashes. Sampling keeps Gemini
+ * represented in the grid while cutting its contribution to wall-clock time
+ * by half.
+ *
+ * Statistically safe: scoring is computed over cells that actually answered,
+ * per engine and overall, so an engine contributing fewer cells lowers its
+ * weight rather than biasing the result.
+ */
+export const ENGINE_PROMPT_SAMPLE: Partial<Record<EngineId, number>> = {
+  gemini: 4,
+};
 export const SCANS_PER_IP_PER_UTC_DAY = 1;
 export const MAX_CONCURRENT_ENGINES = 3;
 

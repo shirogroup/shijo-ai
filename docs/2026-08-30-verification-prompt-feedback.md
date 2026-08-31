@@ -171,3 +171,213 @@ Using that final field on this pass:
 **Unproven:** that the five engine API keys in Vercel actually work. Every scan so far predates them. The one stored row (`identity_resolved = f`, `band = 'absent'`, `score = 0`) was written at 16:54 UTC, eighteen minutes *before* the identity gate shipped at 17:12 UTC — so it is a record of the old bug, not a test of the fix. Both the identity gate and the non-answer detection are deployed and have never been exercised by a real scan.
 
 **What would prove it:** one scan after 00:00 UTC from an IP that has not scanned that day.
+
+---
+---
+
+# Second review — the Admin GEO/QA build prompt
+
+*Same day, later. Reviewing the CONTEXT / SCOPE / BLOCKED RULE / DESTRUCTIVE-ACTION RULE /
+INSPECT THEN BUILD / VERIFY / OUTPUT prompt that produced the admin GEO/QA section.*
+
+## Verdict
+
+Materially better than the first one, and it did something rare: **it prevented a production
+bug before a line of code existed.** Three lines in particular carried that weight.
+
+### The best line in the prompt
+
+> *"First list every existing file under app/admin and how auth is enforced. If you cannot reuse
+> that gate, STOP."*
+
+This is the strongest instruction across both prompts. It forces inspection to complete before
+building starts, and it names a specific stop condition rather than a vague "be careful". The
+result was a documented finding — that `middleware.ts` gates `/admin/*` on session only, and the
+real `isAdmin` check lives inline in all seven API routes — which then determined how the new
+routes were written. Without that line the natural move would have been to invent a
+`requireAdmin()` helper and end up with two competing auth patterns.
+
+Generalise it: **"list what exists and how it works before adding to it; stop if you can't reuse
+it."**
+
+### The line that caught a real hazard
+
+> *"Use that chrome, auth, and nav. Do not create a second admin."*
+
+Naming the anti-goal ("a second admin") is more effective than describing the goal. It is the same
+technique as the earlier exclusion list, applied to architecture rather than scope.
+
+### The line that needs one word changed
+
+> *"add column only if you can do it additively in `db/schema.ts` without generate"*
+
+This test is **subtly wrong, and it matters.** Adding a column to `db/schema.ts` *is* additive in
+code — it passes the stated test. But the live `geo_scans` table would not have that column, so
+Drizzle would insert against a column that does not exist, and the **public `/geo` persistence
+path would break silently**: visitors would still get results, nothing would save, and no error
+would surface because persistence is wrapped in a best-effort try/catch.
+
+The stated test measures the wrong thing. The right test is not "is the code change additive" but
+**"does this require any change to the live database"**.
+
+Suggested rewrite:
+
+> Add the column only if it requires **no change to the live database**. If the live table would
+> need an ALTER, do not add it to `db/schema.ts` at all in this pass — show me the SQL and stop.
+> Assume any code that declares a column the table lacks will break writes on the public path.
+
+The follow-up message resolved this correctly ("Do not generate or apply SQL... If nothing safe
+exists, omit source and tag admin rows only in the UI"), but the first version would have passed
+its own test while shipping the hazard.
+
+### Also strong
+
+- **"Treat Maya Yoga as a QA fixture, not a customer."** Prevented the obvious-but-wrong marker
+  (prefixing `business_name`), which would have corrupted the case-study rows and broken the
+  fixture lookup that matches on name.
+- **"Do not add VPN tools, scraping, or a public 'unlimited scan' toggle."** Naming the tempting
+  wrong answers is worth more than any amount of positive guidance.
+- **"Pings = one tiny request per vendor."** A cost constraint stated as a design constraint.
+- **VERIFY as a separate section.** Listing invariants to re-check after building — middleware,
+  registry count, frozen files, public cap path — turns "did you break anything" into a
+  checkable list rather than a judgement call.
+
+## What still caused friction
+
+**1. Two placement decisions with no tiebreak.**
+*"Page /admin/geo-health (or /admin/geo if that fits siblings)"* and *"(same page or
+/admin/geo/qa)"*. Flexibility is fine, but with no criterion the choice is arbitrary and you
+cannot predict the result. Either decide, or give the rule: *"match whatever pattern the existing
+siblings use."*
+
+**2. No size checkpoint.**
+The build came to eight new paths and roughly 1,400 lines in one pass. The BLOCKED RULE provided a
+checkpoint at the *start*; there was none in the middle. For a build this size, worth adding:
+*"If this will exceed ~6 files, list the file plan and wait before writing."*
+
+**3. Nothing about post-build verification limits.**
+The prompt asked for a build, and the build could not then be exercised — the pages need an admin
+session and Vercel-only keys, and the dev server does not compile in this environment. That only
+surfaced in the UNPROVEN section at the end. Adding *"state upfront what you will and will not be
+able to verify yourself"* would surface it before the work, not after.
+
+## The pattern across both reviews
+
+Both prompts improved most where they **named the failure mode rather than the task**. The
+strongest lines in each:
+
+| Prompt | Line | What it prevented |
+|---|---|---|
+| First | "Change code only if a test cannot run without a one-line fix" | Verification silently becoming development |
+| Second | "If you cannot reuse that gate, STOP" | A second, divergent auth pattern |
+| Second | "Do not create a second admin" | Architectural duplication |
+| Second | "Treat Maya Yoga as a QA fixture, not a customer" | Corrupting case-study data |
+
+Every one of these is phrased as a prohibition with a specific consequence. That is the form worth
+repeating.
+
+## One habit to add
+
+Both prompts asked for evidence but not for **counter-evidence**. Consider adding:
+
+> For each PASS, state what you actually observed. If you did not observe it directly, say so and
+> label it inferred.
+
+The distinction between "I ran this and saw it" and "I read the code and believe it" is where
+over-claiming creeps in, and a prompt can close that gap cheaply.
+
+---
+---
+
+# Third review — the four-fix prompt, and its verification pair
+
+*Reviewing the FIXES prompt (Perplexity ping / DataForSEO location / Gemini timeout /
+maxDuration) together with the CHECKS prompt that followed it.*
+
+## Verdict
+
+The strongest pair of prompts in this project. The FIXES prompt did something none of the earlier
+ones did: **it supplied the diagnosis, not just the symptom**, and it was right.
+
+## What made it work
+
+### 1. You separated the failure classes yourself
+
+> *"Perplexity ping 400 (not 401)... so the Perplexity KEY is fine."*
+> *"DataForSEO cells status 40501 = invalid field, not auth (40100). Ping 200 so credentials are fine."*
+
+This is the highest-value thing a prompt can contain: **evidence already reasoned about**. You did
+not say "Perplexity is broken, fix it" — you said which failure class it was, which excluded the
+whole space of credential fixes before I started. Both diagnoses were confirmed exactly.
+
+Result: the fixes took one pass with no wrong turns.
+
+### 2. You forbade the specific wrong answer
+
+> *"Do not guess a second invalid string."*
+
+This is the line I'd single out. The obvious move was to swap `"Austin,United States"` for
+`"Austin,Texas,United States"` — plausible, and the prompt even offered it. But it would still have
+been unverified, and a wrong guess costs a full scan and $0.28 to discover.
+
+That one sentence made `location_code: 2840` the correct choice: a documented numeric identifier
+that cannot be malformed, versus a string I could not confirm. The result — 40501 gone, DataForSEO
+answering — vindicated it.
+
+**Generalise:** when you know a fix has a tempting-but-unverifiable form, forbid it by name.
+
+### 3. You gave a source and required confirmation against it
+
+> *"Confirm against https://docs.dataforseo.com/v3/appendix-errors/ and their locations list."*
+
+Turning a claim into a checkable one. The error page confirmed 40501 verbatim ("invalid field: one
+of the fields in the POST request is invalid"). The locations list I could **not** reach — their
+AI Mode page is marketing copy with no spec — and that gap is exactly what made the "don't guess"
+rule bite. Both halves of your instruction did work: one confirmed, one revealed a hole.
+
+### 4. The CHECKS prompt gated on deployment
+
+> *"1. Confirm production is on the commit that contains those four diffs (print SHA)."*
+
+Making check 1 a gate rather than a formality meant the whole run stopped correctly when the fixes
+were still uncommitted, rather than spending $0.28 measuring stale code. A test that runs against
+the wrong build is worse than no test — it produces numbers that look like evidence.
+
+## What I got wrong, and what the prompt could have caught
+
+I reported "health.ts fix NOT deployed" from a grep for `max_tokens: 1`, which **also matches the
+Claude ping** — a block I had deliberately left alone. The fix was deployed; my check was wrong.
+
+The prompt could not reasonably have anticipated that, but a habit would have:
+
+> When a check fails, show the matching line before concluding.
+
+Had I printed the match, the Claude context would have been obvious immediately. Cheap rule,
+prevents a whole class of false alarms.
+
+## What the results say about the fixes themselves
+
+| Fix | Outcome |
+|---|---|
+| Perplexity ping | **Confirmed.** 400 → 200. |
+| DataForSEO location | **Confirmed at the API level.** 40501 gone, 4 of 8 cells now return content — up from 0 of 8. |
+| Gemini timeout 25s → 45s | **Insufficient.** Still 5 of 8 timeouts. The ceiling was not the binding constraint. |
+| maxDuration 120 → 240 | **Necessary, and closer than expected.** The scan took 172s. At the old 120s it would have died. |
+
+The two "partial" outcomes are the interesting ones, and neither is a failure of the prompt — they
+are what happens when a fix reveals the next constraint. Raising Gemini's ceiling proved the
+timeouts are not about patience. Fixing DataForSEO made it do real work, which pushed the total
+duration to within 68s of the new ceiling.
+
+## The pattern, restated
+
+Across three reviews the prompts have improved by moving up a ladder:
+
+1. **Name the task** — weakest.
+2. **Name the failure mode** — "change code only if a test cannot run".
+3. **Name the wrong answer** — "do not guess a second invalid string".
+4. **Supply the diagnosis and require confirmation against a source** — this prompt.
+
+Level 4 is where a prompt stops being instructions and starts being collaboration. It is also the
+only level that reliably produces one-pass fixes, because the expensive part — deciding what is
+actually broken — is already settled before any code is touched.

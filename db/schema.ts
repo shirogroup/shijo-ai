@@ -675,6 +675,20 @@ export const geoScans = pgTable('geo_scans', {
   // 1-scan-per-IP-per-UTC-day cap.
   ipAddress: varchar('ip_address', { length: 64 }).notNull(),
   utcDay: date('utc_day').notNull(),
+  // Added 2026-08-31. The ALTER was applied directly in Neon first and this
+  // declaration was matched to it afterwards — deliberately that order, since
+  // declaring a column the live table lacks breaks the public /geo write path
+  // silently (results still render, nothing persists, no error surfaces).
+  //
+  // userId is NULL for anonymous public scans, which is why per-user monthly
+  // caps only apply to signed-in sessions; anonymous callers stay on the
+  // per-IP day cap. ON DELETE SET NULL so deleting an account does not erase
+  // the spend record.
+  userId: uuid('user_id').references(() => users.id, { onDelete: 'set null' }),
+  // public | admin | report. Replaces the ip_address 'admin:' marker as the
+  // authoritative source field; the marker is still written so the two agree
+  // and older rows remain classifiable.
+  source: varchar('source', { length: 20 }).default('public').notNull(),
   // Conservative cost estimate for the daily budget guard. NOT a billing
   // figure and never shown to a user.
   estimatedCostUsd: decimal('estimated_cost_usd', { precision: 10, scale: 4 }).default('0').notNull(),

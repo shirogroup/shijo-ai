@@ -117,9 +117,36 @@ const CLARIFICATION_PATTERNS: RegExp[] = [
 /** Anything that looks like a real website reference. */
 const DOMAIN_RE = /\b[a-z0-9][a-z0-9-]*\.(com|net|org|io|co|us|ai|app|biz|info)\b/i;
 
-export function looksLikeNonAnswer(text: string): boolean {
+/**
+ * Engines this heuristic does NOT apply to.
+ *
+ * ADDED 2026-08-30 after it produced false positives on live data. DataForSEO
+ * does not return a chat reply — it returns Google's AI Overview, which is
+ * generated editorial prose and structurally CANNOT ask the user a clarifying
+ * question. Applying a chat heuristic to SERP text is a category error.
+ *
+ * Measured on the Franklin Barbecue scan: 4 of 8 AI Overview cells were
+ * wrongly flagged. One of them read "The top restaurants in Austin span
+ * legendary smoked meats, inventive modern Mexican, and upscale contemporary
+ * dining..." — an answer by any reading — and tripped /what (type|kind) of/,
+ * which appears naturally in editorial prose ("no matter what type of
+ * barbecue you prefer"). The domain escape hatch below could not save it
+ * either: AI Overviews name businesses without printing URLs, so 0 of 8
+ * cells contained a domain.
+ *
+ * Exempting the engine is deliberate rather than tightening the patterns:
+ * tightening is guesswork against text I cannot enumerate, and this engine
+ * already has a correct non-answer path — the adapter throws
+ * "No AI Overview was returned for this query." when there is no text.
+ */
+const NON_ANSWER_EXEMPT_ENGINES: ReadonlySet<string> = new Set(['dataforseo']);
+
+export function looksLikeNonAnswer(text: string, engine?: string): boolean {
   const t = (text || '').trim();
   if (!t) return true;
+  // SERP-derived engines are exempt — see NON_ANSWER_EXEMPT_ENGINES. Checked
+  // after the empty-text guard so a genuinely empty result is still caught.
+  if (engine && NON_ANSWER_EXEMPT_ENGINES.has(engine)) return false;
   // A reply that points at real websites is an answer, whatever else it says.
   if (DOMAIN_RE.test(t)) return false;
   return CLARIFICATION_PATTERNS.some((re) => re.test(t));

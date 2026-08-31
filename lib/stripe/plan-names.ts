@@ -27,6 +27,11 @@
 export const PLAN_DISPLAY_NAME: Record<string, string> = {
   free: 'Free',
   pro: 'Standard',
+  // Added 2026-08-31. 'plus' is the one tier whose internal key and display
+  // name match, which is easy to misread as a mistake given 'pro'->Standard
+  // and 'growth'->Pro sitting either side of it. It is correct: Plus is a new
+  // tier with no legacy key to preserve.
+  plus: 'Plus',
   growth: 'Pro',
   enterprise: 'Enterprise',
 };

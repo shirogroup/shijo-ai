@@ -22,6 +22,21 @@ export const STRIPE_PRICE_IDS = {
   PRO_MONTHLY: 'price_1TCQLpHTpiuftGGEZWt9UJ2Y', // displayed as "Standard" — see naming note above
   PRO_ANNUAL: 'price_1TuEaIHTpiuftGGEslehCB4Y',
   GROWTH_MONTHLY: 'price_1Tv5SpHTpiuftGGEMu4TdOzs', // displayed as "Pro" — new 2026-07-19, no annual price yet
+  // ── Added 2026-08-31 ───────────────────────────────────────────────
+  // These two are read from the ENVIRONMENT, unlike the hardcoded ids
+  // above, and that difference is deliberate. The products exist so far
+  // only in the Stripe TEST sandbox; the live-mode products do not exist
+  // yet. Hardcoding a test id here would repeat D-39 exactly — sandbox
+  // ids sitting in a constant the live key reads. Env-driven means the
+  // same code runs against test locally and live in production, with the
+  // id supplied per environment.
+  //
+  // Set STRIPE_PRICE_PLUS_MONTHLY and STRIPE_PRICE_GEO_REPORT in Vercel.
+  // Empty string when unset — isPlusPurchasable()/isReportPurchasable()
+  // below gate on that, so a missing id disables the product rather than
+  // producing a broken checkout.
+  PLUS_MONTHLY: process.env.STRIPE_PRICE_PLUS_MONTHLY ?? '',
+  GEO_REPORT: process.env.STRIPE_PRICE_GEO_REPORT ?? '',
   ENTERPRISE_MONTHLY: 'price_1TCQNAHTpiuftGGEtIcqclbd', // paused — not in VALID_PLANS, kept for when Enterprise relaunches
   ENTERPRISE_ANNUAL: 'price_1TuEaNHTpiuftGGE9r0fRkWI',
   // Credit-pack price ids REMOVED 2026-08-24. They were SANDBOX values sitting
@@ -74,6 +89,19 @@ export const PLAN_FEATURES = {
       aiToolsMonthly: 200,     // 200 generations/month
       aiToolsAccess: 12,       // All 12 tools
       aiModel: 'auto',         // Haiku or Sonnet per tool config
+    },
+  },
+  plus: {
+    name: 'Plus', // new 2026-08-31 — internal key and display name match
+    price: 79,
+    annualPrice: undefined, // no annual price yet
+    interval: 'month',
+    priceId: STRIPE_PRICE_IDS.PLUS_MONTHLY,
+    annualPriceId: undefined,
+    features: {
+      aiToolsMonthly: 200,     // same generation allowance as Standard
+      aiToolsAccess: 12,       // All 12 tools
+      aiModel: 'auto',
     },
   },
   growth: {
@@ -144,5 +172,17 @@ export const CREDIT_PACKS = [
   },
 ] as const;
 
-export type PlanTier = 'free' | 'pro' | 'growth' | 'enterprise';
+export type PlanTier = 'free' | 'pro' | 'plus' | 'growth' | 'enterprise';
+
+/**
+ * Whether the new products are actually sellable in THIS environment.
+ * Both are env-driven (see STRIPE_PRICE_IDS above), so an environment
+ * without the id must not advertise or attempt checkout for them.
+ */
+export function isPlusPurchasable(): boolean {
+  return Boolean(STRIPE_PRICE_IDS.PLUS_MONTHLY);
+}
+export function isReportPurchasable(): boolean {
+  return Boolean(STRIPE_PRICE_IDS.GEO_REPORT);
+}
 export type CreditPackId = typeof STRIPE_PRICE_IDS[keyof typeof STRIPE_PRICE_IDS];

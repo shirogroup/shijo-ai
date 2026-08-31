@@ -1,6 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/db';
-import { geoScanCells, geoScans } from '@/db/schema';
+import { geoScanCells, geoScans, users } from '@/db/schema';
+import { eq } from 'drizzle-orm';
+import { getSession } from '@/lib/auth';
+import { checkGeoMonthlyQuota } from '@/lib/geo/entitlements';
 import { clientIpFrom } from '@/lib/rate-limit';
 import { serverErrorResponse } from '@/lib/api/errors';
 import { checkGuards, estimateScanCostUsd } from '@/lib/geo/budget';
@@ -91,7 +94,58 @@ export async function POST(req: NextRequest) {
       Math.min(prompts.length, MAX_PROMPTS)
     );
 
-    const guard = await checkGuards(ip, plannedCost);
+    // Who is asking? A signed-in user is metered against their PLAN's monthly
+    // allowance; an anonymous visitor stays on the per-IP day cap. These are
+    // different controls: the IP cap stops abuse of a free public endpoint,
+    // the plan cap meters a purchased allowance. A paying customer must not be
+    // blocked by the anonymous control — otherwise two colleagues behind one
+    // office IP would lock each other out of a plan they paid for.
+    //
+    // getSession() is deliberately allowed to fail soft: /geo is public first,
+    // so a session lookup problem degrades the caller to anonymous rather than
+    // breaking the page.
+    let session: { userId: string } | null = null;
+    try {
+      session = await getSession();
+    } catch {
+      session = null;
+    }
+
+    let signedInUser: { id: string; planTier: string } | null = null;
+    if (session) {
+      const [u] = await db
+        .select({ id: users.id, planTier: users.planTier })
+        .from(users)
+        .where(eq(users.id, session.userId))
+        .limit(1);
+      if (u) signedInUser = u;
+    }
+
+    if (signedInUser) {
+      const quota = await checkGeoMonthlyQuota(signedInUser.id, signedInUser.planTier);
+      if (!quota.allowed) {
+        return NextResponse.json(
+          {
+            success: false,
+            error: quota.message,
+            reason: quota.reason,
+            upgradeUrl: quota.upgradeUrl,
+            used: quota.used,
+            limit: quota.limit,
+          },
+          // 402 Payment Required for a plan-allowance refusal — semantically
+          // right, and distinguishable by the client from the 429 an
+          // anonymous visitor gets. 503 only when we could not verify.
+          { status: quota.reason === 'unavailable' ? 503 : 402 }
+        );
+      }
+    }
+
+    // Budget guard always applies. The per-IP day cap applies to ANONYMOUS
+    // callers only — a signed-in user has already been metered above.
+    const guard = await checkGuards(ip, plannedCost, new Date(), {
+      skipIpCap: Boolean(signedInUser),
+    });
     if (!guard.allowed) {
       return NextResponse.json(
         { success: false, error: guard.message, reason: guard.reason },
@@ -146,6 +200,11 @@ export async function POST(req: NextRequest) {
           enginesAttempted: result.score.enginesAttempted,
           enginesAnswered: result.score.enginesAnswered,
           ipAddress: ip,
+          // Null for anonymous visitors — that is the normal case on a public
+          // endpoint, and it is what makes per-user monthly metering possible
+          // for the signed-in ones.
+          userId: signedInUser?.id ?? null,
+          source: 'public',
           utcDay: guard.utcDay,
           estimatedCostUsd: String(plannedCost),
           durationMs: result.durationMs,

@@ -26,7 +26,7 @@ async function handleSubscriptionCreated(subscription: Stripe.Subscription) {
   // internal tier — see lib/stripe/products.ts for the naming convention
   // (internal 'pro' = displayed "Standard", internal 'growth' = displayed
   // "Pro"). Defaults to 'pro' (Standard) if nothing else matches.
-  let planTier: 'pro' | 'growth' | 'enterprise' = 'pro';
+  let planTier: 'pro' | 'plus' | 'growth' | 'enterprise' = 'pro';
 
   if (
     priceId === STRIPE_PRICE_IDS.ENTERPRISE_MONTHLY ||
@@ -35,6 +35,14 @@ async function handleSubscriptionCreated(subscription: Stripe.Subscription) {
     planTier = 'enterprise';
   } else if (priceId === STRIPE_PRICE_IDS.GROWTH_MONTHLY) {
     planTier = 'growth';
+  } else if (
+    // 'plus' added 2026-08-31. The id is env-driven, so guard on truthiness —
+    // otherwise an unset PLUS_MONTHLY ('') would match a subscription whose
+    // priceId is also somehow empty and silently downgrade a real customer.
+    STRIPE_PRICE_IDS.PLUS_MONTHLY &&
+    priceId === STRIPE_PRICE_IDS.PLUS_MONTHLY
+  ) {
+    planTier = 'plus';
   } else if (
     priceId === STRIPE_PRICE_IDS.PRO_MONTHLY ||
     priceId === STRIPE_PRICE_IDS.PRO_ANNUAL
