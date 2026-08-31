@@ -12,7 +12,12 @@ import { buildLocalPrompts, normalisePrompts } from '@/lib/geo/prompts';
 import { ENGINE_IDS, MAX_PROMPTS } from '@/lib/geo/types';
 
 export const runtime = 'nodejs';
-export const maxDuration = 120;
+// RAISED 120 -> 240 on 2026-08-30, matching app/api/geo/scan/route.ts. The
+// two routes run the identical pipeline, so their ceilings must move together
+// — an admin QA scan that survives where the public one dies would hide the
+// exact failure QA exists to catch. Measured runs: 93s and 108s. Under
+// Vercel's 300s platform maximum; do not raise above 300.
+export const maxDuration = 240;
 
 /**
  * Admin-only GEO test scan.

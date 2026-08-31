@@ -95,13 +95,32 @@ export const dataforseoAdapter: EngineAdapter = {
           {
             keyword: prompt,
             language_code: 'en',
-            // Location is best-effort: the free form only collects a city
-            // string, and DataForSEO wants a resolvable location name. If
-            // it cannot resolve, the task errors and we degrade to an
-            // unavailable cell rather than silently querying the wrong place.
-            location_name: identity.city
-              ? `${identity.city},United States`
-              : 'United States',
+            // LOCATION — fixed 2026-08-30 after every cell failed with
+            // status 40501 ("invalid field: one of the fields in the POST
+            // request is invalid", confirmed against
+            // https://docs.dataforseo.com/v3/appendix-errors/). Not an auth
+            // failure — that is 40100, and the credentials ping returns 200.
+            //
+            // The previous value was location_name: "<City>,United States",
+            // e.g. "Austin,United States". DataForSEO resolves location_name
+            // against its own locations list, which uses "City,Region,Country"
+            // ("Austin,Texas,United States"), so the two-part string matched
+            // nothing and invalidated the whole task.
+            //
+            // Using location_code 2840 (United States) rather than rebuilding
+            // the city string, deliberately: 2840 is a documented, stable
+            // numeric identifier that cannot be malformed, whereas any
+            // city string I cannot verify against their locations list is
+            // another guess — and a second invalid guess costs another full
+            // scan to discover.
+            //
+            // Losing city-level targeting costs less than it appears: the
+            // prompts themselves already carry the locality ("What are the
+            // best yoga studios IN DALLAS?"), so the local signal reaches
+            // Google through the query text. Narrowing location_code to a
+            // city is a refinement to make once a value is confirmed against
+            // their locations endpoint, not a prerequisite.
+            location_code: 2840,
             device: 'desktop',
           },
         ]),

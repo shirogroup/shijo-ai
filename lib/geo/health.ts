@@ -137,7 +137,19 @@ export async function pingAll(): Promise<PingResult[]> {
       )
     ),
 
-    // Not free: no auth-only endpoint exists, so this is a 1-token completion.
+    // Not free: no auth-only endpoint exists, so this is a minimal completion.
+    //
+    // FIXED 2026-08-30. This previously sent `max_tokens: 1` and Perplexity
+    // rejected it with HTTP 400 ("bad_status"), which made the ping report a
+    // healthy key as broken. Proof it was the ping and not the credential:
+    // the same key scored 8/8 scorable cells with 7 mentions in the real
+    // Franklin Barbecue scan minutes later. A 400 is a malformed request; an
+    // invalid key returns 401.
+    //
+    // max_tokens is now omitted entirely rather than set to another value I
+    // cannot verify against their minimum. The cost of letting the model emit
+    // a default-length reply to the word "ping" is a fraction of a cent, and
+    // a ping that lies is worth far less than a ping that costs slightly more.
     timed('perplexity', Boolean(PERPLEXITY_API_KEY), () =>
       fetchWithTimeout(
         'https://api.perplexity.ai/chat/completions',
@@ -150,7 +162,6 @@ export async function pingAll(): Promise<PingResult[]> {
           body: JSON.stringify({
             model: 'sonar',
             messages: [{ role: 'user', content: 'ping' }],
-            max_tokens: 1,
           }),
         },
         PING_TIMEOUT_MS

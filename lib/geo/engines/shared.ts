@@ -27,9 +27,22 @@ export interface EngineAdapter {
   run(prompt: string, identity: BusinessIdentity): Promise<EngineAnswer>;
 }
 
-/** Per-engine wall-clock ceiling. A slow engine must not hold the whole
- *  scan open — the user is waiting on a page load. */
-export const ENGINE_TIMEOUT_MS = 25_000;
+/**
+ * Per-engine wall-clock ceiling. A slow engine must not hold the whole scan
+ * open — the visitor is waiting on a page load.
+ *
+ * RAISED 25s -> 45s on 2026-08-30. Grounded search is materially slower than
+ * plain completion, and Gemini was timing out at 25s on 2 of 8 cells in one
+ * live scan and 7 of 8 in the next. Those timeouts are handled correctly —
+ * they become grey-dash cells excluded from scoring, never a false "not
+ * mentioned" — but an engine that mostly times out contributes no data, which
+ * silently shrinks the sample the score is computed from.
+ *
+ * Safe against the route ceiling: the scan runs at most 3 requests in
+ * parallel and the routes now allow 240s, so even a pathological run where
+ * every cell burns the full 45s stays inside the budget.
+ */
+export const ENGINE_TIMEOUT_MS = 45_000;
 
 /**
  * fetch with an AbortController timeout.

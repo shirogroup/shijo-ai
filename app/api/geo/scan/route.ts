@@ -12,7 +12,18 @@ import { ENGINE_IDS, MAX_PROMPTS } from '@/lib/geo/types';
 export const runtime = 'nodejs';
 // Fanning out to five engines can take a while; the default serverless
 // budget is not enough for a full 5×8 grid.
-export const maxDuration = 120;
+//
+// RAISED 120 -> 240 on 2026-08-30 on measured evidence, not caution. Two live
+// five-engine scans took 93s and 108s — the second within 12s of the old 120s
+// ceiling. Worse, DataForSEO was failing FAST in both runs (invalid location
+// field), so its 8 cells cost almost nothing; once it actually returns AI
+// Overviews those cells get slower, and the per-engine timeout also went
+// 25s -> 45s. Both push the total up. At 120s the next scan was a coin flip
+// on a 504, which fails the whole run rather than degrading gracefully.
+//
+// 240 is under Vercel's 300s platform maximum (Hobby and Pro alike, with
+// Fluid compute). Do not raise it above 300.
+export const maxDuration = 240;
 
 /**
  * POST /api/geo/scan — public, unauthenticated.
