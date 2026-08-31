@@ -1,6 +1,8 @@
 # SHIJO.AI — Knowledge Base / Status Reference
 
-**Last updated:** 2026-08-30 — 🔴 **START AT §60.6.** Commit `7dad555` (paid-funnel fix) is on `origin/main` but its **Vercel build FAILED** on a missing Suspense boundary at `/register`. Production is unaffected (still serving `1302442`), but the funnel fix is not live. The fix is written locally in `components/auth/RegisterForm.tsx` and is **uncommitted**. §60 also covers the GEO checker, the Plus $79 tier, `/pricing` + `/features`, and one unverified Stripe env value (§60.4).
+**Last updated:** 2026-08-31 — ✅ **START AT §61.** The paid funnel is VERIFIED LIVE end-to-end on `8378e6b` (HEAD == origin/main). §60's blocked state is CLOSED: `7dad555` + `83ec917` both built and deployed. One NEW defect was found during retest — Stripe's `cancel_url` dropped the plan intent, so the complete-your-upgrade banner never appeared — fixed and shipped as `8378e6b`. All three funnel tests now PASS, logged in AND logged out. Still open: the $39 GEO Report route, Gemini timeouts, and the Perplexity Sonar replacement (§61.7).
+
+**Previously updated:** 2026-08-30 — 🔴 **START AT §60.6.** Commit `7dad555` (paid-funnel fix) is on `origin/main` but its **Vercel build FAILED** on a missing Suspense boundary at `/register`. Production is unaffected (still serving `1302442`), but the funnel fix is not live. The fix is written locally in `components/auth/RegisterForm.tsx` and is **uncommitted**. §60 also covers the GEO checker, the Plus $79 tier, `/pricing` + `/features`, and one unverified Stripe env value (§60.4).
 
 **Previously updated:** 2026-08-23 (§47 Ahrefs mined: backlink profile is 129 SPAM-labelled ref domains, 8 dofollow, incl. our own shiroapps.com; organic + AI-search footprint is ZERO; all audit errors collapse to /login. §48 Ads/GTM read-only audit: "Misconfigured" Purchase goal root-caused — no purchase tag in GTM AND no purchase event in the code; all 4 goals are Primary while PMax runs on them. ⚠️ 12 files still uncommitted — see §49)
 
@@ -3021,3 +3023,119 @@ Do not report "verified" on the strength of tsc alone.
   Verify `STRIPE_PRICE_GEO_REPORT` (§60.4) first.
 - **Gemini timeout investigation** (§60.2)
 - **Perplexity Sonar replacement** before 2026-09-27 (§60.2)
+
+---
+
+## §61 — Paid funnel VERIFIED LIVE end-to-end; one new defect found and shipped (2026-08-31)
+
+**One line:** the `/register` Suspense fix (`83ec917`) built and deployed, the paid funnel was retested
+against live production, Test 2 FAILED on a missing `plan` param in Stripe's `cancel_url`, the one-line
+fix shipped as `8378e6b`, and all three tests now PASS.
+
+### §61.1 Repo state — ✅ CONFIRMED (read, not assumed)
+
+```
+HEAD        = 8378e6b  "Carry plan through Stripe cancel_url so billing shows the complete-upgrade banner"
+origin/main = 8378e6b
+git rev-list --left-right --count origin/main...HEAD  ->  0   0
+```
+
+Commit chain: `1302442` -> `7dad555` (paid funnel) -> `83ec917` (Suspense) -> `8378e6b` (cancel_url).
+`7dad555` and `83ec917` are both live; §60's "merged but not live" state is **CLOSED**.
+
+Working tree at end of session: 1 modified file, `docs/testing/Automated-Regression-Test-Suite.xlsx`
+(not touched by this session). A stale `.git/index.lock` was present again and had to be removed by
+Sri in Git Bash — sandbox still cannot delete it.
+
+### §61.2 The new defect — cancel_url dropped the plan intent
+
+`app/api/stripe/create-checkout/route.ts` built its two return URLs asymmetrically:
+
+```ts
+success_url: `${baseUrl}/dashboard/billing?success=true&plan=${plan}`,   // had plan
+cancel_url:  `${baseUrl}/dashboard/billing?canceled=true`,               // did NOT
+```
+
+`app/dashboard/billing/page.tsx` gates the complete-your-upgrade banner on
+`pendingPlan = isCanceled ? parsePlanIntent(searchParams.get('plan')) : null`. With no `plan` param it
+fell through to the passive copy — *"Checkout was canceled. No charges were made. You can try again
+anytime."* — with no button. So anyone who abandoned Stripe Checkout lost the plan they had chosen,
+which is the exact failure `7dad555` was written to prevent, surviving on the cancel path only.
+
+Proven by URL substitution before any code change: loading
+`/dashboard/billing?canceled=true&plan=plus` by hand rendered the correct banner, so the page logic was
+right and only the param was missing.
+
+Fix (`8378e6b`), one line:
+
+```ts
+cancel_url: `${baseUrl}/dashboard/billing?canceled=true&plan=${plan}`,
+```
+
+Note the resume path in `components/auth/RegisterForm.tsx` already sent `?canceled=1&plan=...`, and the
+billing page already accepted both `'true'` and `'1'`. Only Stripe's own `cancel_url` was deficient.
+
+### §61.3 Test results — ✅ CONFIRMED LIVE on `8378e6b`, quoted verbatim
+
+**Test 1 — Choose Plus reaches Stripe at $79. PASS.**
+`/pricing` -> **Choose Plus** -> `checkout.stripe.com/c/pay/cs_live_a18rODWcSuFXbKfEi3VPF0zVQhQXVZyESCaY0at9kANi1Jglg8aLopKfOC`
+Order summary read: **"Subscribe to SHIJO.AI Plus"** / **"$79.00"** / **"per month"**.
+Live-mode session (`cs_live_`). No payment made, no card entered.
+
+**Test 2 — Cancel returns to billing with the upgrade offer intact. PASS (after `8378e6b`).**
+Stripe's back link resolved to `https://www.shijo.ai/dashboard/billing?canceled=true&plan=plus`
+(the `&plan=plus` is itself behavioural proof the new build is serving traffic). Page rendered:
+> **"Complete your upgrade to Plus — $79/mo. No charges were made."**
+> **[ Complete upgrade to Plus ]**
+plus the Plus card — *"Plus / For tracking AI visibility seriously / $79 /month / 30 AI visibility
+scans per month"*. Before `8378e6b` the same click produced only the passive banner: **FAIL**.
+
+**Test 3 — Start free never reaches Stripe. PASS.**
+`Start free` is `<a href="/register">` — a plain link, not the `PricingCta` button, so it never calls
+`/api/stripe/create-checkout`. Reconfirmed on the live page after deploy. `'free'` is absent from
+`CHECKOUT_PLAN_KEYS = ['pro','plus','growth']`, so even a hand-crafted `?plan=free` parses to `null`
+and `RegisterForm` falls through to `window.location.href = '/dashboard'`.
+
+### §61.4 ⚠️ Scope limit on these results — read before trusting them as full coverage
+
+The paid legs (Tests 1 and 2) were executed **signed in** as `srikanth@shiroapps.com` (Standard
+plan); the routing legs were then re-run **signed out**, at Sri's explicit invitation, after signing
+that session out. The assistant cannot create accounts or enter passwords, so the signup keystroke
+itself remains untested. Breakdown:
+
+- ✅ **Directly verified, signed in:** `POST /api/stripe/create-checkout`, the Stripe product / price /
+  interval, the `cancel_url`, the complete-upgrade banner and the Plus card.
+- ✅ **Directly verified, signed out (live, on `8378e6b`):**
+  - `/pricing` -> **Choose Plus** -> `https://www.shijo.ai/register?plan=plus`, page title
+    *"Create your account | SHIJO.AI"*. **Not** `/login`, **not** a blank dashboard — the §60 failure
+    mode is confirmed gone on the real logged-out path, not just in code.
+  - `/pricing` -> **Start free** -> `https://www.shijo.ai/register` with **no** `plan` param, so the
+    free CTA cannot reach Stripe.
+  - Header correctly shows *"Sign in"* / *"Get Started"* when signed out.
+- ❓ **Still UNKNOWN — one manual pass by Sri closes it:** submit the register form from
+  `/register?plan=plus` with a throwaway email and confirm (a) Stripe opens immediately showing
+  Plus $79, and (b) the GTM `sign_up_complete` dataLayer event fires before the 250 ms redirect.
+  Everything up to and after that single form submit is now verified.
+
+⚠️ Sri's browser session was signed out to run the logged-out legs and was **not** signed back in —
+the assistant cannot enter passwords. Sri needs to sign in again manually.
+
+### §61.5 Also observed, not acted on
+
+- `/pricing` still lists the **One-off Report $39** card as **"Coming soon"** with no CTA. Correct —
+  the route is still not built (§60.9).
+- Stripe Checkout raised its Link *"Confirm it's you"* SMS prompt for the signed-in email. No code was
+  entered. Not a defect; noted so a future session does not mistake it for a checkout failure.
+- The `www.` canonical holds: `shijo.ai/pricing` redirects to `www.shijo.ai/pricing`.
+
+### §61.6 Method note that carries forward
+
+§60.7 said tsc passing is not verification. §61 adds the converse: **a passing build is not
+verification either.** `83ec917` built clean and deployed clean, and the funnel was still broken on the
+cancel path. The defect was only visible by reading the `href` of Stripe's back link — not from the
+build log, not from tsc, not from the happy path. Read the return URLs, not just the outbound one.
+
+### §61.7 Deferred, still explicitly not started
+
+Unchanged from §60.9 — `$39` GEO Report route (verify `STRIPE_PRICE_GEO_REPORT` first, §60.4),
+Gemini timeouts (§60.2), Perplexity Sonar replacement before 2026-09-27 (§60.2). None were touched.
