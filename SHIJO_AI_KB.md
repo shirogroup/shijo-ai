@@ -3526,3 +3526,115 @@ by hand. Confirm the error rate falls from 100% before trusting any of it.
 deployed guard is not a working guard. §66 adds: **a live, Active integration is not a working
 integration.** The endpoint was green in every list view in the app and in Vercel; only the Stripe
 dashboard's delivery log showed 100% failure, and only the raw event payload showed why.
+
+---
+
+## §67 — Marketing email set up for angie@shijo.ai, DNS verified, prospecting runs logged (2026-09-01)
+
+Non-code session. No application code was touched. Everything below is **edited locally only** —
+not committed, not pushed. See §67.6.
+
+### §67.1 Where shijo.ai email actually lives — CONFIRMED
+
+Queried live against 8.8.8.8:
+
+| Record | Value |
+|---|---|
+| MX | `1 smtp.google.com` → **Google Workspace** |
+| SPF | `v=spf1 include:_spf.google.com ~all` |
+| DKIM | `resend._domainkey.shijo.ai` → valid RSA key |
+| DMARC | `v=DMARC1; p=none; rua=mailto:legal@shijo.ai;` |
+
+Two risks stand open: **SPF does not include Resend** (Resend mail passes on DKIM alone, one leg
+instead of two), and **DMARC is still `p=none`** — the §43/§44 cleanup to `quarantine` then `reject`
+was never done. `shiroapps.com` has **no DMARC record at all**.
+UNKNOWN: which registrar/DNS panel holds these zones. Full detail:
+`docs/2026-09-01-shijo-email-setup-verified.md`.
+
+### §67.2 DISCREPANCY — `angie@shijo.ai` is not a mailbox
+
+It is a **send-as alias** on the `angie@shiroapps.com` Google account (browser session `u/4`),
+set as that account's default From. Outbound does go out as `angie@shijo.ai`; there is no separate
+shijo.ai login. Anyone looking for "Angie's shijo.ai account" will not find one.
+
+### §67.3 Signature — CONFIRMED LIVE (verified in a fresh Compose window)
+
+Applied to the **Angie@shijo.ai** send-as address for new mail and replies/forwards;
+`angie@shiroapps.com` deliberately left on *No signature* so SHIJO branding does not leak onto
+SHIRO-domain mail. "Insert signature before quoted text" enabled.
+
+Source of truth for the markup: `docs/marketing/2026-09-01-email-signature.html` (plus `.txt` fallback).
+Table layout, inline styles, brand red `#E10600`, **no images and no tracking pixels** — deliberate,
+given §42–§44 and `p=none`. All five links point to `https://shijo.ai/geo` or `mailto:angie@shijo.ai`.
+
+Two caveats recorded rather than smoothed over:
+- **DISCREPANCY:** signature uses `#E10600` (as specified by Sri); the live `/geo` button computes to
+  `#DC0019`. Signature is fractionally brighter than the site.
+- **UNTESTED:** Outlook on Windows renders via Word, which ignores `border-radius`. The CTA likely
+  shows square-cornered there. No test send has been made, so this is unverified either way.
+
+### §67.4 Prospecting — 3 runs, 1 qualified company, nothing sent
+
+Log: `docs/outbound/GEO-email-log.md`. Drafts: `docs/outbound/2026-09-01-velawood-drafts.md`.
+**STATUS: NOT SENT.**
+
+Only qualified find is **Vela Wood** (business law, Dallas + Austin), 3 partners with personal
+addresses read off their individual bio pages. No `first.last@` pattern was ever inferred.
+
+Two findings worth keeping:
+- **SEO/digital agencies are converging on selling GEO/AEO themselves.** Five of twelve opened in
+  run 001 sell it. Type A prospects are becoming competitors; the ICP does not hold.
+- **Published personal emails are near-extinct.** ~22 companies opened across three runs, four
+  printed a personal address. Attorney bio pages are the one reliable exception. Architecture and
+  engineering did not hold up — 4 of 5 printed nothing or a role inbox.
+
+### §67.5 Grok drafting bot
+
+System-prompt block stored at `docs/marketing/2026-09-01-grok-drafting-block.md`. It hard-codes
+"never send", the single permitted link, and — deliberately — **a ban on putting any variable or
+form field into a subject line**, which is the §42 relay failure in a friendlier form. Note its
+limit: "never send" is an instruction, not a permission boundary. If Grok is ever wired to a mail
+API, that guard has to live in the integration.
+
+### §67.6 Repo state — edited locally, NOT committed, NOT pushed
+
+New files this session (all under `docs/`, no app code):
+
+```
+docs/2026-09-01-shijo-email-setup-verified.md
+docs/marketing/2026-09-01-email-signature.html
+docs/marketing/2026-09-01-email-signature.txt
+docs/marketing/2026-09-01-grok-drafting-block.md
+docs/outbound/GEO-email-log.md
+docs/outbound/2026-09-01-velawood-drafts.md
+```
+
+⚠️ `SHIJO_AI_KB.md`, `lib/stripe/webhook-handlers.ts` and
+`docs/testing/Automated-Regression-Test-Suite.xlsx` were **already modified before this session
+started** (the §66 work). A blanket `git add -A` will sweep those in. Commit deliberately.
+
+### §67.7 Before any outbound send — blockers
+
+1. **DMARC `p=none`.** Fix before volume sending from this domain.
+2. **CAN-SPAM.** Drafts carry no physical postal address and no opt-out line. Both are required.
+3. **Geography widening (agreed, not yet run).** Scope moved from US-only to "any country where a
+   customer can pay on Stripe", English-language first (US, CA, UK, IE, AU, NZ). **The Stripe country
+   list is an assumption** — Stripe's supported countries and what this account is enabled to charge
+   are different things, and neither has been checked against the dashboard. Also: CASL (Canada)
+   requires consent, and UK/IE/AU/NZ differ again. Widening geography widens the compliance surface.
+
+### §67.8 Lead data is LOCAL ONLY — do not commit, do not push (2026-09-01, Sri's call)
+
+`docs/outbound/` is **gitignored** (`.gitignore` line 39). It holds named individuals and their
+contact addresses; it stays on the local machine and never reaches GitHub.
+
+```
+docs/outbound/GEO-email-log.md              # prospecting log + verified contacts
+docs/outbound/2026-09-01-velawood-drafts.md # drafts, NOT SENT
+```
+
+Corrects the file list in §67.6: those two are local-only, the four `docs/` files above them are
+committable. Verified with `git check-ignore` — neither path appears in `git status` any more.
+
+If a future session needs the method or the findings without the contact data, §67.4 has them.
+Anyone re-adding lead data to a tracked path is undoing a deliberate decision.

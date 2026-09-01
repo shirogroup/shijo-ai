@@ -35,12 +35,6 @@ type Purchase = {
   interval: string;
 };
 
-declare global {
-  interface Window {
-    dataLayer?: Record<string, unknown>[];
-  }
-}
-
 export default function PurchaseTracker({ purchase }: { purchase: Purchase }) {
   useEffect(() => {
     // Belt and braces on top of Google's own transaction_id deduplication:
@@ -55,6 +49,11 @@ export default function PurchaseTracker({ purchase }: { purchase: Purchase }) {
       // Storage unavailable. Fall through and rely on transaction_id dedupe.
     }
 
+    // Window.dataLayer is already declared globally (as unknown[]) in
+    // components/CookieConsentBanner.tsx. Do NOT redeclare it here with a
+    // narrower element type — TypeScript merges global interfaces across the
+    // whole project and rejects conflicting declarations, which fails the
+    // build. Use the existing declaration.
     window.dataLayer = window.dataLayer || [];
     window.dataLayer.push({
       event: 'purchase',

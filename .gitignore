@@ -32,3 +32,8 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# prospecting / lead data - LOCAL ONLY, never committed or pushed
+# Named individuals and their contact addresses. Kept off GitHub deliberately.
+# See SHIJO_AI_KB.md §67.4 for the method and findings without the contact data.
+docs/outbound/
