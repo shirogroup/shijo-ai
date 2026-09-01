@@ -1,6 +1,7 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
 import { RegisterForm } from '@/components/auth/RegisterForm';
+import { RegisterSignInLink } from '@/components/auth/RegisterSignInLink';
 
 // Added 2026-08-22. These public pages previously exported no metadata at
 // all, so all three inherited the root layout's title and description —
@@ -42,9 +43,7 @@ export default function RegisterPage() {
           <div className="mt-6 text-center">
             <p className="text-sm text-gray-600">
               Already have an account?{' '}
-              <Link href="/login" className="text-[#CC0000] font-semibold hover:text-[#990000] transition-colors">
-                Sign in
-              </Link>
+              <RegisterSignInLink />
             </p>
           </div>
         </div>

@@ -7,9 +7,6 @@ import { Button } from '@/components/ui/button';
 import {
   LayoutDashboard,
   Wand2,
-  Search,
-  FileText,
-  BarChart3,
   Eye,
   Settings,
   CreditCard,
@@ -20,13 +17,21 @@ import {
 } from 'lucide-react';
 import { PLAN_DISPLAY_NAME } from '@/lib/stripe/plan-names';
 
+// Only tabs backed by a real, working page appear here. Keywords, Content and
+// Analytics are still placeholders ("coming soon" screens with no data behind
+// them) and were indistinguishable in this list from the tabs that work, so a
+// paying user could not tell which was which until they clicked. Their routes
+// still resolve if visited directly — they are hidden from navigation, not
+// deleted. Restore an entry here the moment its page does something.
+//
+// 'AI Visibility' points straight at /geo, the live checker, rather than at
+// /dashboard/ai-visibility, which was a "coming soon" waitlist screen for a
+// feature that has been shipped and is being sold. Same reasoning as
+// app/dashboard/tools/geo-visibility-checker: /geo is the one canonical URL.
 const navigation = [
   { name: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
   { name: 'AI Tools', href: '/dashboard/tools', icon: Wand2 },
-  { name: 'Keywords', href: '/dashboard/keywords', icon: Search },
-  { name: 'Content', href: '/dashboard/content', icon: FileText },
-  { name: 'Analytics', href: '/dashboard/analytics', icon: BarChart3 },
-  { name: 'AI Visibility', href: '/dashboard/ai-visibility', icon: Eye },
+  { name: 'AI Visibility', href: '/geo', icon: Eye },
   { name: 'Billing', href: '/dashboard/billing', icon: CreditCard },
   { name: 'Settings', href: '/dashboard/settings', icon: Settings },
 ];

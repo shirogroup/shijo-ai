@@ -1,68 +1,25 @@
-'use client';
+import { redirect } from 'next/navigation';
 
-import { useState } from 'react';
-import Link from 'next/link';
-import { Eye, Loader2, CheckCircle2 } from 'lucide-react';
-
-export default function AIVisibilityPage() {
-  const [status, setStatus] = useState<'idle' | 'loading' | 'joined' | 'error'>('idle');
-
-  const handleNotifyMe = async () => {
-    setStatus('loading');
-    try {
-      const res = await fetch('/api/dashboard/ai-visibility-waitlist', { method: 'POST' });
-      const data = await res.json();
-      if (res.ok && data.success) {
-        setStatus('joined');
-      } else {
-        setStatus('error');
-      }
-    } catch {
-      setStatus('error');
-    }
-  };
-
-  return (
-    <div className="flex flex-col items-center justify-center min-h-[60vh] text-center">
-      <div className="bg-gray-800/50 rounded-full p-6 mb-6">
-        <Eye className="w-12 h-12 text-gray-500" />
-      </div>
-      <h1 className="text-2xl font-bold text-white mb-2">AI Visibility Tracking</h1>
-      <p className="text-gray-400 mb-6 max-w-md">
-        Track how often your brand gets mentioned when people ask AI tools questions about your
-        category — coming soon.
-      </p>
-
-      {status === 'joined' ? (
-        <div className="flex items-center gap-2 text-sm text-green-400 mb-6">
-          <CheckCircle2 className="w-4 h-4" />
-          You&apos;re on the list — we&apos;ll email you when it launches.
-        </div>
-      ) : (
-        <button
-          onClick={handleNotifyMe}
-          disabled={status === 'loading'}
-          className="inline-flex items-center gap-2 bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 disabled:opacity-60 text-white font-semibold py-2.5 px-6 rounded-xl transition-all text-sm mb-2"
-        >
-          {status === 'loading' && <Loader2 className="w-4 h-4 animate-spin" />}
-          Notify me when this launches
-        </button>
-      )}
-      {status === 'error' && (
-        <p className="text-xs text-red-400 mb-4">Something went wrong — please try again.</p>
-      )}
-
-      <p className="text-sm text-gray-500 mt-4 mb-6">
-        In the meantime, try our AI Overview Optimizer:
-      </p>
-      <div className="flex gap-3">
-        <Link
-          href="/dashboard/tools/ai-overview-optimizer"
-          className="bg-gray-800 hover:bg-gray-700 text-white text-sm font-medium px-4 py-2 rounded-lg transition-colors"
-        >
-          AI Overview Optimizer
-        </Link>
-      </div>
-    </div>
-  );
+/**
+ * /dashboard/ai-visibility → /geo
+ *
+ * This route used to render a "coming soon" screen with a "Notify me when this
+ * launches" waitlist button — for a feature that is built, live and being sold.
+ * The public checker at /geo works, `app/api/geo/scan` persists every scan with
+ * the signed-in user's id, and `lib/geo/entitlements.ts` enforces a per-plan
+ * monthly allowance (Standard 4, Plus 30, Pro 100). A paying customer clicking
+ * the tab named after the thing they bought was being told it did not exist.
+ *
+ * It redirects rather than rendering the checker inline for the same reasons as
+ * app/dashboard/tools/geo-visibility-checker: /geo is the single canonical URL
+ * for the checker, and duplicating it here would split the SEO signal and make
+ * a deliberately public, ad-safe page look auth-gated.
+ *
+ * The sidebar now links to /geo directly, so this exists for bookmarks and for
+ * anyone following an old link. The waitlist API route
+ * (app/api/dashboard/ai-visibility-waitlist) is deliberately left in place —
+ * it holds real signups and deleting it would destroy them.
+ */
+export default function AIVisibilityRedirect() {
+  redirect('/geo');
 }

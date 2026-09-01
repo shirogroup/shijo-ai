@@ -1,6 +1,8 @@
 # SHIJO.AI — Knowledge Base / Status Reference
 
-**Last updated:** 2026-08-31 — ✅ **START AT §61.** The paid funnel is VERIFIED LIVE end-to-end on `8378e6b` (HEAD == origin/main). §60's blocked state is CLOSED: `7dad555` + `83ec917` both built and deployed. One NEW defect was found during retest — Stripe's `cancel_url` dropped the plan intent, so the complete-your-upgrade banner never appeared — fixed and shipped as `8378e6b`. All three funnel tests now PASS, logged in AND logged out. Still open: the $39 GEO Report route, Gemini timeouts, and the Perplexity Sonar replacement (§61.7).
+**Last updated:** 2026-08-31 (second pass) — 🔴 **START AT §62.** Three defects found from a live click-through: the checkout intent died on the returning-customer path (register → Sign in dropped `?plan=`); `/pricing` sells four things with no implementation (scan history, CSV/PDF export, 5 brands, the Plus tool CTA); and the AI Visibility tab offered a waitlist for a feature that is shipped and being sold. All fixed LOCALLY — **not committed, not pushed, and `next build` could NOT be run** (§62.2). §61 below remains valid: the paid funnel itself is verified live on `8378e6b`.
+
+**Previously updated:** 2026-08-31 (first pass) — ✅ **START AT §61.** The paid funnel is VERIFIED LIVE end-to-end on `8378e6b` (HEAD == origin/main). §60's blocked state is CLOSED: `7dad555` + `83ec917` both built and deployed. One NEW defect was found during retest — Stripe's `cancel_url` dropped the plan intent, so the complete-your-upgrade banner never appeared — fixed and shipped as `8378e6b`. All three funnel tests now PASS, logged in AND logged out. Still open: the $39 GEO Report route, Gemini timeouts, and the Perplexity Sonar replacement (§61.7).
 
 **Previously updated:** 2026-08-30 — 🔴 **START AT §60.6.** Commit `7dad555` (paid-funnel fix) is on `origin/main` but its **Vercel build FAILED** on a missing Suspense boundary at `/register`. Production is unaffected (still serving `1302442`), but the funnel fix is not live. The fix is written locally in `components/auth/RegisterForm.tsx` and is **uncommitted**. §60 also covers the GEO checker, the Plus $79 tier, `/pricing` + `/features`, and one unverified Stripe env value (§60.4).
 
@@ -3139,3 +3141,91 @@ build log, not from tsc, not from the happy path. Read the return URLs, not just
 
 Unchanged from §60.9 — `$39` GEO Report route (verify `STRIPE_PRICE_GEO_REPORT` first, §60.4),
 Gemini timeouts (§60.2), Perplexity Sonar replacement before 2026-09-27 (§60.2). None were touched.
+
+---
+
+## §62 — Dashboard honesty pass: login intent, unbuilt paid claims, placeholder tabs (2026-08-31)
+
+**One line:** three defects found from Sri's own click-through — the checkout intent dies on the
+returning-customer path, `/pricing` sells four things that do not exist, and the AI Visibility tab
+advertises a waitlist for a feature that shipped. All three fixed **locally**; `next build` could NOT
+be run, so nothing here is proven and nothing was pushed by the assistant.
+
+Full evidence, written before any edit: `docs/2026-08-31-dashboard-gaps-status.md` (with an addendum
+recording what changed afterwards).
+
+### §62.1 The three findings — ✅ CONFIRMED by reading the files named
+
+**A. "Choose Plus → I already have an account → Sign in" lost the plan.**
+`components/auth/LoginForm.tsx:33–41` already resumed checkout from `?plan=`, and its own "Sign up"
+link already forwarded the intent to `/register?plan=`. The reverse link — `app/register/page.tsx:45`
+— was a bare `<Link href="/login">` and dropped it. One link, one direction. Sri's own report:
+signing back in landed on `/dashboard`, which was **correct** for a `/login` URL with no `?plan=` —
+the bug is only reachable through the register→sign-in hop.
+
+**B. ⚠️ Sold on `/pricing`, referenced nowhere in `app/` or `components/`.** Repo-wide grep:
+`csvExport`, `pdfDownload`, `toolCta` and `brands` appear **only** in `lib/geo/entitlements.ts`.
+
+| Sold as | Tier | Reality |
+|---|---|---|
+| "Scan history" | Standard $29 | No user-facing history page or API. Admin-only. |
+| "30 saved AI visibility scans per month" | Plus $79 | Half true — scans **are** persisted with `userId` and the quota **is** enforced, but the user cannot see them. |
+| "One-click into the FAQ Generator and AI Overview Optimizer" | Plus $79 | `toolCta` flag, used nowhere. |
+| "CSV export, PDF download" | Pro $199, **and** `components/landing/Pricing.tsx:92` | `csvExport` / `pdfDownload` flags, used nowhere. |
+| "5 brands" | Pro $199 | `brands` field, commented in source as "Informational for now." Not enforced. |
+
+Someone could pay $199/month for exports that do not exist. Same class as the fabricated trust badges
+and the unbuilt "AI visibility tracking" metadata already recorded in the project instructions.
+
+**C. The AI Visibility tab told paying customers the feature was not built.**
+`app/dashboard/ai-visibility/page.tsx` rendered "coming soon" plus a "Notify me when this launches"
+waitlist button — while `/geo`, `app/api/geo/scan` (persists with `userId`), `lib/geo/entitlements.ts`
+(Standard 4 / Plus 30 / Pro 100, enforced) and `app/admin/geo-health/*` are all live.
+
+**D. Placeholder tabs were indistinguishable from working ones.** `/dashboard/analytics`,
+`/dashboard/keywords`, `/dashboard/content` are "coming soon" screens with no data fetch;
+`/dashboard/settings` is real (two sub-sections say coming soon). All sat in the sidebar looking
+identical to the tabs that work.
+
+### §62.2 ⚠️ CRITICAL — `next build` could not be run, and here is why
+
+New sandbox limitation, worth adding to §60.8: **background processes in the Cowork VM do not survive
+between tool calls.** Three detached runs (`nohup`, `setsid`, `script -e`) each produced a **0-byte**
+log and no exit-code file, because the process is torn down the moment the call returns. Run in the
+foreground the build starts correctly and prints its banner (Next.js 15.5.9), but the per-call ceiling
+is ~180s and two consecutive attempts both hit `timeout` (exit 124) still inside the compile step,
+with no benefit from the warm `.next/cache`.
+
+Also surfaced by the build: **two lockfiles** in the monorepo — Next infers the workspace root from
+`my-turborepo/pnpm-lock.yaml` and warns about `apps/shijo-ai/package-lock.json`. Not touched. ❓ UNKNOWN
+whether Vercel resolves the same root.
+
+So: `tsc --noEmit` is ✅ 0 errors, and that is **not** verification (§60.7). The build must be run in
+Sri's own Git Bash before pushing:
+
+```bash
+cd "/c/Users/AI Agent/Projects/shiro-group-monorepo/my-turborepo/apps/shijo-ai"
+npx next build
+```
+
+### §62.3 What was changed — edited locally, NOT committed, NOT pushed
+
+`components/auth/RegisterSignInLink.tsx` (new), `app/register/page.tsx` (freeze lifted by Sri for the
+one link), `lib/pricing-plans.ts`, `components/landing/Pricing.tsx`, `components/dashboard/Sidebar.tsx`,
+`app/dashboard/ai-visibility/page.tsx`. Per-file detail in the addendum to
+`docs/2026-08-31-dashboard-gaps-status.md`.
+
+⚠️ `components/landing/Pricing.tsx` is ad-facing homepage copy. Only the false feature bullet changed;
+**no price was touched.** Flagged because §4 of the 2026-08-30 handoff freezes ads copy.
+
+### §62.4 Still open after this pass
+
+- ❓ `/login?plan=plus` end-to-end has never been exercised on the live site — code-verified only.
+  Testing it needs a password typed, which the assistant will not do.
+- **Build back what the copy just gave up** (Sri's decision: copy now, features after) — user-facing
+  scan history, CSV/PDF export, the Plus tool CTA, and a real brands concept. Restore each pricing
+  claim only as its feature ships.
+- The three hidden tabs (Analytics, Keywords, Content) still have no implementation. `usage_logs` is
+  real and populated (`lib/tools/usage.ts:317`), and the aggregation SQL exists admin-side in
+  `app/api/admin/usage/route.ts`, so Analytics is a query and a chart away — not a new pipeline.
+- Unchanged from §60.9: $39 GEO Report route, Gemini timeouts, Perplexity Sonar before 2026-09-27.

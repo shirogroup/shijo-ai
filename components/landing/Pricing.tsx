@@ -89,7 +89,7 @@ export function Pricing() {
               <li className="flex items-center gap-2"><Check className="w-5 h-5 text-primary" /> All 12 AI tools</li>
               <li className="flex items-center gap-2"><Check className="w-5 h-5 text-primary" /> Advanced AI for complex tasks</li>
               <li className="flex items-center gap-2"><Check className="w-5 h-5 text-primary" /> 1,500 generations/month</li>
-              <li className="flex items-center gap-2"><Check className="w-5 h-5 text-primary" /> 5 brands, CSV + PDF export</li>
+              <li className="flex items-center gap-2"><Check className="w-5 h-5 text-primary" /> 100 AI visibility scans/month</li>
             </ul>
             <Link href="/register">
               <Button className="w-full bg-primary hover:bg-primary/90 text-white">Get Started with Pro</Button>
