@@ -1,6 +1,8 @@
 # SHIJO.AI — Knowledge Base / Status Reference
 
-**Last updated:** 2026-09-01 (third pass) — 🔴 **START AT §65.** The §64 subscriber guard is **deployed and INERT**: verified live, one click on the sidebar upgrade button still opens a `cs_live_` Checkout for an account with an ACTIVE $29 subscription in Stripe. Cause — it gated on `users.subscription_id`/`subscription_status`, which are EMPTY for that paying customer. Fix (ask Stripe, not the mirror) is edited locally, NOT pushed. Until it ships, treat any upgrade CTA as capable of creating a SECOND subscription.
+**Last updated:** 2026-09-01 (fourth pass) — 🔴 **START AT §66.** Root cause found for a chain of billing bugs: **every subscription webhook has returned HTTP 500 since 2026-08-23** (100% failure) because API version 2025-12-15.clover moved `current_period_start/end` onto the subscription ITEM. That is why planTier and the subscription columns were never written. Code fix is LOCAL, NOT PUSHED. Two Stripe dashboard changes ARE live (portal plan-switching + proration; `customer.subscription.deleted` subscribed). Replay the failed deliveries after deploying — §66.6.
+
+**Previously updated:** 2026-09-01 (third pass) — 🔴 **START AT §65.** The §64 subscriber guard is **deployed and INERT**: verified live, one click on the sidebar upgrade button still opens a `cs_live_` Checkout for an account with an ACTIVE $29 subscription in Stripe. Cause — it gated on `users.subscription_id`/`subscription_status`, which are EMPTY for that paying customer. Fix (ask Stripe, not the mirror) is edited locally, NOT pushed. Until it ships, treat any upgrade CTA as capable of creating a SECOND subscription.
 
 **Previously updated:** 2026-09-01 (second pass) — 🔴 **START AT §64.** One-click-to-payment work, **edited locally, NOT pushed, `next build` NOT run.** It closes a LIVE double-billing hazard (§64.2): an existing subscriber upgrading could have been given a second Stripe subscription, because nothing cancels the first. ⚠️ §64.4 — the new flow needs "Customers can switch plans" enabled in the Stripe Customer Portal or existing subscribers get a 502 (safe, but the button does nothing). §63 below remains valid: the funnel is verified live on `d09058d`.
 
@@ -3442,3 +3444,85 @@ and it is invisible from the code, the build log and the deployment list alike.
 - The logged-out legs. Sign-out did not take effect this session (the `/ai-marketing-tools` header
   showing "Sign In" is a static marketing header, NOT proof of being signed out — a real trap for
   future testing; check `/pricing`, which renders auth state).
+
+---
+
+## §66 — 🔴 ROOT CAUSE: every subscription webhook has returned HTTP 500 since 2026-08-23 (2026-09-01)
+
+**Status: code fix EDITED LOCALLY, NOT committed, NOT pushed.** `tsc` 0 errors. The two Stripe
+dashboard changes below ARE live.
+
+### §66.1 What was found — ✅ CONFIRMED in the Stripe dashboard
+
+Endpoint `https://www.shijo.ai/api/webhooks/stripe` (destination `we_1TCQUJHTpiuftGGEQfoTdse1`),
+Active, API version **2025-12-15.clover**: **Total 4 / Failed 4 — error rate 100%.** Every
+`customer.subscription.created` and `customer.subscription.updated` delivery from 2026-08-23 onward
+returned **HTTP 500**, including retries.
+
+**Cause, confirmed by reading the event payload:** in API version 2025-12-15.clover
+`current_period_start` / `current_period_end` live on the **subscription ITEM**
+(`items.data[0].current_period_start`), **not** on the Subscription object. The handlers did:
+
+```ts
+currentPeriodStart: new Date(subscription.current_period_start * 1000)   // undefined * 1000 -> NaN
+```
+
+`new Date(NaN)` is an Invalid Date, the Postgres write throws, the route 500s.
+
+### §66.2 This explains a chain of earlier symptoms
+
+- §65: `users.subscription_id` / `subscription_status` EMPTY for `srikanth@shiroapps.com` despite an
+  ACTIVE $29 subscription — the writes never succeeded.
+- Which made §64's "already subscribed" checkout guard **inert**, because it read those columns.
+- `planTier` is likewise never refreshed, so ANY plan change was invisible to the app.
+- Anything else keyed off those columns — access gating, quotas, dunning — has been reading stale data
+  for over a week. ❓ UNKNOWN how many users are affected; the live DB was not queried.
+
+### §66.3 A second, independent bug found while fixing it
+
+`handleSubscriptionUpdated` never wrote `planTier` at all — it set only `status` and the period dates.
+A plan change through the Billing Portal fires `customer.subscription.updated`, **not** `.created`, so
+even with the 500 fixed an upgrade would have **charged the customer and left them on the old tier**
+(e.g. pay $36.63 + $79/mo, still get Standard's 4 scans). Verified against a real confirm screen for
+`sub_1U7iiVHTpiuftGGEOCb365kr` before any payment was made.
+
+### §66.4 The fix now sitting locally — `lib/stripe/webhook-handlers.ts`
+
+- `subscriptionPeriod()` — reads the period from the subscription item, falls back to the legacy
+  subscription-level fields, and returns **null** rather than an Invalid Date if neither exists (both
+  columns are nullable). A missing period can never again take the handler down.
+- `planTierForPrice()` — the price→tier map extracted out of `handleSubscriptionCreated` so BOTH
+  handlers derive the tier identically.
+- `handleSubscriptionUpdated` now writes `planTier`, `subscriptionId` (backfilling the mirror for rows
+  whose `created` webhook never landed) and `stripePriceId`.
+- `handleSubscriptionCreated`'s `insert` became an **upsert** — `stripe_subscription_id` is UNIQUE, so
+  a plain insert threw on every Stripe retry, meaning one transient failure poisoned all later
+  attempts for that subscription.
+
+### §66.5 Stripe dashboard changes — ✅ APPLIED AND VERIFIED (authorised by Sri)
+
+1. **Customer portal → Subscriptions:** "Customers can switch plans" **ON**; eligible products added:
+   SHIJO.AI Standard $29, SHIJO.AI Plus $79, SHIJO.AI Pro $199. Proration set to **"Prorate charges and
+   credits"** with **"Invoice prorations immediately at the time of the update"** — an upgrade collects
+   money now rather than at the next cycle. Persisted across a page reload.
+2. **Webhook destination:** added **`customer.subscription.deleted`** (5 events → 6). The handler
+   already existed but the event was never subscribed, so **cancellations never downgraded anyone to
+   free** — cancelled customers kept paid access indefinitely.
+
+⚠️ NOT changed, flagged for a decision: Downgrades are set to "Update immediately" for both a cheaper
+plan and a shorter interval, which issues a prorated credit at once. Moving downgrades to end-of-period
+protects revenue but changes customer-facing refund behaviour — Sri's call, not the assistant's.
+
+### §66.6 After deploying, do this
+
+The 4 failed deliveries can be replayed from **Stripe → Webhooks → `inspiring-radiance` → Event
+deliveries → Resend**. Replaying the `created`/`updated` events for `srikanth@shiroapps.com` will
+backfill `subscription_id`, `subscription_status` and `planTier` from Stripe without touching the DB
+by hand. Confirm the error rate falls from 100% before trusting any of it.
+
+### §66.7 Method note
+
+§61.6: a green build is not verification. §63.2: a successful push is not a deployment. §65.4: a
+deployed guard is not a working guard. §66 adds: **a live, Active integration is not a working
+integration.** The endpoint was green in every list view in the app and in Vercel; only the Stripe
+dashboard's delivery log showed 100% failure, and only the raw event payload showed why.

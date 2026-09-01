@@ -7,6 +7,83 @@ import { getStripeClient } from '../stripe';
 
 const stripe = getStripeClient();
 
+/**
+ * Billing period for a subscription, tolerant of Stripe API version changes.
+ *
+ * 🔴 ROOT CAUSE OF A 100% WEBHOOK FAILURE RATE (found 2026-09-01).
+ * This endpoint is registered with API version 2025-12-15.clover, where
+ * `current_period_start` / `current_period_end` live on the SUBSCRIPTION ITEM,
+ * not on the Subscription object. The old code read them off the subscription:
+ *
+ *     new Date(subscription.current_period_start * 1000)   // undefined * 1000
+ *
+ * which is NaN -> Invalid Date -> the Postgres write throws -> the route
+ * returns 500. Every customer.subscription.created and .updated delivery had
+ * failed since 2026-08-23, which is why users.subscription_id,
+ * subscription_status and planTier were never written for paying customers —
+ * and why the checkout route's "already subscribed" guard, which read those
+ * columns, was inert.
+ *
+ * Reads the item first, falls back to the legacy subscription-level fields, and
+ * returns null rather than an Invalid Date if neither is present (both columns
+ * are nullable). A missing period must never again take the whole handler down.
+ */
+function subscriptionPeriod(subscription: Stripe.Subscription): {
+  currentPeriodStart: Date | null;
+  currentPeriodEnd: Date | null;
+} {
+  const item = subscription.items?.data?.[0] as
+    | { current_period_start?: number; current_period_end?: number }
+    | undefined;
+  const legacy = subscription as unknown as {
+    current_period_start?: number;
+    current_period_end?: number;
+  };
+
+  const start = item?.current_period_start ?? legacy.current_period_start;
+  const end = item?.current_period_end ?? legacy.current_period_end;
+
+  return {
+    currentPeriodStart: typeof start === 'number' ? new Date(start * 1000) : null,
+    currentPeriodEnd: typeof end === 'number' ? new Date(end * 1000) : null,
+  };
+}
+
+type PlanTier = 'pro' | 'plus' | 'growth' | 'enterprise';
+
+/**
+ * Map a Stripe price id to our internal plan tier.
+ *
+ * Must recognize every purchasable price ID — see lib/stripe/products.ts for
+ * the naming convention (internal 'pro' = displayed "Standard", internal
+ * 'growth' = displayed "Pro"). Defaults to 'pro' (Standard) if nothing
+ * matches.
+ *
+ * Extracted 2026-09-01 so that BOTH subscription.created and
+ * subscription.updated derive the tier the same way. It previously lived
+ * inline in handleSubscriptionCreated only, which is why an upgrade made
+ * through the Stripe Billing Portal took the customer's money and left
+ * planTier untouched — see handleSubscriptionUpdated.
+ */
+function planTierForPrice(priceId: string | undefined): PlanTier {
+  if (
+    priceId === STRIPE_PRICE_IDS.ENTERPRISE_MONTHLY ||
+    priceId === STRIPE_PRICE_IDS.ENTERPRISE_ANNUAL
+  ) {
+    return 'enterprise';
+  }
+  if (priceId === STRIPE_PRICE_IDS.GROWTH_MONTHLY) {
+    return 'growth';
+  }
+  // 'plus' added 2026-08-31. The id is env-driven, so guard on truthiness —
+  // otherwise an unset PLUS_MONTHLY ('') would match a subscription whose
+  // priceId is also somehow empty and silently downgrade a real customer.
+  if (STRIPE_PRICE_IDS.PLUS_MONTHLY && priceId === STRIPE_PRICE_IDS.PLUS_MONTHLY) {
+    return 'plus';
+  }
+  return 'pro';
+}
+
 async function handleSubscriptionCreated(subscription: Stripe.Subscription) {
   const customerId = subscription.customer as string;
   
@@ -22,33 +99,7 @@ async function handleSubscriptionCreated(subscription: Stripe.Subscription) {
   }
   
   const priceId = subscription.items.data[0]?.price.id;
-  // Must recognize every purchasable price ID and map it to the correct
-  // internal tier — see lib/stripe/products.ts for the naming convention
-  // (internal 'pro' = displayed "Standard", internal 'growth' = displayed
-  // "Pro"). Defaults to 'pro' (Standard) if nothing else matches.
-  let planTier: 'pro' | 'plus' | 'growth' | 'enterprise' = 'pro';
-
-  if (
-    priceId === STRIPE_PRICE_IDS.ENTERPRISE_MONTHLY ||
-    priceId === STRIPE_PRICE_IDS.ENTERPRISE_ANNUAL
-  ) {
-    planTier = 'enterprise';
-  } else if (priceId === STRIPE_PRICE_IDS.GROWTH_MONTHLY) {
-    planTier = 'growth';
-  } else if (
-    // 'plus' added 2026-08-31. The id is env-driven, so guard on truthiness —
-    // otherwise an unset PLUS_MONTHLY ('') would match a subscription whose
-    // priceId is also somehow empty and silently downgrade a real customer.
-    STRIPE_PRICE_IDS.PLUS_MONTHLY &&
-    priceId === STRIPE_PRICE_IDS.PLUS_MONTHLY
-  ) {
-    planTier = 'plus';
-  } else if (
-    priceId === STRIPE_PRICE_IDS.PRO_MONTHLY ||
-    priceId === STRIPE_PRICE_IDS.PRO_ANNUAL
-  ) {
-    planTier = 'pro';
-  }
+  const planTier = planTierForPrice(priceId);
   
   await db
     .update(users)
@@ -60,16 +111,33 @@ async function handleSubscriptionCreated(subscription: Stripe.Subscription) {
     })
     .where(eq(users.id, user.id));
   
-  // subscriptions table uses timestamp() - Date objects OK
-  await db.insert(subscriptions).values({
-    userId: user.id,
-    stripeSubscriptionId: subscription.id,
-    stripePriceId: priceId!,
-    status: subscription.status,
-    currentPeriodStart: new Date(subscription.current_period_start * 1000),
-    currentPeriodEnd: new Date(subscription.current_period_end * 1000),
-    cancelAtPeriodEnd: subscription.cancel_at_period_end,
-  });
+  // Upsert, not insert. Stripe retries a failed delivery, and
+  // stripe_subscription_id is UNIQUE — a plain insert throws on the retry and
+  // returns another 500, so a single transient failure would poison every
+  // later attempt for that subscription.
+  const period = subscriptionPeriod(subscription);
+  await db
+    .insert(subscriptions)
+    .values({
+      userId: user.id,
+      stripeSubscriptionId: subscription.id,
+      stripePriceId: priceId!,
+      status: subscription.status,
+      currentPeriodStart: period.currentPeriodStart,
+      currentPeriodEnd: period.currentPeriodEnd,
+      cancelAtPeriodEnd: subscription.cancel_at_period_end,
+    })
+    .onConflictDoUpdate({
+      target: subscriptions.stripeSubscriptionId,
+      set: {
+        stripePriceId: priceId!,
+        status: subscription.status,
+        currentPeriodStart: period.currentPeriodStart,
+        currentPeriodEnd: period.currentPeriodEnd,
+        cancelAtPeriodEnd: subscription.cancel_at_period_end,
+        updatedAt: new Date(),
+      },
+    });
 
   // Note: per-feature quota tracking (userQuotas) was retired — plan
   // access/limits are enforced entirely via lib/tools/usage.ts, keyed off
@@ -89,24 +157,45 @@ async function handleSubscriptionUpdated(subscription: Stripe.Subscription) {
   
   if (!user) return;
   
+  // ⚠️ A PLAN CHANGE ARRIVES HERE, NOT IN handleSubscriptionCreated.
+  // Switching plans through the Stripe Billing Portal updates the existing
+  // subscription, so Stripe fires customer.subscription.updated. Until
+  // 2026-09-01 this handler wrote only status and the period dates, so an
+  // upgrade charged the customer (e.g. $36.63 proration, then $79/mo) and
+  // left users.planTier on the OLD tier — money taken, plan not delivered,
+  // and the old tier's limits still enforced by lib/tools/usage.ts.
+  const priceId = subscription.items.data[0]?.price.id;
+  const planTier = planTierForPrice(priceId);
+
+  const period = subscriptionPeriod(subscription);
   await db
     .update(subscriptions)
     .set({
       status: subscription.status,
-      currentPeriodStart: new Date(subscription.current_period_start * 1000),
-      currentPeriodEnd: new Date(subscription.current_period_end * 1000),
+      stripePriceId: priceId!,
+      currentPeriodStart: period.currentPeriodStart,
+      currentPeriodEnd: period.currentPeriodEnd,
       cancelAtPeriodEnd: subscription.cancel_at_period_end,
       updatedAt: new Date(),
     })
     .where(eq(subscriptions.stripeSubscriptionId, subscription.id));
-  
+
   await db
     .update(users)
     .set({
+      planTier,
+      // Backfills the mirror for customers whose row predates this handler,
+      // or whose 'created' webhook never landed — the empty-column state that
+      // made the checkout guard inert (see the create-checkout route).
+      subscriptionId: subscription.id,
       subscriptionStatus: subscription.status,
       updatedAt: new Date(),
     })
     .where(eq(users.id, user.id));
+
+  console.log(
+    `Subscription updated for user ${user.id}, plan: ${planTier}, status: ${subscription.status}`
+  );
 }
 
 async function handleSubscriptionDeleted(subscription: Stripe.Subscription) {
