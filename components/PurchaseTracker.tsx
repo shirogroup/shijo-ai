@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect } from 'react';
+import { event as gaEvent } from '@/lib/analytics';
 
 /**
  * Pushes the `purchase` event that GTM's Google Ads conversion tag listens for.
@@ -54,6 +55,40 @@ export default function PurchaseTracker({ purchase }: { purchase: Purchase }) {
     // narrower element type — TypeScript merges global interfaces across the
     // whole project and rejects conflicting declarations, which fails the
     // build. Use the existing declaration.
+    // ── 1. GA4, via gtag ───────────────────────────────────────────────
+    // Added 2026-09-01 because GA4 was not recording payments.
+    //
+    // The dataLayer push below is for Google Tag Manager. gtag.js does NOT
+    // interpret arbitrary dataLayer objects as events — it only acts on
+    // gtag() calls — and GA4 is loaded on this site directly via gtag.js in
+    // app/layout.tsx, NOT through GTM. So a dataLayer push alone is data
+    // sitting on the page that GA4 never sees. The only other way GA4 would
+    // hear about it is a GA4 Event tag inside the GTM container firing on the
+    // `purchase` custom event, and the container has no such tag.
+    //
+    // Calling gtag directly also means GA4 keeps recording purchases even if
+    // the GTM container is later changed or misconfigured.
+    //
+    // ⚠️ IF A GA4 EVENT TAG IS EVER ADDED IN GTM ON THE `purchase` TRIGGER,
+    // REMOVE THIS CALL — otherwise GA4 receives the purchase twice. (GA4
+    // de-duplicates on transaction_id, so the damage is limited, but two
+    // sources for one event is a trap for whoever debugs it next.)
+    gaEvent('purchase', {
+      transaction_id: purchase.transactionId,
+      value: purchase.value,
+      currency: purchase.currency,
+      items: [
+        {
+          item_id: purchase.planKey,
+          item_name: `SHIJO.AI ${purchase.planName}`,
+          item_category: 'subscription',
+          price: purchase.value,
+          quantity: 1,
+        },
+      ],
+    });
+
+    // ── 2. Google Tag Manager, via dataLayer ───────────────────────────
     window.dataLayer = window.dataLayer || [];
     window.dataLayer.push({
       event: 'purchase',
