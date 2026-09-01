@@ -1,6 +1,8 @@
 # SHIJO.AI — Knowledge Base / Status Reference
 
-**Last updated:** 2026-08-31 (second pass) — 🔴 **START AT §62.** Three defects found from a live click-through: the checkout intent died on the returning-customer path (register → Sign in dropped `?plan=`); `/pricing` sells four things with no implementation (scan history, CSV/PDF export, 5 brands, the Plus tool CTA); and the AI Visibility tab offered a waitlist for a feature that is shipped and being sold. All fixed LOCALLY — **not committed, not pushed, and `next build` could NOT be run** (§62.2). §61 below remains valid: the paid funnel itself is verified live on `8378e6b`.
+**Last updated:** 2026-09-01 — ✅ **START AT §63.** §62's fixes are shipped and VERIFIED LIVE on `d09058d`: the login checkout intent now survives register → Sign in, the unbuilt paid claims are off `/pricing` and the homepage, the unbuilt tabs are out of the sidebar, and AI Visibility points at the live checker. All three funnel tests re-run and PASS. ⚠️ §63.2 records a new failure mode — a clean push that Vercel never turned into a deployment; an empty commit was the fix.
+
+**Previously updated:** 2026-08-31 (second pass) — 🔴 **START AT §62.** Three defects found from a live click-through: the checkout intent died on the returning-customer path (register → Sign in dropped `?plan=`); `/pricing` sells four things with no implementation (scan history, CSV/PDF export, 5 brands, the Plus tool CTA); and the AI Visibility tab offered a waitlist for a feature that is shipped and being sold. All fixed LOCALLY — **not committed, not pushed, and `next build` could NOT be run** (§62.2). §61 below remains valid: the paid funnel itself is verified live on `8378e6b`.
 
 **Previously updated:** 2026-08-31 (first pass) — ✅ **START AT §61.** The paid funnel is VERIFIED LIVE end-to-end on `8378e6b` (HEAD == origin/main). §60's blocked state is CLOSED: `7dad555` + `83ec917` both built and deployed. One NEW defect was found during retest — Stripe's `cancel_url` dropped the plan intent, so the complete-your-upgrade banner never appeared — fixed and shipped as `8378e6b`. All three funnel tests now PASS, logged in AND logged out. Still open: the $39 GEO Report route, Gemini timeouts, and the Perplexity Sonar replacement (§61.7).
 
@@ -3229,3 +3231,76 @@ one link), `lib/pricing-plans.ts`, `components/landing/Pricing.tsx`, `components
   real and populated (`lib/tools/usage.ts:317`), and the aggregation SQL exists admin-side in
   `app/api/admin/usage/route.ts`, so Analytics is a query and a chart away — not a new pipeline.
 - Unchanged from §60.9: $39 GEO Report route, Gemini timeouts, Perplexity Sonar before 2026-09-27.
+
+---
+
+## §63 — §62 shipped and VERIFIED LIVE, plus a Vercel webhook miss worth remembering (2026-09-01)
+
+### §63.1 Deploy state — ✅ CONFIRMED
+
+```
+edd9a39  Carry plan intent through login; remove unbuilt paid claims; point AI Visibility at the live checker
+d09058d  chore: trigger deploy for edd9a39     <- HEAD == origin/main
+```
+
+### §63.2 ⚠️ NEW OPERATIONAL FAILURE MODE — a clean push that Vercel never sees
+
+`edd9a39` reached GitHub (`git ls-remote origin main` returned it; the push output showed
+`9237595..edd9a39 main -> main`) and **Vercel created no deployment row for it at all** — not building,
+not queued, not errored, not skipped. The newest row stayed `9237595` from 12h earlier. Checked and
+ruled out: Git integration intact (`shirogroup/shijo-ai`, connected Jan 17), Root Directory empty
+(`./`), Ignored Build Step "Automatic" (a skip would still leave a visible row), and the Author /
+Environment / Status chips on the Deployments page are filter *selectors*, not applied filters.
+
+Diagnosis: a dropped GitHub→Vercel webhook. **Fix that worked: an empty commit** —
+`git commit --allow-empty -m "..." && git push origin main` (`d09058d`) — which fires a fresh webhook
+and builds the same tree.
+
+**Carry this forward:** "pushed" and "deployed" are separate facts on this project, and the gap can be
+silent. After any push, confirm a deployment row exists for that SHA before treating the change as
+live. §61.6 said a green build is not verification; §63 adds that a successful *push* is not a
+deployment.
+
+### §63.3 Live verification on `d09058d` — ✅ CONFIRMED, quoted
+
+**Funnel retest (the three tests re-run because `edd9a39` touched `lib/pricing-plans.ts`, which builds
+the `/pricing` cards and the Choose Plus CTA):**
+
+1. **Choose Plus → Stripe. PASS.** Session `cs_live_a19pPuqoNF2kC2G5lFiNWsmQTlDi8pBAftEvb42nPPYIHDIa7siCKd4MWm`,
+   order summary **"Subscribe to SHIJO.AI Plus" / "$79.00" / "per month"**. No payment, no card entered.
+2. **Cancel → billing. PASS.** Stripe back link = `/dashboard/billing?canceled=true&plan=plus`; page shows
+   **"Complete your upgrade to Plus — $79/mo. No charges were made."** + **[Complete upgrade to Plus]**.
+3. **Start free → no Stripe. PASS.** `Start free` is `href="/register"`, no plan param.
+
+**The §62 work:**
+
+- **Login intent fix live.** `/register?plan=plus` → Sign in link is now `href="/login?plan=plus"`.
+  `/register` with no param → `href="/login"`. Both correct.
+- **Pricing copy live.** Standard "4 AI visibility scans per month", Plus "30 AI visibility scans per
+  month", Pro "The highest AI visibility scan allowance." / "100 AI visibility scans per month — the
+  highest allowance". "Scan history", "One-click into the FAQ Generator…", "CSV and PDF export" and
+  "5 brands" are **gone**. Homepage Pro card now reads "100 AI visibility scans/month".
+- **Sidebar live.** Dashboard / AI Tools / AI Visibility / Billing / Settings. Keywords, Content and
+  Analytics no longer in nav.
+- **AI Visibility tab live.** `/dashboard/ai-visibility` → 302 → `/geo`, titled *"Free AI Visibility
+  Checker — See if AI Search Recommends You | SHIJO.AI"*.
+
+### §63.4 ⚠️ Two "saved" claims the copy pass MISSED
+
+The per-plan lines were fixed but two prose lines still say scans are **saved**, and there is still no
+user-facing way to see a saved scan:
+
+- `app/pricing/page.tsx:45` — "Paid plans also include **saved** AI visibility scans…"
+- `app/features/page.tsx:60` — "…and add **saved** AI visibility scans."
+
+Defensible in the narrow sense (scans **are** persisted with `userId` and the quota is enforced) but
+the same half-truth §62.1B flagged for the Plus line. Not changed — needs Sri's call, and it goes away
+on its own once scan history is built.
+
+### §63.5 Still open
+
+- ❓ `/login?plan=plus` end-to-end — the link now carries the param and `LoginForm` handles it, but the
+  sign-in itself has never been exercised. Needs one manual pass (a password must be typed).
+- Build back what the copy gave up: scan history, CSV/PDF export, Plus tool CTA, brands (§62.4).
+- Analytics / Keywords / Content still unimplemented, now hidden rather than misleading.
+- Unchanged: $39 GEO Report route, Gemini timeouts, Perplexity Sonar before 2026-09-27.
