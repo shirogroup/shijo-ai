@@ -112,8 +112,45 @@ IMPORTANT — factual constraints:
   qualifications, awards, ratings, review counts, years in business, customer
   numbers, or guarantees that were not supplied.
 - Do not state scarcity ("limited spots", "filling fast") unless the input says so.
+- Do NOT invent COMMERCIAL OR CONTRACTUAL TERMS. Never write "free trial",
+  "no credit card required", "cancel anytime", "no contracts", "money-back
+  guarantee", "risk-free", "refund", "set up in minutes", a discount, or any
+  billing, trial or cancellation term unless the input states it. These are
+  promises the business has to honour.
+- Do NOT invent SOCIAL PROOF. Never write "trusted by", "used by", "loved by",
+  "join thousands", "rated 5 stars", or any count of customers, teams or
+  companies unless the input supplies the number.
 - Where a detail would strengthen the copy but was not provided, leave a clearly
-  marked placeholder such as [YOUR CREDENTIAL] rather than inventing one.`;
+  marked placeholder such as [YOUR CREDENTIAL] or [YOUR TRIAL TERMS] rather than
+  inventing one.`;
+
+/**
+ * Why the two clauses above exist (added 2026-09-01).
+ *
+ * The original guard covered credentials, awards, ratings and counts — the
+ * failure found in the first live run ("with certified instructors" for a yoga
+ * studio that never claimed any). A later run against a B2B SaaS scenario found
+ * the guard had a hole, and it was a worse one.
+ *
+ * Landing Page Copy invented COMMERCIAL TERMS on 3 of 3 runs across three
+ * unrelated verticals, none of which supplied any:
+ *
+ *   "No credit card required • Set up in minutes • $89 per user per month after trial"
+ *   "No credit card required to start your free trial. Cancel anytime with no
+ *    penalties or long-term contracts."
+ *   "Just $35/month. No credit card required to start."
+ *
+ * plus invented social proof: "Trusted by fleet managers running 20-200 vehicles."
+ *
+ * A fabricated credential embarrasses the customer. A fabricated cancellation
+ * or trial term is a promise their buyers can hold them to — published on their
+ * own landing page, by software they bought to write it. That is a consumer-
+ * protection problem we would have handed them.
+ *
+ * Landing Page Copy is the tool most exposed to this, because offer terms are
+ * exactly what landing pages are made of — but the guard is global on purpose:
+ * ad copy and email sequences reach for the same phrases.
+ */
 
 
 /**
