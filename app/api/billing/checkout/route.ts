@@ -126,7 +126,10 @@ export async function POST(req: NextRequest) {
           quantity: 1,
         },
       ],
-      success_url: `${baseUrl}/dashboard/billing?success=true`,
+      // 2026-09-01: both checkout routes now converge on /thank-you so there is
+      // exactly ONE place a purchase conversion can fire. See the note in
+      // app/thank-you/page.tsx.
+      success_url: `${baseUrl}/thank-you?session_id={CHECKOUT_SESSION_ID}`,
       cancel_url: `${baseUrl}/dashboard/billing?canceled=true`,
       // Disabled 2026-08-23: Stripe has **no coupons** on this account, so the
       // field rendered, accepted input, and rejected every code — at the exact

@@ -268,7 +268,12 @@ export async function POST(req: NextRequest) {
           quantity: 1,
         },
       ],
-      success_url: `${baseUrl}/dashboard/billing?success=true&plan=${plan}`,
+      // 2026-09-01: lands on /thank-you, which verifies the session against
+      // Stripe before firing the Google Ads purchase conversion. {CHECKOUT_SESSION_ID}
+      // is substituted by Stripe. `plan` is carried through so the page can name
+      // the plan without a second lookup, and so the old billing-page banner
+      // still works for anyone linked straight there.
+      success_url: `${baseUrl}/thank-you?session_id={CHECKOUT_SESSION_ID}&plan=${plan}`,
       cancel_url: `${baseUrl}/dashboard/billing?canceled=true&plan=${plan}`,
       metadata: {
         userId: user.id,
