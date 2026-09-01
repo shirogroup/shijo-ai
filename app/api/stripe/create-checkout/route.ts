@@ -163,14 +163,54 @@ export async function POST(req: NextRequest) {
     // Checkout — falling through is precisely the double-billing bug. We
     // fail with a message pointing at Manage Subscription instead.
     // ────────────────────────────────────────────────────────────────────
+    //
+    // ⚠️ ASK STRIPE, NOT OUR OWN MIRROR. The first version of this branch
+    // gated on users.subscription_id / users.subscription_status, and it
+    // silently did nothing: verified 2026-09-01 against
+    // srikanth@shiroapps.com, which has planTier 'pro' and an ACTIVE $29
+    // "SHIJO.AI Standard" subscription in Stripe (created 2026-08-23) while
+    // those two columns are empty. The DB mirror is only as good as the last
+    // webhook that landed; Stripe is the source of truth for "is this
+    // customer already paying us". A stale mirror must never be able to
+    // authorise a second subscription.
     const LIVE_SUB_STATUSES = ['active', 'trialing', 'past_due', 'unpaid'];
-    if (user.subscriptionId && LIVE_SUB_STATUSES.includes(user.subscriptionStatus ?? '')) {
-      try {
-        const current = await stripe.subscriptions.retrieve(user.subscriptionId);
-        const itemId = current.items.data[0]?.id;
+    let liveSubscription: import('stripe').Stripe.Subscription | null = null;
+    try {
+      const known = await stripe.subscriptions.list({
+        customer: customerId,
+        status: 'all',
+        limit: 20,
+      });
+      liveSubscription =
+        known.data.find((s) => LIVE_SUB_STATUSES.includes(s.status)) ?? null;
+    } catch (err) {
+      // If we cannot establish whether they already pay us, refuse rather
+      // than guess. Guessing wrong bills someone twice.
+      const ref = refCode('SLS');
+      console.error(`[${ref}] could not list subscriptions`, err);
+      return NextResponse.json(
+        { error: 'Could not verify your current subscription. Please try again.', ref },
+        { status: 503 }
+      );
+    }
 
-        if (!itemId || current.status === 'canceled') {
+    if (liveSubscription) {
+      try {
+        const current = liveSubscription;
+        const item = current.items.data[0];
+        const itemId = item?.id;
+
+        if (!itemId) {
           throw new Error('no live subscription item');
+        }
+
+        // Stale-mirror version of the double-upgrade guard above: planTier
+        // can disagree with Stripe, so compare the actual price they hold.
+        if (item.price?.id === priceId) {
+          return NextResponse.json(
+            { error: `You are already on the ${plan} plan` },
+            { status: 400 }
+          );
         }
 
         const portalSession = await stripe.billingPortal.sessions.create({
@@ -179,7 +219,7 @@ export async function POST(req: NextRequest) {
           flow_data: {
             type: 'subscription_update_confirm',
             subscription_update_confirm: {
-              subscription: user.subscriptionId,
+              subscription: liveSubscription.id,
               items: [{ id: itemId, price: priceId, quantity: 1 }],
             },
             after_completion: {

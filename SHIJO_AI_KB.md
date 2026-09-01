@@ -1,6 +1,8 @@
 # SHIJO.AI — Knowledge Base / Status Reference
 
-**Last updated:** 2026-09-01 (second pass) — 🔴 **START AT §64.** One-click-to-payment work, **edited locally, NOT pushed, `next build` NOT run.** It closes a LIVE double-billing hazard (§64.2): an existing subscriber upgrading could have been given a second Stripe subscription, because nothing cancels the first. ⚠️ §64.4 — the new flow needs "Customers can switch plans" enabled in the Stripe Customer Portal or existing subscribers get a 502 (safe, but the button does nothing). §63 below remains valid: the funnel is verified live on `d09058d`.
+**Last updated:** 2026-09-01 (third pass) — 🔴 **START AT §65.** The §64 subscriber guard is **deployed and INERT**: verified live, one click on the sidebar upgrade button still opens a `cs_live_` Checkout for an account with an ACTIVE $29 subscription in Stripe. Cause — it gated on `users.subscription_id`/`subscription_status`, which are EMPTY for that paying customer. Fix (ask Stripe, not the mirror) is edited locally, NOT pushed. Until it ships, treat any upgrade CTA as capable of creating a SECOND subscription.
+
+**Previously updated:** 2026-09-01 (second pass) — 🔴 **START AT §64.** One-click-to-payment work, **edited locally, NOT pushed, `next build` NOT run.** It closes a LIVE double-billing hazard (§64.2): an existing subscriber upgrading could have been given a second Stripe subscription, because nothing cancels the first. ⚠️ §64.4 — the new flow needs "Customers can switch plans" enabled in the Stripe Customer Portal or existing subscribers get a 502 (safe, but the button does nothing). §63 below remains valid: the funnel is verified live on `d09058d`.
 
 **Previously updated:** 2026-09-01 — ✅ **START AT §63.** §62's fixes are shipped and VERIFIED LIVE on `d09058d`: the login checkout intent now survives register → Sign in, the unbuilt paid claims are off `/pricing` and the homepage, the unbuilt tabs are out of the sidebar, and AI Visibility points at the live checker. All three funnel tests re-run and PASS. ⚠️ §63.2 records a new failure mode — a clean push that Vercel never turned into a deployment; an empty commit was the fix.
 
@@ -3374,3 +3376,69 @@ alone" when asked. Re-raise this before the next paid-traffic push; it is the sa
 A second, older checkout route exists at `app/api/billing/checkout/route.ts` alongside
 `app/api/stripe/create-checkout/route.ts`. ❓ UNKNOWN whether anything still calls it. If it is dead it
 is a live payment endpoint with no owner; worth tracing.
+
+---
+
+## §65 — 🔴 The §64 guard did not fire in production. Root cause: we trusted our own mirror, not Stripe (2026-09-01)
+
+**Status: fix EDITED LOCALLY, NOT committed, NOT pushed, `next build` NOT run.** `tsc` 0 errors.
+`cd9af0a` (the §64 work) IS deployed and Ready — and its subscriber guard is **inert**.
+
+### §65.1 What the live test showed — ✅ CONFIRMED
+
+Signed in as `srikanth@shiroapps.com`, one click on the sidebar **"Upgrade to Plus — $79/mo"** produced
+**`cs_live_a11IKT9IPjPbDQjfwbbYANonDsMbxxWa3LL8W9khWu6dbZDbmyR57Vk9Sr`** — a **Checkout** session, not
+the plan-change flow. The same happened from `/ai-marketing-tools` → "Get Started with Pro"
+(`cs_live_a152WHfnNMw3ZnSClaPxdFLVYu4A2kEsWfStqZqaXR5ztwAiWDU6vEVa1k`, `cancel_url` carrying
+`plan=growth`).
+
+Meanwhile the **Stripe Dashboard → Subscriptions** shows for that same customer:
+
+```
+srikanth@shiroapps.com   Active   Srikanth Merianda   SHIJO.AI Standard   $29.00 USD / month   created Aug 23, 2026
+```
+
+**One click and one Subscribe press away from two live subscriptions — $29 and $79.** Nothing was
+pressed; no charge was made.
+
+### §65.2 Root cause — the mirror is not the truth
+
+§64's branch gated on `users.subscription_id` and `users.subscription_status`. For this account those
+columns are empty while Stripe holds an ACTIVE subscription, so the condition was false and the code
+fell straight through to Checkout. `handleSubscriptionCreated` is the only writer of those columns, so
+any webhook that was missed, retried late, or predates the current handler leaves a paying customer
+looking unsubscribed to our own code.
+
+⚠️ **Generalise this beyond checkout:** anything that decides whether a customer is paying — access
+gating, quotas, dunning, win-back email — is reading the same possibly-empty columns. ❓ UNKNOWN how
+many users are in this state; not queried (no live-DB access was taken this session).
+
+### §65.3 The fix now sitting locally
+
+`app/api/stripe/create-checkout/route.ts` now asks Stripe instead of the mirror:
+`stripe.subscriptions.list({ customer, status: 'all' })`, take the first with status in
+`active | trialing | past_due | unpaid`, and drive `flow_data.subscription_update_confirm` from that
+subscription's real id and item id. Added with it:
+
+- If the live subscription's current price already equals the target price → 400 "already on this
+  plan" (the stale-mirror version of the `planTier === plan` guard, which can also be wrong).
+- If the subscription list call fails → **503, refuse**. Not knowing whether someone already pays us
+  is not a reason to sell them a second subscription.
+
+### §65.4 Method note
+
+§61.6 said a green build is not verification. §63.2 said a successful push is not a deployment. §65
+adds the sharpest one: **a deployed guard is not a working guard.** `cd9af0a` built clean, deployed
+clean, and its central safety branch never executed once in production. Only clicking the button and
+reading the resulting Stripe URL showed it — `cs_live_` versus a portal URL is the whole difference,
+and it is invisible from the code, the build log and the deployment list alike.
+
+### §65.5 Still untested at time of writing
+
+- The corrected guard — needs deploy, then one click on the sidebar button; expect a Stripe **plan
+  change / confirm** screen, NOT `checkout.stripe.com/c/pay/cs_live_...`.
+- ⚠️ §64.4 still applies: the portal needs **Customers can switch plans** ON in the Stripe Customer
+  Portal settings, with Standard / Plus / Pro allowed. Untested — the branch has never run.
+- The logged-out legs. Sign-out did not take effect this session (the `/ai-marketing-tools` header
+  showing "Sign In" is a static marketing header, NOT proof of being signed out — a real trap for
+  future testing; check `/pricing`, which renders auth state).
