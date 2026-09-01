@@ -134,9 +134,90 @@ export async function POST(req: NextRequest) {
         .where(eq(users.id, user.id));
     }
 
-    // Create Checkout Session
     const priceId = VALID_PLANS[plan][interval as 'monthly' | 'annual'];
     const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://www.shijo.ai';
+
+    if (!priceId) {
+      return NextResponse.json(
+        { error: 'This plan is not available on that billing interval yet' },
+        { status: 400 }
+      );
+    }
+
+    // ────────────────────────────────────────────────────────────────────
+    // ALREADY SUBSCRIBED -> Stripe-hosted PLAN CHANGE, never a 2nd checkout
+    //
+    // The guard above only blocks re-buying the SAME plan. Without this
+    // branch, a Standard customer clicking "Upgrade to Plus" got a fresh
+    // Checkout Session, and nothing in lib/stripe/webhook-handlers.ts
+    // cancels the old subscription — handleSubscriptionCreated just writes
+    // the new one and updates planTier. The customer would have been billed
+    // $29 AND $79 while the app showed them as Plus.
+    //
+    // A Billing Portal session with flow_data.subscription_update_confirm
+    // lands them on a Stripe-hosted confirm screen for exactly this price:
+    // one click from wherever they were, proration handled by Stripe, and
+    // the existing subscription is UPDATED rather than duplicated.
+    //
+    // If that flow cannot be created we deliberately do NOT fall through to
+    // Checkout — falling through is precisely the double-billing bug. We
+    // fail with a message pointing at Manage Subscription instead.
+    // ────────────────────────────────────────────────────────────────────
+    const LIVE_SUB_STATUSES = ['active', 'trialing', 'past_due', 'unpaid'];
+    if (user.subscriptionId && LIVE_SUB_STATUSES.includes(user.subscriptionStatus ?? '')) {
+      try {
+        const current = await stripe.subscriptions.retrieve(user.subscriptionId);
+        const itemId = current.items.data[0]?.id;
+
+        if (!itemId || current.status === 'canceled') {
+          throw new Error('no live subscription item');
+        }
+
+        const portalSession = await stripe.billingPortal.sessions.create({
+          customer: customerId,
+          return_url: `${baseUrl}/dashboard/billing`,
+          flow_data: {
+            type: 'subscription_update_confirm',
+            subscription_update_confirm: {
+              subscription: user.subscriptionId,
+              items: [{ id: itemId, price: priceId, quantity: 1 }],
+            },
+            after_completion: {
+              type: 'redirect',
+              redirect: {
+                return_url: `${baseUrl}/dashboard/billing?success=true&plan=${plan}`,
+              },
+            },
+          },
+        });
+
+        // Same response shape as the checkout branch, so every existing
+        // caller (PricingCta, the billing page, the sidebar CTAs, /lp)
+        // redirects correctly with no client-side change.
+        return NextResponse.json({
+          success: true,
+          url: portalSession.url,
+          mode: 'portal',
+        });
+      } catch (err) {
+        // Most likely cause: the Stripe Billing Portal configuration does not
+        // have "Customers can switch plans" enabled, or this product is not
+        // in its allowed product list. That is a Stripe Dashboard setting,
+        // not a code bug — surface it rather than silently double-billing.
+        const ref = refCode('SPU');
+        console.error(`[${ref}] subscription_update_confirm failed`, err);
+        return NextResponse.json(
+          {
+            error:
+              'Could not open the plan-change screen. Please use Manage Subscription on the billing page.',
+            ref,
+          },
+          { status: 502 }
+        );
+      }
+    }
+
+    // Create Checkout Session — no live subscription, so this is a first purchase
 
     const checkoutSession = await stripe.checkout.sessions.create({
       customer: customerId,

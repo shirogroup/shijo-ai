@@ -8,6 +8,7 @@ import {
   Search, Megaphone, Mail, Pencil,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { startCheckout, type CheckoutPlanKey } from '@/lib/checkout-intent';
 import { LogoMark } from '@/components/Logo';
 
 const toolCategories = [
@@ -18,9 +19,15 @@ const toolCategories = [
 ];
 
 const plans = [
+  // planKey (added 2026-09-01) turns a paid card's button into a real checkout
+  // CTA instead of a bare /register link. Paid traffic lands here, and before
+  // this a visitor who picked Pro was dropped on /register with no record of
+  // the plan — signed in, /register just bounced them to /dashboard. Prices,
+  // copy and layout are untouched; only where the button sends you changed.
+  // Free and Enterprise keep plain hrefs: Free must never reach Stripe.
   { name: 'Free', price: '$0', period: 'forever', features: ['2 AI tools', '3 generations per day', 'No credit card needed'], cta: 'Start Free', highlight: false, href: '/register' },
-  { name: 'Standard', price: '$29', period: '/month', features: ['All 12 AI tools', 'Advanced AI for complex tasks', '200 generations/month'], cta: 'Get Started with Standard', highlight: false, href: '/register' },
-  { name: 'Pro', price: '$199', period: '/month', features: ['All 12 AI tools', 'Advanced AI for complex tasks', '1,500 generations/month'], cta: 'Get Started with Pro', highlight: true, href: '/register' },
+  { name: 'Standard', price: '$29', period: '/month', features: ['All 12 AI tools', 'Advanced AI for complex tasks', '200 generations/month'], cta: 'Get Started with Standard', highlight: false, href: '/register', planKey: 'pro' as CheckoutPlanKey },
+  { name: 'Pro', price: '$199', period: '/month', features: ['All 12 AI tools', 'Advanced AI for complex tasks', '1,500 generations/month'], cta: 'Get Started with Pro', highlight: true, href: '/register', planKey: 'growth' as CheckoutPlanKey },
   { name: 'Enterprise', price: 'Coming Soon', period: '', features: ['Everything in Pro', 'Custom volume & pricing', 'Team collaboration (coming soon)'], cta: 'Contact Us', highlight: false, href: '/contact' },
 ];
 
@@ -34,6 +41,24 @@ const faqs = [
 
 export function LandingPageContent() {
   const [showMobileBar, setShowMobileBar] = useState(true);
+
+  // Paid-plan buttons go straight to a Stripe payment screen. Logged out (the
+  // usual case for ad traffic) startCheckout returns unauthenticated and we
+  // send them to /register?plan=<key>, where RegisterForm resumes the checkout
+  // the moment the account is created — so the plan they clicked survives
+  // signup instead of being thrown away at /register.
+  const [buying, setBuying] = useState<CheckoutPlanKey | null>(null);
+
+  const goToPayment = async (planKey: CheckoutPlanKey) => {
+    setBuying(planKey);
+    const result = await startCheckout(planKey);
+    if (result.ok) return; // navigating to Stripe
+    if (result.unauthenticated) {
+      window.location.href = `/register?plan=${planKey}`;
+      return;
+    }
+    window.location.href = `/pricing`;
+  };
 
   return (
     <main className="min-h-screen bg-background pb-16 md:pb-0">
@@ -203,11 +228,22 @@ export function LandingPageContent() {
                     </li>
                   ))}
                 </ul>
-                <Link href={plan.href}>
-                  <Button className="w-full" variant={plan.highlight ? 'default' : 'outline'}>
-                    {plan.cta}
+                {'planKey' in plan && plan.planKey ? (
+                  <Button
+                    className="w-full"
+                    variant={plan.highlight ? 'default' : 'outline'}
+                    disabled={buying === plan.planKey}
+                    onClick={() => goToPayment(plan.planKey as CheckoutPlanKey)}
+                  >
+                    {buying === plan.planKey ? 'Opening checkout…' : plan.cta}
                   </Button>
-                </Link>
+                ) : (
+                  <Link href={plan.href}>
+                    <Button className="w-full" variant={plan.highlight ? 'default' : 'outline'}>
+                      {plan.cta}
+                    </Button>
+                  </Link>
+                )}
               </div>
             ))}
           </div>

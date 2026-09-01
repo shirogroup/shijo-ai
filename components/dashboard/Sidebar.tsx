@@ -1,5 +1,6 @@
 'use client';
 
+import { useState } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
@@ -16,6 +17,7 @@ import {
   Sparkles,
 } from 'lucide-react';
 import { PLAN_DISPLAY_NAME } from '@/lib/stripe/plan-names';
+import { startCheckout, type CheckoutPlanKey } from '@/lib/checkout-intent';
 
 // Only tabs backed by a real, working page appear here. Keywords, Content and
 // Analytics are still placeholders ("coming soon" screens with no data behind
@@ -42,6 +44,26 @@ export function Sidebar() {
 
   const handleLogout = async () => {
     await logout();
+  };
+
+  // Upgrade CTAs used to be plain links to /dashboard/billing, which meant two
+  // clicks and a page load before anyone reached a payment screen. They now go
+  // straight to Stripe. The server decides which Stripe screen: a first-time
+  // buyer gets Checkout, an existing subscriber gets a plan-change confirm
+  // screen — see the ALREADY SUBSCRIBED branch in
+  // app/api/stripe/create-checkout/route.ts. On any failure we fall back to
+  // the old billing-page route so nobody is ever stranded on a dead button.
+  const [upgrading, setUpgrading] = useState<CheckoutPlanKey | null>(null);
+
+  const goToPayment = async (planKey: CheckoutPlanKey) => {
+    setUpgrading(planKey);
+    const result = await startCheckout(planKey);
+    if (result.ok) return; // browser is navigating to Stripe
+    if (result.unauthenticated) {
+      window.location.href = `/register?plan=${planKey}`;
+      return;
+    }
+    window.location.href = `/dashboard/billing?plan=${planKey}`;
   };
 
   if (loading) {
@@ -128,18 +150,22 @@ export function Sidebar() {
         {/* Upgrade CTA for free users */}
         {userPlan === 'free' && (
           <div className="mt-6 mx-1">
-            <Link
-              href="/dashboard/billing"
-              className="block bg-gradient-to-r from-blue-900/40 to-purple-900/40 border border-blue-800/50 rounded-lg p-4 hover:border-blue-600/50 transition-all"
+            <button
+              type="button"
+              onClick={() => goToPayment('pro')}
+              disabled={upgrading === 'pro'}
+              className="block w-full text-left bg-gradient-to-r from-blue-900/40 to-purple-900/40 border border-blue-800/50 rounded-lg p-4 hover:border-blue-600/50 transition-all disabled:opacity-60"
             >
               <div className="flex items-center gap-2 mb-2">
                 <Crown className="w-4 h-4 text-yellow-400" />
-                <span className="text-sm font-semibold text-white">Upgrade to Standard</span>
+                <span className="text-sm font-semibold text-white">
+                  {upgrading === 'pro' ? 'Opening checkout…' : 'Upgrade to Standard'}
+                </span>
               </div>
               <p className="text-xs text-gray-400">
                 Less than $1 a day for 200 AI generations a month
               </p>
-            </Link>
+            </button>
           </div>
         )}
 
@@ -190,15 +216,15 @@ export function Sidebar() {
             duplicating the free card. Hidden for plus/growth/enterprise, who
             have nothing above them to buy. */}
         {userPlan === 'pro' && (
-          <Link href="/dashboard/billing" className="mt-3 block">
-            <Button
-              size="sm"
-              className="w-full justify-start bg-primary hover:bg-primary/90 text-white"
-            >
-              <Sparkles className="mr-2 h-4 w-4" />
-              Upgrade to Plus — $79/mo
-            </Button>
-          </Link>
+          <Button
+            size="sm"
+            onClick={() => goToPayment('plus')}
+            disabled={upgrading === 'plus'}
+            className="mt-3 w-full justify-start bg-primary hover:bg-primary/90 text-white"
+          >
+            <Sparkles className="mr-2 h-4 w-4" />
+            {upgrading === 'plus' ? 'Opening Stripe…' : 'Upgrade to Plus — $79/mo'}
+          </Button>
         )}
         <Button
           variant="ghost"

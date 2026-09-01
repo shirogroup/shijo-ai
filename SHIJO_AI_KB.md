@@ -1,6 +1,8 @@
 # SHIJO.AI — Knowledge Base / Status Reference
 
-**Last updated:** 2026-09-01 — ✅ **START AT §63.** §62's fixes are shipped and VERIFIED LIVE on `d09058d`: the login checkout intent now survives register → Sign in, the unbuilt paid claims are off `/pricing` and the homepage, the unbuilt tabs are out of the sidebar, and AI Visibility points at the live checker. All three funnel tests re-run and PASS. ⚠️ §63.2 records a new failure mode — a clean push that Vercel never turned into a deployment; an empty commit was the fix.
+**Last updated:** 2026-09-01 (second pass) — 🔴 **START AT §64.** One-click-to-payment work, **edited locally, NOT pushed, `next build` NOT run.** It closes a LIVE double-billing hazard (§64.2): an existing subscriber upgrading could have been given a second Stripe subscription, because nothing cancels the first. ⚠️ §64.4 — the new flow needs "Customers can switch plans" enabled in the Stripe Customer Portal or existing subscribers get a 502 (safe, but the button does nothing). §63 below remains valid: the funnel is verified live on `d09058d`.
+
+**Previously updated:** 2026-09-01 — ✅ **START AT §63.** §62's fixes are shipped and VERIFIED LIVE on `d09058d`: the login checkout intent now survives register → Sign in, the unbuilt paid claims are off `/pricing` and the homepage, the unbuilt tabs are out of the sidebar, and AI Visibility points at the live checker. All three funnel tests re-run and PASS. ⚠️ §63.2 records a new failure mode — a clean push that Vercel never turned into a deployment; an empty commit was the fix.
 
 **Previously updated:** 2026-08-31 (second pass) — 🔴 **START AT §62.** Three defects found from a live click-through: the checkout intent died on the returning-customer path (register → Sign in dropped `?plan=`); `/pricing` sells four things with no implementation (scan history, CSV/PDF export, 5 brands, the Plus tool CTA); and the AI Visibility tab offered a waitlist for a feature that is shipped and being sold. All fixed LOCALLY — **not committed, not pushed, and `next build` could NOT be run** (§62.2). §61 below remains valid: the paid funnel itself is verified live on `8378e6b`.
 
@@ -3304,3 +3306,71 @@ on its own once scan history is built.
 - Build back what the copy gave up: scan history, CSV/PDF export, Plus tool CTA, brands (§62.4).
 - Analytics / Keywords / Content still unimplemented, now hidden rather than misleading.
 - Unchanged: $39 GEO Report route, Gemini timeouts, Perplexity Sonar before 2026-09-27.
+
+---
+
+## §64 — One-click-to-payment, and a live double-billing hole closed on the way (2026-09-01)
+
+**Status: EDITED LOCALLY. Not committed, not pushed, `next build` NOT run** (§62.2 — it cannot run in
+the sandbox). `tsc --noEmit` is 0 errors, which §60.7 says is not verification.
+
+### §64.1 The report
+
+Sri, signed in as an existing Standard customer: clicking **Pro** on the homepage landed on
+`/dashboard`; the red **"Upgrade to Plus — $79/mo"** sidebar button went to `/dashboard/billing`, where
+a *second* click was needed to reach Stripe. Stated goal: "anyone clicks from outside or inside, the
+payment has to take them to Stripe for that particular payment first."
+
+### §64.2 ⚠️ CONFIRMED — a live double-billing hazard that the extra clicks were accidentally hiding
+
+`app/api/stripe/create-checkout/route.ts` only refused a purchase when `user.planTier === plan`. And
+`lib/stripe/webhook-handlers.ts` `handleSubscriptionCreated` writes the new subscription and updates
+`planTier` — **it never cancels the previous one.** So wiring any "upgrade" CTA straight to Checkout
+would have given a Standard customer **two live Stripe subscriptions, billed $29 and $79**, while the
+app displayed them as Plus. This risk existed on `/pricing` already: a Standard subscriber clicking
+"Choose Plus" there would have hit exactly this.
+
+### §64.3 The fix — the server decides which Stripe screen
+
+Rather than changing every CTA, the branch went into `create-checkout` itself, so **every existing
+caller is fixed at once** (`PricingCta`, the billing page's `handleUpgrade`, the sidebar, `/lp`):
+
+- **No live subscription** → Stripe **Checkout** (unchanged behaviour).
+- **Live subscription** (`active | trialing | past_due | unpaid`) → a Billing Portal session with
+  `flow_data.subscription_update_confirm` pinned to that subscription's item and the target price.
+  One click to a Stripe-hosted confirm screen, proration handled by Stripe, subscription **updated
+  not duplicated**. Returned with the same `{ success, url }` shape, plus `mode: 'portal'`.
+- **If that flow cannot be created** → a 502 pointing at Manage Subscription. It deliberately does
+  **NOT** fall through to Checkout; falling through is the double-billing bug.
+
+### §64.4 ⚠️ REQUIRES A STRIPE DASHBOARD SETTING — the button will not work until this is on
+
+`subscription_update_confirm` fails unless the Customer Portal is configured to allow plan switching:
+**Stripe Dashboard → Settings → Billing → Customer portal → Subscriptions → "Customers can switch
+plans" ON**, with the Standard / Plus / Pro products in its allowed product list. Until then existing
+subscribers get the 502 message (safe), not a charge. ❓ UNKNOWN — not checked, no Stripe dashboard
+access was used in this pass.
+
+### §64.5 Files changed
+
+- `app/api/stripe/create-checkout/route.ts` — the branch above, plus an explicit `!priceId` 400.
+- `components/dashboard/Sidebar.tsx` — both upgrade CTAs ("Upgrade to Standard" card for free users,
+  "Upgrade to Plus — $79/mo" for Standard) now call `startCheckout` directly, with a busy label and a
+  fallback to `/dashboard/billing` if anything fails, so no button is ever dead.
+- `components/lp/LandingPageContent.tsx` — **ads freeze lifted by Sri for CTA wiring only.** Standard
+  and Pro cards gained `planKey` and now call `startCheckout`; logged out that redirects to
+  `/register?plan=<key>` and resumes after signup. **Prices, copy and layout untouched.** Free and
+  Enterprise keep plain hrefs — Free must never reach Stripe.
+
+### §64.6 Deliberately NOT changed
+
+`components/landing/Pricing.tsx` — the homepage pricing section. All four CTAs are still bare
+`<Link href="/register">` with no plan attached, so **a signed-in visitor clicking Pro on the homepage
+will still land on `/dashboard`** — the exact symptom Sri reported. Sri chose "leave the homepage
+alone" when asked. Re-raise this before the next paid-traffic push; it is the same defect as `/lp`.
+
+### §64.7 Also noticed, not touched
+
+A second, older checkout route exists at `app/api/billing/checkout/route.ts` alongside
+`app/api/stripe/create-checkout/route.ts`. ❓ UNKNOWN whether anything still calls it. If it is dead it
+is a live payment endpoint with no owner; worth tracing.
