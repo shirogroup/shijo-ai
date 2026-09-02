@@ -96,6 +96,11 @@ export default function FeaturesPage() {
             >
               Try the free checker
             </Link>
+            <p className="text-sm text-muted-foreground mt-4">
+              <Link href="/faq/what-is-ai-visibility" className="text-primary hover:underline">
+                Learn what AI visibility is
+              </Link>
+            </p>
           </div>
 
           {/* Tools, derived from the registry */}

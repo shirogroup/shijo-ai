@@ -46,6 +46,11 @@ export function Footer() {
                 </Link>
               </li>
               <li>
+                <Link href="/faq" className="text-gray-400 hover:text-white transition-colors">
+                  AI Visibility Explained
+                </Link>
+              </li>
+              <li>
                 <Link href="/dashboard" className="text-gray-400 hover:text-white transition-colors">
                   Dashboard
                 </Link>

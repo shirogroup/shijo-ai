@@ -1,5 +1,6 @@
 import { MetadataRoute } from 'next';
 import { posts } from '@/lib/blog/posts';
+import { faqEntries } from '@/lib/faq/entries';
 
 export default function sitemap(): MetadataRoute.Sitemap {
   // Canonical host. The bare apex 307-redirects to www, so listing apex
@@ -21,8 +22,26 @@ const baseUrl = 'https://www.shijo.ai';
     })),
   ];
 
+  // AI-visibility explainers. Added 2026-09-02 alongside app/faq/[slug].
+  // Canonicals on these routes use the www host, matching baseUrl here.
+  const faqSitemapEntries: MetadataRoute.Sitemap = [
+    {
+      url: `${baseUrl}/faq`,
+      lastModified: new Date(),
+      changeFrequency: 'monthly',
+      priority: 0.6,
+    },
+    ...faqEntries.map((e) => ({
+      url: `${baseUrl}/faq/${e.slug}`,
+      lastModified: new Date(e.updatedAt),
+      changeFrequency: 'monthly' as const,
+      priority: 0.7,
+    })),
+  ];
+
   return [
     ...blogEntries,
+    ...faqSitemapEntries,
     {
       url: baseUrl,
       lastModified: new Date(),

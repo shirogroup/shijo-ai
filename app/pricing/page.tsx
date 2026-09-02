@@ -120,7 +120,11 @@ export default function PricingPage() {
             <Link href="/geo" className="text-primary hover:underline">
               /geo
             </Link>{' '}
-            — one scan per day, no account needed.
+            — one scan per day, no account needed.{' '}
+            <Link href="/faq/what-is-ai-visibility" className="text-primary hover:underline">
+              Learn what AI visibility is
+            </Link>
+            .
           </p>
         </section>
 
