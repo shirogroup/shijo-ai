@@ -12,7 +12,7 @@ import { ArrowRight } from 'lucide-react';
  * /geo, the "All AI visibility answers" back-link on each entry).
  */
 export const metadata: Metadata = {
-  title: 'AI Visibility Answers — GEO, AEO and AI Search Optimization | SHIJO.AI',
+  title: 'AI Visibility, GEO and AEO Explained | SHIJO.AI',
   description:
     'Plain definitions for AI visibility, Generative Engine Optimization, Answer Engine Optimization and ai search optimization — and how to check where your business stands.',
   keywords: ['ai visibility', 'ai search optimization', 'ai seo', 'llm seo'],

@@ -33,7 +33,7 @@ export const faqEntries: FaqEntry[] = [
   {
     slug: 'what-is-ai-visibility',
     title: 'What is AI visibility?',
-    metaTitle: 'What Is AI Visibility? Definition and How to Measure It',
+    metaTitle: 'What Is AI Visibility? How to Measure It',
     description:
       'AI visibility is whether AI assistants name your business when someone asks them a question you should be the answer to. What it means, why it is not the same as ranking, and how to measure it.',
     primaryKeyword: 'ai visibility',
@@ -169,7 +169,7 @@ export const faqEntries: FaqEntry[] = [
   {
     slug: 'ai-search-visibility-tools',
     title: 'AI search visibility tools: what they do and what to check',
-    metaTitle: 'AI Search Visibility Tools: What They Do and What to Check',
+    metaTitle: 'AI Search Visibility Tools: What to Check',
     description:
       'AI search visibility tools check whether AI assistants name your business in their answers. What these tools can measure, what they cannot, and the questions worth asking before you pay for one.',
     primaryKeyword: 'AI search visibility tools',
