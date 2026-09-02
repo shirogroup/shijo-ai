@@ -9,7 +9,9 @@ export const metadata: Metadata = {
   title: 'Blog | SHIJO.AI',
   description: 'Practical guides on AI SEO tools, ad copy, email marketing, and AI marketing platforms for small teams and agencies.',
   keywords: ['ai seo tools', 'ai marketing tools blog', 'keyword research tool', 'ai ad copy generator'],
-  alternates: { canonical: 'https://shijo.ai/blog' },
+  // Canonical host is www: the bare apex 307-redirects to www, and app/sitemap.ts
+  // lists www URLs. An apex canonical here pointed crawlers at a redirect.
+  alternates: { canonical: 'https://www.shijo.ai/blog' },
 };
 
 export default function BlogIndexPage() {

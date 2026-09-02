@@ -23,7 +23,9 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
     title: `${post.title} | SHIJO.AI Blog`,
     description: post.description,
     keywords: post.keywords,
-    alternates: { canonical: `https://shijo.ai/blog/${post.slug}` },
+    // Canonical host is www, matching app/sitemap.ts. The apex 307-redirects,
+    // so an apex canonical aimed crawlers at a redirect rather than the final URL.
+    alternates: { canonical: `https://www.shijo.ai/blog/${post.slug}` },
     openGraph: {
       // Next.js does NOT merge openGraph field-by-field: a page defining its own
       // openGraph block replaces the root layout's entirely, images included.
@@ -32,7 +34,7 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
       images: [{ url: '/brand/shijo-logo-landscape-1200x300.png', width: 1200, height: 300 }],
       title: post.title,
       description: post.description,
-      url: `https://shijo.ai/blog/${post.slug}`,
+      url: `https://www.shijo.ai/blog/${post.slug}`,
       type: 'article',
       publishedTime: post.publishedAt,
     },

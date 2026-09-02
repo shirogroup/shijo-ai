@@ -27,6 +27,41 @@ export interface BlogPost {
 
 export const posts: BlogPost[] = [
   {
+    slug: 'query-fan-out',
+    title: 'Query Fan-Out: Why AI Runs Many Searches',
+    description: 'Query fan out is what happens when you ask one question and the engine runs many searches to answer it. What that changes for your business, and why our AI visibility checker fans out on purpose.',
+    category: 'AI Search',
+    publishedAt: '2026-09-02',
+    readTime: '4 min read',
+    keywords: ['query fan out', 'ai visibility', 'ai search optimization', 'generative engine optimization'],
+    relatedToolHref: '/geo',
+    relatedToolLabel: 'Check whether answer engines name your business',
+    content: [
+      { type: 'p', text: 'Query fan out is what happens when you ask one question and the system runs many searches to answer it. You type a single sentence; behind the scenes the engine decomposes it into a set of related queries, runs them in parallel, reads across all the results, and composes one answer from what it finds. You never see the intermediate searches. You only see the paragraph they produced.' },
+      { type: 'h2', text: 'Why one question becomes many searches' },
+      { type: 'p', text: 'Traditional search matched your words against an index and handed back a ranked list. The judgement was yours — you scanned ten titles and decided which to open. An answer engine has to make that judgement itself, and a single short query rarely carries enough signal to do it well.' },
+      { type: 'p', text: 'So it fans out. "Best yoga studio near me for beginners" might become separate searches for beginner-friendly studios, for reviews in your city, for class schedules and pricing, and perhaps a comparison of two specific studios it encountered along the way. Each sub-query retrieves its own documents. The answer you read is synthesised across all of them, and any one of those sub-queries could be the reason a business was named — or missed.' },
+      { type: 'h2', text: 'What fan-out changes for your business' },
+      { type: 'ul', items: [
+        'You are no longer competing for one query. You are competing across a spread of sub-queries you cannot see.',
+        'Ranking for your obvious head term does not guarantee inclusion, because the sub-query that actually sourced the answer may be a phrasing you never targeted.',
+        'The reverse is also true: you can be cited for a question you never optimised for, because one sub-query happened to match a page you wrote for another reason.',
+        'There is no position to check. You are either named in the composed answer or you are absent from it.',
+      ] },
+      { type: 'p', text: 'That last point is the awkward one. Fan-out is invisible from the outside, so you cannot inspect which sub-queries ran and infer why you were left out. The only practical response is to ask the question the way a person would ask it, across several phrasings, and record what actually comes back.' },
+      { type: 'h2', text: 'Our checker fans out on purpose' },
+      { type: 'p', text: 'The free AI visibility checker is built around the same idea, deliberately. When you run a scan we do not ask the engines about you. We ask them the question your customer would ask.' },
+      { type: 'p', text: 'Every prompt is name-free. Not one contains your business name or your domain, and that rule lives in the code rather than in the good intentions of whoever writes the prompts. The reasoning is simple: asking an engine to "tell me about Acme Yoga" guarantees a mention and measures nothing at all. A mention only means something when it is earned by the question a stranger would type.' },
+      { type: 'p', text: 'From a business category and a city we generate up to eight phrasings of the same underlying question — the plain "what are the best X in Y", the recommendation framing, "which one do people rate most highly", the newcomer framing, the direct comparison. They are ordered by how commonly a real person phrases it, so a shortened run still covers the highest-value wording first. Those go out to five answer engines, which is up to forty separate asks for a single scan.' },
+      { type: 'p', text: 'Some of the detail is unglamorous and matters anyway. Category data arrives as machine types like yoga_studio, and rendering that raw would produce "best yoga_studios in Dallas" — a prompt no human would write, and a poor stand-in for the query it is meant to imitate. So types are mapped to the noun a person would actually type, over-broad categories like "establishment" are skipped, and plurals are inflected properly, because "best pharmacys" reads as machine-generated to the very systems being queried.' },
+      { type: 'h2', text: 'How to read what comes back' },
+      { type: 'p', text: 'Results are API-grounded: we query each engine through its public API with web search enabled. That is not the same as a personalised, signed-in consumer session, and answers vary between runs. What you get is a directional signal at one moment — genuinely useful for seeing that four engines out of five never name you, and not a guarantee of rankings, mentions, or customer outcomes. Questions an engine was not asked are marked as not checked and excluded from the score rather than counted against you.' },
+      { type: 'p', text: 'If the pattern shows you absent across most phrasings, the fix sits upstream of any tool: pages that answer those questions directly enough to be quoted. Run a check first, though, because the shape of the gap tells you which questions are worth writing for — and that is cheaper than guessing.' },
+      { type: 'p', text: 'The check is free and needs no account. If you want scans saved and repeated over time rather than run one at a time, that is what the paid plans cover on the pricing page.' },
+    ],
+  },
+
+  {
     slug: 'ai-seo-tools-keyword-research-faster',
     title: 'AI SEO Tools: How to Do Keyword Research 10x Faster',
     description: 'A practical walkthrough of how AI keyword research tools speed up the parts of SEO that used to take hours — without replacing the judgment calls that still need a human.',
