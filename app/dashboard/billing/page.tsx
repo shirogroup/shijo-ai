@@ -1,10 +1,11 @@
 'use client';
 
-import { useState, Suspense } from 'react';
+import { useState, useEffect, Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
 import { Check, Crown, Zap, Sparkles, Loader2, CheckCircle, XCircle, ExternalLink } from 'lucide-react';
 import { PLAN_DISPLAY_NAME } from '@/lib/stripe/plan-names';
+import PurchaseTracker from '@/components/PurchaseTracker';
 import {
   CHECKOUT_PLAN_LABEL,
   CHECKOUT_PLAN_PRICE,
@@ -151,6 +152,46 @@ function BillingContent() {
   const canceledRaw = searchParams.get('canceled');
   const isCanceled = canceledRaw === 'true' || canceledRaw === '1';
   const upgradedPlan = searchParams.get('plan');
+
+  // ── Upgrade conversion tracking ──────────────────────────────────────
+  // New subscribers land on /thank-you, which verifies the Checkout Session
+  // and renders <PurchaseTracker>. Upgrades by an EXISTING subscriber never go
+  // through Checkout: create-checkout's `if (liveSubscription)` branch sends
+  // them through a Stripe Billing Portal subscription_update_confirm flow that
+  // returns here, so no `purchase` event ever fired and every upgrade was
+  // invisible to Google Ads and GA4.
+  //
+  // We do not trust the `success=true` query string — it is user-editable and
+  // would mint conversions for anyone who typed it. The server re-checks with
+  // Stripe (never our own subscription mirror, which is known to go stale) and
+  // only returns a purchase for a genuinely paid, non-zero, recent invoice.
+  const [upgradePurchase, setUpgradePurchase] = useState<{
+    transactionId: string;
+    value: number;
+    currency: string;
+    planKey: string;
+    planName: string;
+    interval: string;
+  } | null>(null);
+
+  useEffect(() => {
+    if (!isSuccess) return;
+    let cancelled = false;
+
+    fetch('/api/billing/verify-upgrade')
+      .then((r) => (r.ok ? r.json() : null))
+      .then((data) => {
+        if (cancelled || !data?.verified || !data.purchase) return;
+        setUpgradePurchase(data.purchase);
+      })
+      .catch(() => {
+        // Verification unreachable. Show the success UI, count nothing.
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [isSuccess]);
   // The plan they were trying to buy when checkout was abandoned. Validated
   // against the same allowlist the server uses, so a crafted ?plan= cannot
   // make the banner advertise something we do not sell.
@@ -219,6 +260,8 @@ function BillingContent() {
       </div>
 
       {/* Success banner */}
+      {upgradePurchase && <PurchaseTracker purchase={upgradePurchase} />}
+
       {isSuccess && (
         <div className="bg-green-900/30 border border-green-700 rounded-xl p-4 mb-6 flex items-center gap-3">
           <CheckCircle className="w-5 h-5 text-green-400 flex-shrink-0" />
