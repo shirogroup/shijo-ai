@@ -20,7 +20,10 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
   if (!post) return {};
 
   return {
-    title: `${post.title} | SHIJO.AI Blog`,
+    // Suffix shortened from '| SHIJO.AI Blog' to '| SHIJO.AI' (5 chars back on
+    // every post). metaTitle overrides the <title> only where the h1 wording is
+    // longer than Google's ~60-char display width; h1 always stays post.title.
+    title: `${post.metaTitle ?? post.title} | SHIJO.AI`,
     description: post.description,
     keywords: post.keywords,
     // Canonical host is www, matching app/sitemap.ts. The apex 307-redirects,
@@ -32,7 +35,7 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
       // Without this the page ships no og:image at all, which is what Ahrefs
       // flagged as "Open Graph tags incomplete" (2026-08-22).
       images: [{ url: '/brand/shijo-logo-landscape-1200x300.png', width: 1200, height: 300 }],
-      title: post.title,
+      title: post.metaTitle ?? post.title,
       description: post.description,
       url: `https://www.shijo.ai/blog/${post.slug}`,
       type: 'article',

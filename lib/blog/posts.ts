@@ -13,7 +13,11 @@ export type BlogBlock =
 
 export interface BlogPost {
   slug: string;
+  /** Page <h1>, and the <title> when metaTitle is absent. */
   title: string;
+  /** Optional shorter <title>. Set only where `title` would push the rendered
+   *  title past Google's ~60-char display width. Never changes the h1. */
+  metaTitle?: string;
   description: string;
   category: string;
   publishedAt: string; // ISO date
@@ -64,6 +68,7 @@ export const posts: BlogPost[] = [
   {
     slug: 'ai-seo-tools-keyword-research-faster',
     title: 'AI SEO Tools: How to Do Keyword Research 10x Faster',
+    metaTitle: 'AI SEO Tools: Keyword Research 10x Faster',
     description: 'A practical walkthrough of how AI keyword research tools speed up the parts of SEO that used to take hours — without replacing the judgment calls that still need a human.',
     category: 'SEO',
     publishedAt: '2026-07-18',
@@ -118,6 +123,7 @@ export const posts: BlogPost[] = [
   {
     slug: 'ai-marketing-tools-small-business-2026',
     title: 'AI Marketing Tools Every Small Business Should Consider in 2026',
+    metaTitle: 'AI Marketing Tools for Small Business in 2026',
     description: 'A practical look at where AI marketing tools genuinely save small teams time — and where they\'re still no substitute for a strategy.',
     category: 'Marketing Strategy',
     publishedAt: '2026-06-20',

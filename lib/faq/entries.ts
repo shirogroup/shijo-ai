@@ -64,7 +64,7 @@ export const faqEntries: FaqEntry[] = [
   {
     slug: 'what-is-generative-engine-optimization',
     title: 'What is Generative Engine Optimization (GEO)?',
-    metaTitle: 'What Is Generative Engine Optimization (GEO)? A Plain Definition',
+    metaTitle: 'What Is Generative Engine Optimization (GEO)?',
     description:
       'Generative Engine Optimization (GEO) is the practice of making your content likely to be used and cited in AI-generated answers. What GEO means, how it differs from SEO, and how to check where you stand.',
     primaryKeyword: 'generative engine optimization',
@@ -95,7 +95,7 @@ export const faqEntries: FaqEntry[] = [
   {
     slug: 'what-is-answer-engine-optimization',
     title: 'What is Answer Engine Optimization (AEO)?',
-    metaTitle: 'What Is Answer Engine Optimization (AEO)? Definition and Method',
+    metaTitle: 'What Is Answer Engine Optimization (AEO)?',
     description:
       'Answer Engine Optimization (AEO) is the practice of structuring content so answer engines can extract a direct answer from it. What AEO means, how it relates to GEO, and how to check whether it is working.',
     primaryKeyword: 'answer engine optimization',
@@ -134,7 +134,7 @@ export const faqEntries: FaqEntry[] = [
   {
     slug: 'geo-vs-aeo-vs-seo',
     title: 'GEO vs AEO vs SEO: what is the difference?',
-    metaTitle: 'GEO vs AEO vs SEO: What Is the Difference? | AI Search Optimization',
+    metaTitle: 'GEO vs AEO vs SEO: What Is the Difference?',
     description:
       'GEO, AEO and SEO are three overlapping approaches to ai search optimization. What each term actually means, where they genuinely differ, and which one to start with.',
     primaryKeyword: 'ai search optimization',
