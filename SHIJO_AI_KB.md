@@ -4045,20 +4045,57 @@ produced", and do not promise a PDF attachment in marketing copy on the strength
   addressed here. Check before scaling ad spend.
 - Lint was not run to completion (timed out in the sandbox); `npx tsc --noEmit` passes clean.
 
-### §71.5 End-to-end test results — NOT YET RUN
+### §71.5 End-to-end test results — run 2026-09-03 against production
 
-To be filled in after deploy. Until every line here has a real result, §71 is unproven.
+Commit `8c11812` verified pushed (`git rev-parse HEAD` == `origin/main`) and deployed. Tested on
+`www.shijo.ai` signed in as `merianda@shirotechnologies.com`, `planTier: pro`,
+`subscriptionStatus: active`.
 
 | # | Test | Result |
 |---|---|---|
-| 1 | Free account: `/dashboard/ai-visibility` shows the upgrade prompt, not an empty list | |
-| 2 | Free account: `GET /api/geo/history` returns **402** with `upgradeUrl` | |
-| 3 | Paid account: history page loads and lists real past scans | |
-| 4 | Paid account: run a scan at `/geo` **while signed in** → it appears in history | |
-| 5 | Expanding a scan loads the engine × prompt detail | |
-| 6 | `GET /api/geo/export` downloads a CSV that opens correctly in a spreadsheet | |
-| 7 | `GET /api/geo/export?scanId=` for a scan the caller does not own → **404** | |
-| 8 | Random/malformed uuid → **404**, not 500 | |
-| 9 | Print / save as PDF produces a legible light page, not truncated at one screen | |
-| 10 | Sidebar "AI Visibility" lands on the new page; "Run a new scan" still goes to `/geo` | |
-| 11 | Pricing page, homepage and billing page all state 30 / 100 / 300 and match the code | |
+| 3 | Paid account: `GET /api/geo/history` | ✅ **200** — `planTier: "pro"`, `monthlyScans: 30` (new cap live), `csvExport: true`, `pdfDownload: true` |
+| 4 | Run a scan signed in → appears in history | ✅ scan `6bc2df84-e1a2-4e9f-af11-0b4359afa923` returned 200, history went **0 → 1**, quota **0 → 1 of 30** |
+| 5 | Detail endpoint returns the cell grid | ✅ **200**, **40 cells**, snippets present (600 chars), citations present, 10 cells correctly marked errored/not-asked |
+| 6 | History CSV | ✅ **200**, correct header, one row per scan |
+| 6b | Per-scan CSV | ✅ **200**, 51,826 bytes, 42 lines, full engine × prompt grid with snippets and citations |
+| 7 | Foreign / non-existent uuid | ✅ **404** `{"success":false,"error":"Not found"}` |
+| 8 | Malformed uuid (`not-a-uuid`) | ✅ **404**, not a 500 |
+| 10 | Sidebar "AI Visibility" → `/dashboard/ai-visibility` | ✅ lands correctly, tab shows active, "Run a new scan" links to `/geo` |
+| 11 | Pricing page copy | ✅ "1 AI visibility scan per day — results are not saved" / "30 saved…" / "100 saved…" / "300 saved… the highest allowance" — matches `GEO_ENTITLEMENTS` |
+| — | Null-score handling | ✅ scan returned `band: "unverified"` with a raw `score: 0`; history stored and exported it as **empty, not 0** — the withheld-number rule holds end to end |
+| 1, 2 | Free-account 402 path | ⏸ **NOT TESTED** — no free account was available to sign in as. The code path is `resolveGeoViewer` → `entitlement.history === false` → 402, shared by all three endpoints, but it has **not been exercised against production**. |
+| 9 | Print / save as PDF | ⏸ blocked on the §71.6 fix, retest after redeploy |
+
+### §71.6 🔴 BUG FOUND IN TESTING — the dashboard never had its dark theme applied
+
+**Found on production 2026-09-03. Pre-existing and app-wide — NOT introduced by §71.**
+
+`app/globals.css` defines the dark palette under a `.dark` class (`--background: 0 0% 4%`), and the
+whole dashboard is built for it: sidebar and top bar hardcode `bg-gray-950`, cards `bg-gray-900`,
+and every page uses `text-white` headings. **Nothing ever applied `.dark`** —
+`document.documentElement.className` is `""` on production, so `--background` stayed `0 0% 100%` and
+the shell painted white while the components painted dark.
+
+Confirmed in the browser on `/dashboard`:
+
+```
+h1 "Welcome back, Srikanth"  color: rgb(255,255,255)
+h2 "Quick Access"            color: rgb(255,255,255)
+ancestor .bg-background      background-color: rgb(255,255,255)
+```
+
+**White text on a white background.** Every `text-white` heading sitting on the page background
+rather than inside a card has been invisible to every signed-in user. Headings *inside* cards looked
+fine, which is why it survived. `/dashboard/ai-visibility` inherited the same fault.
+
+**Fix (edited locally, NOT yet deployed):** add `dark` to the root div in
+`components/dashboard/DashboardLayout.tsx`. Scoped there rather than on `<html>` deliberately — the
+marketing site is correctly light and must stay light, and `app/layout.tsx` is frozen. The custom
+properties inherit, so one class gives the whole dashboard subtree the tokens it was written against.
+
+The print stylesheet in `app/dashboard/ai-visibility/page.tsx` was updated in the same change to
+flip `.dark` back to light tokens under `@media print`, so a report a customer sends a client does
+not print black or white-on-white.
+
+**This changes the appearance of every dashboard page** — in the direction the design already
+assumed. Worth a look before it is treated as settled.

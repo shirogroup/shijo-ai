@@ -421,7 +421,16 @@ export default function AIVisibilityHistoryPage() {
       <style>{`
         @media print {
           @page { margin: 14mm; }
-          body { background: #fff !important; }
+          /*
+            The dashboard shell now carries .dark (see DashboardLayout). That
+            is right on screen and wrong on paper — a client should not receive
+            a black-backgrounded report, and with "background graphics" off
+            (the browser default) it would print as white on white. Flipping
+            the tokens back is what makes the printed copy legible; the
+            .geo-report rules below then handle the hardcoded utility colours.
+          */
+          .dark { --background: 0 0% 100%; --foreground: 0 0% 4%; }
+          body, .dark { background: #fff !important; }
           nav, aside, header, .print\\:hidden { display: none !important; }
           .geo-report, .geo-report * {
             background: transparent !important;
