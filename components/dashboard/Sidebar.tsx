@@ -26,14 +26,21 @@ import { startCheckout, type CheckoutPlanKey } from '@/lib/checkout-intent';
 // still resolve if visited directly — they are hidden from navigation, not
 // deleted. Restore an entry here the moment its page does something.
 //
-// 'AI Visibility' points straight at /geo, the live checker, rather than at
-// /dashboard/ai-visibility, which was a "coming soon" waitlist screen for a
-// feature that has been shipped and is being sold. Same reasoning as
-// app/dashboard/tools/geo-visibility-checker: /geo is the one canonical URL.
+// 'AI Visibility' points at /dashboard/ai-visibility, which as of 2026-09-03
+// is the customer's saved scan record — history, score trend and CSV export.
+// It briefly pointed straight at /geo, correctly, while this route was still a
+// redirect and before that a "coming soon" waitlist screen for a feature that
+// was already shipped and being sold.
+//
+// /geo is still the ONE canonical URL for RUNNING a scan: public, ad-safe, and
+// carrying the SEO signal. It is not duplicated inside the dashboard. The split
+// is deliberate and it is the product — free answers "where do I stand today",
+// the paid record answers "am I improving". The page links out to /geo for a
+// new scan.
 const navigation = [
   { name: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
   { name: 'AI Tools', href: '/dashboard/tools', icon: Wand2 },
-  { name: 'AI Visibility', href: '/geo', icon: Eye },
+  { name: 'AI Visibility', href: '/dashboard/ai-visibility', icon: Eye },
   { name: 'Billing', href: '/dashboard/billing', icon: CreditCard },
   { name: 'Settings', href: '/dashboard/settings', icon: Settings },
 ];
@@ -68,7 +75,7 @@ export function Sidebar() {
 
   if (loading) {
     return (
-      <div className="flex h-full w-64 flex-col border-r border-gray-800 bg-gray-950">
+      <div className="flex h-full w-64 flex-col border-r border-gray-800 bg-gray-950 print:hidden">
         <div className="p-6">
           <div className="h-8 w-32 animate-pulse rounded bg-gray-800" />
         </div>
@@ -93,7 +100,7 @@ export function Sidebar() {
                     userPlan === 'enterprise' ? 'text-purple-400' : 'text-gray-400';
 
   return (
-    <div className="flex h-full w-64 flex-col border-r border-gray-800 bg-gray-950">
+    <div className="flex h-full w-64 flex-col border-r border-gray-800 bg-gray-950 print:hidden">
       {/* Logo — matches landing page header */}
       <div className="flex h-16 items-center gap-2 border-b border-gray-800 px-6">
         <svg

@@ -98,7 +98,7 @@ export function TopBar() {
   }
 
   return (
-    <div className="flex h-16 items-center justify-between border-b border-gray-800 bg-gray-950 px-6">
+    <div className="flex h-16 items-center justify-between border-b border-gray-800 bg-gray-950 px-6 print:hidden">
       {/* Search */}
       <div className="flex flex-1 items-center gap-4">
         <div className="relative w-full max-w-md">

@@ -9,10 +9,34 @@ import { and, eq, gte, sql } from 'drizzle-orm';
  *
  *   anonymous  -> 1 scan per IP per UTC DAY   (existing, unchanged)
  *   free       -> same as anonymous; signing in on Free grants nothing extra
- *   pro        -> 4 scans per CALENDAR MONTH  (displayed "Standard", $29)
- *   plus       -> 30 scans per calendar month (displayed "Plus", $79)
- *   growth     -> 100 scans per calendar month (displayed "Pro", $199)
- *   enterprise -> 100, same as growth until Enterprise is actually sold
+ *   pro        -> 30 scans per CALENDAR MONTH  (displayed "Standard", $29)
+ *   plus       -> 100 scans per calendar month (displayed "Plus", $79)
+ *   growth     -> 300 scans per calendar month (displayed "Pro", $199)
+ *   enterprise -> 300, same as growth until Enterprise is actually sold
+ *
+ * ── 2026-09-03 REPRICE — read this before changing a number here ──────
+ *
+ * The ladder used to be pro 4 / plus 30 / growth 100 against a free tier of
+ * 1 scan per IP per day (~30 a month). So the $29 plan gave 7.5x FEWER scans
+ * than free, and a customer had to reach $79 just to match what they already
+ * had for nothing. Paid also had no features: csvExport, pdfDownload and
+ * toolCta were declared on this type and read NOWHERE in the codebase, and
+ * geo_scans was never read back on any customer-facing path. A customer's $29
+ * changed one number in this file and nothing else.
+ *
+ * Cost per scan is ~$0.28 (ENGINE_COST_ESTIMATE_USD x MAX_PROMPTS = 8, and
+ * those are deliberate over-estimates). The old 4-scan cap was therefore
+ * defending $1.12 of COGS on a $29 product. At 30 scans COGS is ~$8.40 and
+ * gross margin is ~71%.
+ *
+ * The decision that shapes this table: the free daily scan is a MARKETING
+ * ASSET and stays. So paid does not sell scans — free already gives those
+ * away. Paid sells THE RECORD: history, trend over time, and an export you
+ * can send a client. Volume is raised only so the pricing page stops arguing
+ * against buying; it is not the differentiator.
+ *
+ * If you raise a number here, re-check GEO_DAILY_BUDGET_USD in budget.ts
+ * (default $25/day, about 89 scans account-wide, shared with free traffic).
  *
  * Note the unit changes between anonymous (per day) and paid (per month).
  * That is intentional: the anonymous cap exists to stop abuse of a free
@@ -32,18 +56,33 @@ export interface GeoEntitlement {
   monthlyScans: number;
   /** Distinct brands/businesses trackable. Informational for now. */
   brands: number;
+  /**
+   * Read back your own past scans: the history list, the score trend and the
+   * per-engine detail of an earlier scan.
+   *
+   * This is THE paid differentiator, not scan volume. Anyone can run a scan
+   * for free; only a paying customer keeps the record. Enforced in
+   * app/api/geo/history/route.ts and app/api/geo/history/[id]/route.ts.
+   */
+  history: boolean;
+  /** Download the history, or one scan's cells, as CSV. Enforced in app/api/geo/export/route.ts. */
   csvExport: boolean;
+  /**
+   * Show the print-to-PDF report action in the dashboard. There is no server
+   * side PDF renderer and no PDF dependency — the report is a print stylesheet
+   * the browser saves as PDF. Do not read this flag as "a PDF file is generated".
+   */
   pdfDownload: boolean;
   /** Show the CTA into the existing faq-generator / ai-overview-optimizer. */
   toolCta: boolean;
 }
 
 export const GEO_ENTITLEMENTS: Record<GeoPlanKey, GeoEntitlement> = {
-  free:       { monthlyScans: 0,   brands: 1, csvExport: false, pdfDownload: false, toolCta: false },
-  pro:        { monthlyScans: 4,   brands: 1, csvExport: false, pdfDownload: false, toolCta: false },
-  plus:       { monthlyScans: 30,  brands: 1, csvExport: false, pdfDownload: false, toolCta: true  },
-  growth:     { monthlyScans: 100, brands: 5, csvExport: true,  pdfDownload: true,  toolCta: true  },
-  enterprise: { monthlyScans: 100, brands: 5, csvExport: true,  pdfDownload: true,  toolCta: true  },
+  free:       { monthlyScans: 0,   brands: 1,  history: false, csvExport: false, pdfDownload: false, toolCta: false },
+  pro:        { monthlyScans: 30,  brands: 1,  history: true,  csvExport: true,  pdfDownload: true,  toolCta: false },
+  plus:       { monthlyScans: 100, brands: 3,  history: true,  csvExport: true,  pdfDownload: true,  toolCta: true  },
+  growth:     { monthlyScans: 300, brands: 10, history: true,  csvExport: true,  pdfDownload: true,  toolCta: true  },
+  enterprise: { monthlyScans: 300, brands: 10, history: true,  csvExport: true,  pdfDownload: true,  toolCta: true  },
 };
 
 export function entitlementFor(planTier: string | null | undefined): GeoEntitlement {
@@ -94,7 +133,7 @@ export async function checkGeoMonthlyQuota(
       used: 0,
       limit: 0,
       message:
-        'Your current plan does not include saved GEO scans. Standard includes 4 a month, Plus 30.',
+        'Your current plan does not include saved GEO scans. Standard includes 30 a month with full history and export.',
       upgradeUrl: UPGRADE_URL,
     };
   }

@@ -27,7 +27,7 @@ export function Pricing() {
               <li className="flex items-center gap-2"><Check className="w-5 h-5 text-primary" /> 2 AI tools included</li>
               <li className="flex items-center gap-2"><Check className="w-5 h-5 text-primary" /> 3 generations per day</li>
               <li className="flex items-center gap-2"><Check className="w-5 h-5 text-primary" /> No credit card needed</li>
-              <li className="flex items-center gap-2"><Check className="w-5 h-5 text-primary" /> 1 AI visibility scan/day</li>
+              <li className="flex items-center gap-2"><Check className="w-5 h-5 text-primary" /> 1 AI visibility scan/day — not saved</li>
             </ul>
             <Link href="/register">
               <Button className="w-full" variant="outline">Get Started</Button>
@@ -48,7 +48,7 @@ export function Pricing() {
               <li className="flex items-center gap-2"><Check className="w-5 h-5 text-primary" /> All 12 AI tools</li>
               <li className="flex items-center gap-2"><Check className="w-5 h-5 text-primary" /> Advanced AI for complex tasks</li>
               <li className="flex items-center gap-2"><Check className="w-5 h-5 text-primary" /> 200 generations/month</li>
-              <li className="flex items-center gap-2"><Check className="w-5 h-5 text-primary" /> 4 AI visibility scans/month</li>
+              <li className="flex items-center gap-2"><Check className="w-5 h-5 text-primary" /> 30 saved scans + history &amp; CSV export</li>
             </ul>
             <Link href="/register">
               <Button className="w-full" variant="outline">Get Started with Standard</Button>
@@ -67,7 +67,7 @@ export function Pricing() {
             <ul className="space-y-3 mb-8">
               <li className="flex items-center gap-2"><Check className="w-5 h-5 text-primary" /> All 12 AI tools</li>
               <li className="flex items-center gap-2"><Check className="w-5 h-5 text-primary" /> 200 generations/month</li>
-              <li className="flex items-center gap-2"><Check className="w-5 h-5 text-primary" /> 30 AI visibility scans/month</li>
+              <li className="flex items-center gap-2"><Check className="w-5 h-5 text-primary" /> 100 saved AI visibility scans/month</li>
             </ul>
             <Link href="/register">
               <Button className="w-full" variant="outline">Get Started with Plus</Button>
@@ -89,7 +89,7 @@ export function Pricing() {
               <li className="flex items-center gap-2"><Check className="w-5 h-5 text-primary" /> All 12 AI tools</li>
               <li className="flex items-center gap-2"><Check className="w-5 h-5 text-primary" /> Advanced AI for complex tasks</li>
               <li className="flex items-center gap-2"><Check className="w-5 h-5 text-primary" /> 1,500 generations/month</li>
-              <li className="flex items-center gap-2"><Check className="w-5 h-5 text-primary" /> 100 AI visibility scans/month</li>
+              <li className="flex items-center gap-2"><Check className="w-5 h-5 text-primary" /> 300 saved AI visibility scans/month</li>
             </ul>
             <Link href="/register">
               <Button className="w-full bg-primary hover:bg-primary/90 text-white">Get Started with Pro</Button>

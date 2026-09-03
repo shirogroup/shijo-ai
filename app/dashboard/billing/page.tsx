@@ -60,8 +60,8 @@ const plans = [
     features: [
       'All 12 AI marketing tools',
       '200 generations per month',
-      'Advanced AI',
-      'Email sequence generator',
+      '30 saved AI visibility scans per month',
+      'Scan history, score trend and CSV export',
     ],
     highlight: false,
     tier: 'pro', // internal key stays 'pro' — displayed as "Standard", see lib/stripe/products.ts
@@ -80,7 +80,7 @@ const plans = [
     features: [
       'All 12 AI marketing tools',
       '200 generations per month',
-      '30 AI visibility scans per month',
+      '100 saved AI visibility scans per month',
       'One-click into FAQ Generator & AI Overview Optimizer',
     ],
     highlight: false,
@@ -101,8 +101,8 @@ const plans = [
     features: [
       'All 12 AI marketing tools',
       '1,500 generations per month',
-      'Advanced AI',
-      'Email sequence generator',
+      '300 saved AI visibility scans per month',
+      'Track up to 10 businesses',
     ],
     highlight: true,
     tier: 'growth', // internal key 'growth' — displayed as "Pro", see lib/stripe/products.ts

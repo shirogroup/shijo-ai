@@ -3869,3 +3869,196 @@ correctly describes an offer that does not make sense. The offer is what is brok
 **On the $500 coupon:** it is real money, but it is a *byproduct* of spend worth making, not a reason
 to spend. Burning ~$313 to unlock $500 of credit, on a funnel currently converting at 0%, just buys
 more of the same. Get one real sale first, then chase the coupon with a funnel that works.
+
+---
+
+## §70 — DECISION: free daily scan is a marketing asset. What paid must become. (2026-09-03)
+
+**Sri's decision, stated 2026-09-03: the free daily scan is a MARKETING ASSET and stays.**
+This closes option 2 in §69.5 (make free a teaser). It is a defensible call — the public checker is
+real, working, and it is the top of the funnel. Everything below follows from it.
+
+### §70.1 CONFIRMED — paid GEO has NO features. Not one.
+
+`csvExport`, `pdfDownload` and `toolCta` are **declared in `GeoEntitlement` and read nowhere in the
+codebase.** Verified:
+
+```
+grep -rn "csvExport|pdfDownload|toolCta" app/ lib/ components/
+  -> only lib/geo/entitlements.ts (the type and the table itself)
+```
+
+`entitlementFor()` has exactly **one** caller — `checkGeoMonthlyQuota` in the same file. The only
+field ever read is `monthlyScans`.
+
+**⚠️ CORRECTS §69.5 option 3.** That entry said turning on `csvExport`/`pdfDownload` for `pro` was
+"a one-line change". **That was wrong.** The flags gate nothing; there is no export feature behind
+them. Flipping them would change nothing a customer can see. The feature has to be built.
+
+### §70.2 CONFIRMED — a paying customer can never see their own scans again
+
+`app/geo/` is three files: `page.tsx`, `GeoChecker.tsx`, `api/geo/scan/route.ts`. That is the whole
+customer-facing GEO surface.
+
+Every scan **is persisted** to `geoScans` with `userId`, `score`, `band`, `enginesAnswered`,
+`cellsMentioned`, `createdAt`. But `geoScans` is read back **only** by `app/api/admin/geo-scans/*`,
+`lib/geo/admin.ts`, `lib/geo/budget.ts` and the quota counter.
+
+**There is no customer history, no trend, no saved brand, no re-scan, no export, no dashboard.**
+`brands: 1` is annotated in the source as *"Informational for now"* — it gates nothing.
+
+So the complete, literal truth about paid GEO: **the only thing a customer's $29 does is change a
+number in a quota check.** There is nothing to buy. That, not targeting, is why 27 signups produced
+0 payments (§68.4).
+
+### §70.3 CONFIRMED — the 4-scan cap defends $1.12
+
+Cost model, from `lib/geo/types.ts` `ENGINE_COST_ESTIMATE_USD` and `MAX_PROMPTS = 8`:
+
+```
+per prompt, all 5 engines: 0.012 + 0.006 + 0.006 + 0.008 + 0.003 = $0.035
+× 8 prompts                                                      = $0.28 per scan
+```
+
+These are **deliberate over-estimates** (the source says so) and some engines are sampled to fewer
+prompts, so real cost is lower. They are a cost ceiling, **not billing figures, and must never be
+shown to a user as a price.**
+
+| Standard $29 allowance | COGS/month | Gross margin |
+|---|---|---|
+| 4 scans (today) | **$1.12** | **96%** |
+| 30 scans | $8.40 | 71% |
+| 50 scans | $14.00 | 52% |
+| 100 scans | $28.00 | 3% |
+
+**The 4/month cap is protecting $1.12 on a $29 product.** It is not defending margin. It is
+defending nothing, and it is costing every sale. Raising Standard to 30/month costs $8.40 and still
+leaves 71% margin.
+
+(For reference, this is why growth/$199 can afford 100 scans: $28 COGS on $199 = 86% margin.)
+
+### §70.4 ⚠️ RISK created by the free-as-marketing-asset decision
+
+`lib/geo/budget.ts`: `DEFAULT_DAILY_BUDGET_USD = 25`, overridable by `GEO_DAILY_BUDGET_USD`. At
+$0.28/scan that is **~89 scans per day account-wide**.
+
+`checkGuards` runs for **every** caller — `skipIpCap: Boolean(signedInUser)` skips only the per-IP
+cap, **not the daily budget**. So a busy free-traffic day can exhaust the budget and start returning
+429 to **paying customers**.
+
+Free traffic and paid capacity share one budget with no reservation for paying users. If ads scale
+the free checker, this trips. **Not yet observed** — UNVERIFIED whether the cap has ever been hit —
+but it is a direct consequence of the decision and should be checked before scaling spend.
+
+### §70.5 PROPOSED ladder — climbs on capability, not scan count. NOT DECIDED.
+
+If free is the marketing asset, paid cannot be "more of the free thing". Free answers *where do I
+stand today*. Paid must answer *am I improving, across my brands, with something I can send a
+client.* That is also the only honest reason for a **monthly** subscription to exist — a one-off
+answer does not recur, a tracked position does.
+
+| Tier | Scans | Brands | Capability |
+|---|---|---|---|
+| Free | 1/day | — | full five-engine scan, **no history, no export** — the marketing asset |
+| **Standard $29** | 30/mo | 1 | **history + score-over-time + CSV/PDF export** |
+| Plus $79 | 100/mo | 3–5 | scheduled re-scans + alerts |
+| Pro $199 | 100+/mo | 10 | API / white-label client reports |
+
+Note Plus currently sits at 30 scans; if Standard moves to 30, Plus must move up or the ladder
+collapses. The ladder should climb on **brands and automation**, not volume.
+
+**What this costs to build:** the expensive half is already done — five-engine fan-out, scoring, and
+persistence all work, and `geoScans` has been accumulating real rows this whole time. What is
+missing is a read path: one `/dashboard/geo` history page, one API route selecting `geoScans` by
+`userId`, a trend chart, and export. Saved brands and alerts are a second phase.
+
+**Sequence:** raising the Standard cap is a one-value change and fixes the absurd side-by-side on the
+pricing page immediately. **But do not ship the cap change alone** — it removes the embarrassment
+without adding a reason to buy. Cap + history + export is the smallest package that is actually
+purchasable.
+
+### §70.6 Still true from §69.6
+
+The $39 one-off report (`cta: null`, no route — §68.5) remains the best paid-search product: one-time
+payment, no account, matches how people search for a one-off audit, and matches the stated
+pay-per-activity thesis. The scan engine already works; only the transaction is missing.
+
+And the Purchase conversion still has never fired (§68.2) — until it does, Google is optimising
+toward free signups, i.e. actively buying non-payers.
+
+---
+
+## §71 — BUILT: paid GEO product (history + trend + export) — 2026-09-03
+
+**STATE: edited locally and typechecked. NOT committed, NOT pushed, NOT deployed, NOT tested
+end-to-end.** Do not describe any of this as live until §71.5 is filled in with real results.
+
+Implements the §70.5 recommendation. The decision it rests on: **the free daily scan is a marketing
+asset and stays** (§70), so paid does not sell scans — it sells the record.
+
+### §71.1 New files
+
+| File | What it does |
+|---|---|
+| `lib/geo/history.ts` | Read path for a customer's own scans. `listUserScans`, `getUserScan`, `clampLimit`. **Ownership is enforced in the SQL WHERE, never as a check afterwards** — a scan id arrives from the client and is never the only thing between two customers. Anonymous scans have `user_id NULL` so they are invisible here by construction. Excludes `source != 'public'` so admin QA runs never appear in a customer's history. |
+| `lib/geo/viewer.ts` | `resolveGeoViewer()` — one shared answer to "who is asking and what may they read", so the three endpoints cannot drift. Reads `planTier` from the **users table on every request, not the JWT**, so a downgrade takes effect immediately. `isUuid()` guard so a malformed id 404s instead of reaching Postgres as a bad cast and 500ing. |
+| `app/api/geo/history/route.ts` | GET list + current month allowance. Free → **402 with `upgradeUrl`**, deliberately not an empty list (an empty list would read as "you have no scans", a different and untrue statement). `dynamic = 'force-dynamic'` — a cached response here would serve one customer's history to the next caller. |
+| `app/api/geo/history/[id]/route.ts` | GET one scan with its full cell grid. **Not-yours and does-not-exist both return the same 404** — the response must not confirm another customer's scan id. |
+| `app/api/geo/export/route.ts` | CSV. No `scanId` → one row per scan; `?scanId=` → one row per engine × prompt with snippet and citations. RFC 4180 quoting, UTF-8 BOM so Excel does not mojibake accented names, and a **formula-injection guard** (values starting `= + - @` or a control char get a leading apostrophe) because the text is third-party model output. Null score exports as empty, never `0` — `0` would chart as "invisible" when the truth is "not measured". |
+
+### §71.2 Changed files
+
+- **`lib/geo/entitlements.ts`** — the repricing. `pro 4 → 30`, `plus 30 → 100`, `growth 100 → 300`,
+  `enterprise 100 → 300`; `brands` 1/3/10. New **`history: boolean`** field, and `csvExport` /
+  `pdfDownload` are now **actually read** (`app/api/geo/export/route.ts` and the dashboard) instead of
+  being dead struct fields. Long comment block records why, with the COGS maths.
+- **`app/dashboard/ai-visibility/page.tsx`** — was a bare `redirect('/geo')`. Now the record: score
+  trend (hand-rolled inline SVG — the project has no chart dependency and one line does not justify
+  adding one), allowance meter, scan list, expand-in-place engine × prompt detail, CSV export,
+  print/save-as-PDF. Scans with a withheld score are **skipped in the chart, not plotted at zero**.
+- **`components/dashboard/Sidebar.tsx`** — "AI Visibility" now points at `/dashboard/ai-visibility`
+  instead of `/geo`. **`/geo` remains the one canonical URL for RUNNING a scan** — public, ad-safe,
+  carries the SEO signal, not duplicated in the dashboard. The page links out to it.
+- **`components/dashboard/DashboardLayout.tsx`, `TopBar.tsx`** — print-only overrides. `h-screen` +
+  `overflow-hidden` + `overflow-y-auto` meant printing captured **only the first screenful and
+  silently truncated the rest**. Fixed once here for every dashboard page. Screen layout unchanged.
+- **`lib/pricing-plans.ts`, `components/landing/Pricing.tsx`, `app/dashboard/billing/page.tsx`** —
+  scan counts updated to match the new entitlements. Leaving them would have made all three pages
+  state a number the code no longer honours. Free is now described as **"results are not saved"**,
+  which is the actual differentiator.
+
+### §71.3 Print-to-PDF is browser print, not a generated file
+
+There is no PDF dependency and no server-side renderer. `pdfDownload` shows a **Print / save as PDF**
+action backed by a print stylesheet scoped to `.geo-report`. Do not read the flag as "a PDF file is
+produced", and do not promise a PDF attachment in marketing copy on the strength of it.
+
+### §71.4 Known gaps — deliberate, not oversights
+
+- **No index on `geo_scans.user_id`.** The history query filters on it. Adding one is a `db/`
+  migration and `db/` is frozen this session. At current row counts this is not a problem; it will
+  become one. **Follow-up task.**
+- **Saved brands and alerts are not built.** `brands` is still informational — it gates nothing. The
+  Plus/Pro copy says "track up to N businesses" as an allowance, which the number honestly describes,
+  but there is no brand-management UI. **Do not add copy implying one exists.**
+- **`GEO_DAILY_BUDGET_USD` still shared** between free traffic and paying customers (§70.4). Not
+  addressed here. Check before scaling ad spend.
+- Lint was not run to completion (timed out in the sandbox); `npx tsc --noEmit` passes clean.
+
+### §71.5 End-to-end test results — NOT YET RUN
+
+To be filled in after deploy. Until every line here has a real result, §71 is unproven.
+
+| # | Test | Result |
+|---|---|---|
+| 1 | Free account: `/dashboard/ai-visibility` shows the upgrade prompt, not an empty list | |
+| 2 | Free account: `GET /api/geo/history` returns **402** with `upgradeUrl` | |
+| 3 | Paid account: history page loads and lists real past scans | |
+| 4 | Paid account: run a scan at `/geo` **while signed in** → it appears in history | |
+| 5 | Expanding a scan loads the engine × prompt detail | |
+| 6 | `GET /api/geo/export` downloads a CSV that opens correctly in a spreadsheet | |
+| 7 | `GET /api/geo/export?scanId=` for a scan the caller does not own → **404** | |
+| 8 | Random/malformed uuid → **404**, not 500 | |
+| 9 | Print / save as PDF produces a legible light page, not truncated at one screen | |
+| 10 | Sidebar "AI Visibility" lands on the new page; "Run a new scan" still goes to `/geo` | |
+| 11 | Pricing page, homepage and billing page all state 30 / 100 / 300 and match the code | |

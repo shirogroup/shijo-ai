@@ -1,10 +1,15 @@
 # Next session prompt — written 2026-09-03 (REVENUE-FIRST)
 
-**State in one line:** the app has **zero paying customers** after $186.81 of ad spend, and the
-reason is not the ads account — **paying $29 makes the GEO product 7.5× worse than free** (KB §69).
-Fix the offer before spending another dollar on traffic.
+**State in one line:** the app has **zero paying customers** after $186.81 of ad spend, because
+**paid GEO has no features** — a customer's $29 changes one number in a quota check and nothing else
+(KB §70). Build something worth buying before spending another dollar on traffic.
 
-Read first: `SHIJO_AI_KB.md` **§69** (revenue blocker), then **§68** (ads + tracking state), then
+**DECIDED 3 Sep:** the free daily scan is a **marketing asset** and stays. So paid cannot be "more
+scans" — it has to be a different product: free answers *where do I stand today*, paid answers *am I
+improving, across my brands, with something I can send a client.*
+
+Read first: `SHIJO_AI_KB.md` **§70** (the decision + what to build), then **§69** (how the offer
+inverted), then **§68** (ads + tracking state), then
 `docs/handoff/2026-09-03-ads-purchase-tracking-handoff.md`.
 
 ---
@@ -16,16 +21,29 @@ works; monetisation does not. **More traffic multiplies a zero.**
 
 ## The finding
 
-| Plan | GEO scans/month | What $29 adds vs free |
-|---|---|---|
-| Free / anonymous | **≈30** (1/day, full five-engine scan, no teaser) | — |
-| **Standard $29** | **4** | nothing — `csvExport`, `pdfDownload`, `toolCta` all `false`, same as free |
-| Plus $79 | 30 | matches what free already gave |
-| Pro $199 | 100 | |
+**Paid GEO has zero features.** `csvExport`, `pdfDownload` and `toolCta` are declared in
+`GeoEntitlement` and **read nowhere in the codebase**. `entitlementFor()` has one caller, and the
+only field ever read is `monthlyScans`.
 
-A customer must pay **$79 to get back to what they had for free**. And the ads are currently pushing
-the GEO/AI-visibility angle — driving paid traffic at the part of the product whose free tier beats
-its paid tier. No keyword, bid, budget or audience signal can fix that.
+**A paying customer can never see their own scans again.** `app/geo/` is three files. Every scan IS
+persisted to `geoScans` with userId, score, band and timestamp — but that table is read back only by
+admin routes and the quota counter. No history, no trend, no saved brand, no re-scan, no export.
+
+**And the cap defends nothing.** At `ENGINE_COST_ESTIMATE_USD` × `MAX_PROMPTS = 8`, a scan costs
+**$0.28** (a deliberate over-estimate; internal ceiling only, never a customer-facing price).
+
+| Standard $29 allowance | COGS/month | Margin |
+|---|---|---|
+| **4 scans (today)** | **$1.12** | **96%** |
+| 30 scans | $8.40 | 71% |
+| 100 scans | $28.00 | 3% |
+
+The 4/month cap protects **$1.12** on a $29 product while free gives ~30. It is not defending
+margin — it is costing every sale.
+
+**Risk created by the free-asset decision:** `GEO_DAILY_BUDGET_USD` defaults to **$25/day** ≈ 89
+scans account-wide, and `checkGuards` runs for everyone — `skipIpCap` skips only the per-IP cap, not
+the budget. A busy free day can 429 **paying customers**. Not yet observed; check before scaling spend.
 
 ---
 
@@ -52,16 +70,19 @@ its paid tier. No keyword, bid, budget or audience signal can fix that.
 >
 > Work in this order:
 >
-> 1. **Fix the GEO offer ladder.** Read §69.5 — four options are already worked out. Read
->    `lib/geo/budget.ts` first so any new scan allowance is costed against five paid APIs per scan,
->    then give me a recommendation with the actual per-customer API cost at the number you propose.
->    Do not change `lib/geo/entitlements.ts` until I pick one. Do not "fix" this by editing marketing
->    copy — the copy is accurate, the offer is wrong.
-> 2. **Scope the $39 one-off report.** It is `cta: null` with no route (§68.5), so it cannot be
->    bought — and it is the best paid-search product here: one-time payment, no account, matches how
->    people search for a one-off audit. The scan engine already works. Tell me exactly what is needed
->    (Stripe price, `STRIPE_PRICE_GEO_REPORT`, `/report` route, checkout, email delivery), what you
->    can build without touching anything I have frozen, and how long. Then build it if I say go.
+> 1. **Build the smallest purchasable paid GEO product.** §70 is the brief. The free daily scan
+>    stays — it is a marketing asset, that is decided. So paid must be *the record*, not more scans:
+>    scan history, score-over-time, and CSV/PDF export, scoped to the signed-in user. The expensive
+>    half already works — five-engine fan-out, scoring and persistence — and `geoScans` has been
+>    accumulating real rows the whole time with `userId` on them. What is missing is a read path:
+>    one `/dashboard/geo` page, one API route selecting `geoScans` by `userId`, a trend chart, export.
+>    Scope it, show me the plan, then build it if I say go.
+> 2. **Raise the Standard GEO cap in the same change, not before it.** 4/month protects $1.12 of COGS
+>    while free gives ~30 — the pricing page currently argues against buying. 30/month costs $8.40
+>    and keeps 71% margin. **Do not ship the cap change alone** — it removes the embarrassment without
+>    adding a reason to buy. And check `lib/geo/budget.ts`: `GEO_DAILY_BUDGET_USD` defaults to $25/day
+>    (~89 scans) and applies to paying users too, so tell me whether free traffic can starve paying
+>    customers before we scale ads.
 > 3. **Prove the Purchase conversion fires.** Commit `7753d91` is live but has never fired. I will
 >    make a real upgrade payment; confirm Google Ads records Purchase **exactly once** with the real
 >    value, `currency = USD`, and a `transaction_id` starting `in_`. Until this works, Google is
@@ -83,13 +104,19 @@ its paid tier. No keyword, bid, budget or audience signal can fix that.
 
 ---
 
-## Decisions Sri needs to make (nothing can ship without these)
+## Decided — do not reopen
+
+| Decision | Made |
+|---|---|
+| **The free daily scan is a marketing asset and stays.** | 3 Sep. Closes "make free a teaser". Paid must differentiate on capability, not volume. |
+
+## Still open for Sri
 
 | Decision | Why it blocks |
 |---|---|
-| **Which GEO offer fix** (§69.5: raise Standard's cap / make free a teaser / differentiate on export+history instead of volume / lead with the $39 report) | Every other revenue action is downstream of this. |
-| **Build the $39 report route?** | Best paid-search product available, and it matches the pay-per-activity thesis. Currently unpurchasable. |
-| **Is the public checker a marketing asset or a leak?** | It is the full product, free, daily, forever. That is a defensible top-of-funnel choice *or* the reason nobody pays — but it cannot be both by accident. |
+| **Approve the paid-GEO build** (history + trend + export, and the Standard cap moving to ~30) | It is the only thing that makes the $29 plan purchasable. Nothing downstream converts without it. |
+| **Where Plus $79 moves** once Standard is at 30 | Plus is 30 today; if Standard matches it the ladder collapses. Suggested: Plus climbs on brands + scheduled re-scans/alerts. |
+| **Build the $39 report route?** | Best paid-search product available and it matches the pay-per-activity thesis. Currently `cta: null`, unpurchasable. |
 
 ## Sri's to-dos before or during the session
 
