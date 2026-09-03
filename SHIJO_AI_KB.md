@@ -3765,3 +3765,107 @@ not payments.
 Qualifying spend ≈ **$186.81** of $500, deadline **16 Sep 2026**, 14 days left, required run rate
 ≈ **$22.40/day**, daily cap in place **$42/day** ($22 PMax + $20 Search). Search has historically
 underspent — check cumulative spend ~9 Sep; if below ~$340, raise Search or the target is missed.
+
+---
+
+## §69 — REVENUE BLOCKER: the GEO offer is inverted (2026-09-03)
+
+**This outranks every open Google Ads task.** Found while re-framing the session around revenue
+rather than the ads coupon. All of it is CONFIRMED against code, not inferred.
+
+### §69.1 CONFIRMED — paying $29 makes the GEO product *worse*
+
+`lib/geo/entitlements.ts`, quoted from the file:
+
+```
+anonymous  -> 1 scan per IP per UTC DAY
+free       -> same as anonymous; signing in on Free grants nothing extra
+pro        -> 4 scans per CALENDAR MONTH  (displayed "Standard", $29)
+plus       -> 30 scans per calendar month (displayed "Plus", $79)
+growth     -> 100 scans per calendar month (displayed "Pro", $199)
+```
+
+```ts
+GEO_ENTITLEMENTS = {
+  free:   { monthlyScans: 0,   csvExport: false, pdfDownload: false, toolCta: false },
+  pro:    { monthlyScans: 4,   csvExport: false, pdfDownload: false, toolCta: false },
+  plus:   { monthlyScans: 30,  csvExport: false, pdfDownload: false, toolCta: true  },
+  growth: { monthlyScans: 100, csvExport: true,  pdfDownload: true,  toolCta: true  },
+};
+```
+
+**The arithmetic a prospect does:**
+
+| Plan | GEO scans | Effective per month |
+|---|---|---|
+| Free / anonymous | 1 per day | **≈ 30** |
+| **Standard $29** | 4 per month | **4** |
+| Plus $79 | 30 per month | 30 |
+| Pro $199 | 100 per month | 100 |
+
+**Free gives 7.5× more scans than the $29 plan. A customer must pay $79 just to get back to what
+they already had for nothing.**
+
+And `pro` unlocks **nothing else** on GEO: `csvExport: false`, `pdfDownload: false`,
+`toolCta: false` — identical to free on every flag. The only thing $29 changes about GEO is
+**lowering the cap**.
+
+### §69.2 CONFIRMED — the free scan is the full product, not a teaser
+
+`app/api/geo/scan/route.ts` calls the same `runScan({ identity, prompts })` for anonymous and
+signed-in callers. There is no partial result, no blur, no withheld engine, no gated section. Grep
+for `teaser|preview|blur|gated|partial` across `app/geo app/api/geo lib/geo` returns nothing.
+
+An anonymous visitor gets the **complete five-engine scan**. Every day. Forever. Free.
+
+### §69.3 CONFIRMED — this is what the ads are currently selling
+
+The GEO asset group (`6744666927`) and the AI-visibility video were both added 2 Sep and are live.
+Paid traffic is therefore being driven at the one part of the product whose **free tier beats its
+paid tier**. Ad spend cannot convert this offer regardless of keyword, bid, budget or audience
+signal — the pricing page talks the visitor out of paying.
+
+**This is the most likely explanation for 27 free signups → 0 upgrades (§68.4).** It is a stronger
+candidate than any targeting or tracking issue. UNVERIFIED as *the* cause — no user research has been
+done — but it is verified as a fact about the offer.
+
+### §69.4 What $29 actually buys (so the fix does not overcorrect)
+
+`lib/tools/usage.ts` `TOOL_LIMITS`: free = **2 tools, 3 generations per DAY** (≈90/month);
+pro/"Standard" $29 = **12 tools, 200 generations per MONTH**.
+
+So the **tools** side of Standard is a real upgrade (2 → 12 tools), though the volume step is only
+≈2.2×. The tools ladder is defensible. **The GEO ladder is not.** Any fix should change GEO
+entitlements or the free scan rate — not gut the tools offer.
+
+### §69.5 Options — NOT YET DECIDED, needs Sri
+
+None of these are implemented. Listed so the next session does not re-derive them.
+
+1. **Raise Standard's GEO allowance above the free rate** (e.g. 40–50/month) so the ladder points
+   the right way. Cost: more API spend per paying customer, on a product where each scan hits five
+   paid APIs — check `lib/geo/budget.ts` before choosing a number.
+2. **Make free a genuine teaser** — keep one full scan, then require an account/payment for repeats
+   (e.g. 1 per month, not 1 per day). Highest revenue impact, highest risk to top-of-funnel and to
+   the "public checker" positioning the ads use.
+3. **Differentiate on something other than volume** — give paid the history, CSV/PDF export, tracked
+   re-scans and alerts, and let the one-off scan stay free. `csvExport`/`pdfDownload` flags already
+   exist and are already false for `pro`; turning them on for `pro` is a one-line change.
+4. **Lead with the $39 one-off report instead of the subscription** — see §68.5. Requires the route.
+
+**Do not "fix" this by editing marketing copy.** The copy in `lib/pricing-plans.ts` is accurate; it
+correctly describes an offer that does not make sense. The offer is what is broken.
+
+### §69.6 Revenue priority order (supersedes the ads-first ordering in §68)
+
+1. **Decide and ship the GEO offer fix** (§69.5). Nothing else can convert until the ladder points up.
+2. **Ship the $39 one-off report** (§68.5) — `cta: null`, no route. The scan engine already works;
+   only the transaction is missing: Stripe price, `STRIPE_PRICE_GEO_REPORT`, `/report` route,
+   checkout, email delivery. One-time purchases convert on cold paid traffic; subscriptions do not.
+3. **Prove the Purchase conversion fires** (§68.2). Until it does, Google optimises toward free
+   signups — it is actively buying non-payers.
+4. **Then** keyword and landing-page work (Cluster A/B + public tool pages) to bring CAC into range.
+
+**On the $500 coupon:** it is real money, but it is a *byproduct* of spend worth making, not a reason
+to spend. Burning ~$313 to unlock $500 of credit, on a funnel currently converting at 0%, just buys
+more of the same. Get one real sale first, then chase the coupon with a funnel that works.
