@@ -2056,7 +2056,15 @@ review*, Ad strength *Pending* (normal after adding assets; recheck in ~24h).
 
 Final URL on the asset group is `https://www.shijo.ai/ai-marketing-tools` (www, correct).
 
-### §51.6 ⚠️ TWO FABRICATED CLAIMS FOUND IN LIVE AD HEADLINES — NOT YET FIXED
+### §51.6 ✅ TWO FABRICATED CLAIMS FOUND IN LIVE AD HEADLINES — **BOTH FIXED, see §51.7**
+
+> **STATUS CORRECTION (2026-09-03):** the "NOT YET FIXED" heading was stale. Both headlines were
+> rewritten and saved — re-verified on screen 2 Sep in the asset group editor: the first now reads
+> **"Start With 2 Free AI Tools"** and the second is **not present in the asset group at all**.
+> Sitelinks re-verified accurate. Also stale in the text below: `app/dashboard/ai-visibility/page.tsx`
+> is now a **redirect to `/geo`** and its own comment states the feature is built, live and being sold
+> — `lib/geo/engines/` contains `claude.ts`, `dataforseo.ts` and `gemini.ts`. Do not act on the
+> original text below; it is kept for history only.
 
 Found while editing the asset group. Both are live PMax headlines and both are
 **contradicted by the code**:
@@ -3638,3 +3646,122 @@ committable. Verified with `git check-ignore` — neither path appears in `git s
 
 If a future session needs the method or the findings without the contact data, §67.4 has them.
 Anyone re-adding lead data to a tracked path is undoing a deliberate decision.
+
+---
+
+## §68 — Ads + purchase tracking session (2026-09-02 → 2026-09-03)
+
+Full detail: `claude/2026-09-03-HANDOFF-ads-purchase-tracking.md`. Running task list:
+`claude/OPEN-TASKS.md`. This section is the summary only.
+
+### §68.1 CONFIRMED — root cause of zero Purchase conversions
+
+Every subscription **upgrade** was invisible to Google Ads and GA4. Not a tag bug — a routing gap.
+
+`app/api/stripe/create-checkout/route.ts` (~line 197): when the user already has a live
+subscription the code creates a **Stripe Billing Portal** session
+(`flow_data.type = 'subscription_update_confirm'`) whose
+`after_completion.redirect.return_url` is `${baseUrl}/dashboard/billing?success=true&plan=${plan}`.
+
+That path **never touches `/thank-you`**, where `PurchaseTracker` lives. So `PurchaseTracker` never
+mounted, no `purchase` event ever reached the data layer, and no Purchase conversion ever fired.
+
+GTM was verified clean and correct throughout (§68.3).
+
+### §68.2 CONFIRMED — shipped in commit `7753d91`
+
+Verified `git rev-parse HEAD` == `git rev-parse origin/main` == `7753d91746301b0b72ccdd7cedfefb1270804f36`
+on 2026-09-03. Vercel build completed and deployed.
+
+- **NEW** `app/api/billing/verify-upgrade/route.ts` — server-side GET. Four gates: signed-in user owns
+  the `stripeCustomerId`; Stripe has an **active** subscription; `latest_invoice.status === 'paid'`
+  and `amount_paid > 0`; invoice age **< 1 hour** (`MAX_INVOICE_AGE_SECONDS = 3600`, so a later
+  refresh cannot re-fire). Returns `transactionId = invoice.id`, `value = amount_paid / 100`.
+- **MODIFIED** `app/dashboard/billing/page.tsx` — fetches that endpoint when `?success=true` and
+  renders `<PurchaseTracker purchase={upgradePurchase} />`.
+
+Two deliberate choices: it asks **Stripe directly, never the DB mirror** (D-36: DB said `incomplete`
+while Stripe said `active`), and `transaction_id` is the **Stripe invoice ID**, unique per billing
+event, so Google dedupes correctly even with conversion count `Every`.
+
+⚠️ **UNPROVEN.** Pushed and deployed, but it has never fired in production. It is not "working"
+until a real upgrade payment produces a Purchase conversion in Google Ads.
+
+### §68.3 CONFIRMED — GTM was never the problem
+
+0 workspace changes pending. Purchase tag → conversion ID `18330533913`, label
+`MDn1CIfbldIcEJmA16RE`, `value = {{DLV - value}}`, `transaction_id = {{DLV - transaction_id}}`,
+`currency = {{DLV - currency}}`, trigger = Custom Event `purchase`. Sign-up label
+`QJv5CJy6x9IcEJmA16RE` — **distinct**. `DLV - value` and `DLV - transaction_id` both Version 2.
+`components/PurchaseTracker.tsx` read and correct.
+
+**Live container version is 11 "TAG Fixed", not 10.** Any doc saying Version 10 is stale.
+
+### §68.4 CONFIRMED — the conversion count is signups, not sales
+
+Sign-up **17** (Secondary), Lead form - Submit **10** (Secondary), Purchase **0** (Primary). All at
+the $1 fallback value. Stripe holding only two test payments is correct and consistent — there is no
+double counting. Consequence: both campaigns bid *Maximize conversions* toward Purchase, which has
+never fired, so **neither campaign has ever had a usable optimization signal.**
+
+### §68.5 CONFIRMED — the $39 one-off report cannot be bought
+
+`lib/pricing-plans.ts` → `{ key: 'report', price: '$39', cta: null }` with the comment
+*"wired when the report route ships"*. `find app -type d -name "*report*"` → **no route**.
+`isReportPurchasable()` gates on `process.env.STRIPE_PRICE_GEO_REPORT`, which may be unset.
+
+**Do not build a landing page for it or add it to a campaign until the route and checkout exist** —
+that would repeat the retired-Enterprise-sitelink error (§51.1): paid clicks into a page that cannot
+convert. Correct order: Stripe price + env → `/report` route + checkout + fulfilment → landing page →
+campaign.
+
+### §68.6 CONFIRMED — GCLID is not captured anywhere
+
+`grep -E 'gclid|wbraid|gbraid|utm_source|click_id'` across `app/ lib/ db/ components/` → **zero
+matches**. No click ID is persisted, so **offline conversion import is impossible** today.
+
+### §68.7 CONFIRMED — Ads account changes applied
+
+Negative keyword list `SHIJO - Global Negatives v1` (48 terms) applied to both campaigns — the
+account previously had **zero** negatives; top-10 search terms by cost were **$56.27, 36% of all
+spend, 0 purchases**, with `flow ai` + `google flow` alone at **$20.41**. URL exclusions
+(`/thank-you`, `/dashboard`, `/login`) on Search. `Get directions` goal removed. PMax budget
+$10 → $22/day. Asset Group 1 headlines rewritten. New GEO asset group `6744666927` created.
+
+**SHIRO BPO Service leak fixed** — cause was an **account-level Business Profile location asset with
+"All locations selected"**. Removed.
+
+Billing resolved: both manual payments cleared, account at **$112.23 credit**, "No upcoming
+payments", overdue diagnostic gone. **Do not make another Ads payment** — the coupon counts *spend*,
+not payments.
+
+### §68.8 Mistakes made this session — recorded so they are not repeated
+
+1. The GEO video was **left on Asset Group 1** after the GEO asset group was created, recreating the
+   exact video/message mismatch the new group existed to fix. Removed. Consequence disclosed:
+   Asset Group 1 ad strength dropped Average → **Poor**.
+2. Google **auto-generated 4 false headlines** on the new GEO asset group and they were live before
+   being caught: *"Free Daily AI Visibility Scan"* (entitlements are 4/30/100 **per month**),
+   *"Test Your GEO Rankings Today"* (no ranking is produced), *"Boost Your ChatGPT Mentions"* (it
+   **measures**, it does not boost). All cleared and hand-written replacements substituted.
+   **Google's auto-generated assets must be reviewed on every asset-group edit.**
+
+### §68.9 UNVERIFIED / blocked
+
+- **AI Max Final URL expansion** — decision is OFF (22 clicks, $6.13, 0 conversions), but the campaign
+  settings panel hangs on "Loading name / Loading summary" (~15 attempts over two days). The page
+  displays "Turn off ad blockers". Hypothesis: an ad-blocker extension breaks it. **UNVERIFIED.**
+- **Enhanced Conversions** on Purchase — confirmed **Not configured**.
+- **Purchase conversion label ownership** for type ID `7688514951` — **UNVERIFIED**.
+- **`Lead form - Submit` removal does not persist** — verified after a full reload. The live lead form
+  asset ("See SHIJO.AI in Action", 416 impr, 21 clicks, **$21.47**) regenerates it. Only fix is
+  deleting the asset, and the leads CSV must be exported first.
+- **Ahrefs is on the FREE plan** (`srikanth@shiroapps.com`) — Keywords Explorer is paid-gated. The
+  planned AEO/GEO keyword research did **not** happen. Use Google Ads Keyword Planner, the existing
+  833-term search terms report, and `docs/marketing/2026-08-23-keyword-clusters.csv` instead.
+
+### §68.10 Coupon status at session end
+
+Qualifying spend ≈ **$186.81** of $500, deadline **16 Sep 2026**, 14 days left, required run rate
+≈ **$22.40/day**, daily cap in place **$42/day** ($22 PMax + $20 Search). Search has historically
+underspent — check cumulative spend ~9 Sep; if below ~$340, raise Search or the target is missed.
