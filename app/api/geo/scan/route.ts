@@ -3,7 +3,7 @@ import { db } from '@/db';
 import { geoScanCells, geoScans, users } from '@/db/schema';
 import { eq } from 'drizzle-orm';
 import { getSession } from '@/lib/auth';
-import { checkGeoMonthlyQuota } from '@/lib/geo/entitlements';
+import { checkGeoMonthlyQuota, entitlementFor } from '@/lib/geo/entitlements';
 import { clientIpFrom } from '@/lib/rate-limit';
 import { serverErrorResponse } from '@/lib/api/errors';
 import { checkGuards, estimateScanCostUsd } from '@/lib/geo/budget';
@@ -121,7 +121,28 @@ export async function POST(req: NextRequest) {
       if (u) signedInUser = u;
     }
 
-    if (signedInUser) {
+    // ── 2026-09-04 BUG FIX. Read this before simplifying it back. ────
+    //
+    // This used to be `if (signedInUser)`, unconditionally. A Free account has
+    // monthlyScans: 0, and checkGeoMonthlyQuota refuses any plan whose
+    // allowance is <= 0 with reason 'no_plan_allowance' — so a signed-in Free
+    // user was handed a 402 and could not scan AT ALL, while a logged-out
+    // visitor on the same machine got their scan. Signing up made the product
+    // strictly worse, and it silently contradicted three things at once: this
+    // module's own rule that "free -> same as anonymous", the pricing page's
+    // "1 AI visibility scan per day" under the Free plan, and the entire ad
+    // funnel, which pays to turn visitors into exactly those signed-in Free
+    // accounts.
+    //
+    // The plan meter is for plans that HAVE an allowance. A Free account has
+    // none, so it falls through to the same per-IP day cap as an anonymous
+    // visitor — which is what "signing in on Free grants nothing extra" was
+    // always meant to say.
+    const hasPlanAllowance = signedInUser
+      ? entitlementFor(signedInUser.planTier).monthlyScans > 0
+      : false;
+
+    if (signedInUser && hasPlanAllowance) {
       const quota = await checkGeoMonthlyQuota(signedInUser.id, signedInUser.planTier);
       if (!quota.allowed) {
         return NextResponse.json(
@@ -141,10 +162,15 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    // Budget guard always applies. The per-IP day cap applies to ANONYMOUS
-    // callers only — a signed-in user has already been metered above.
+    // Budget guard always applies. The per-IP day cap is skipped only for a
+    // caller who was ALREADY metered against a paid allowance above — a $199
+    // customer must not be locked out by a control meant for anonymous abuse.
+    //
+    // A signed-in Free user is deliberately NOT skipped: nothing metered them,
+    // so the day cap is the only thing standing between the free checker and
+    // unbounded spend across five paid APIs.
     const guard = await checkGuards(ip, plannedCost, new Date(), {
-      skipIpCap: Boolean(signedInUser),
+      skipIpCap: hasPlanAllowance,
     });
     if (!guard.allowed) {
       return NextResponse.json(
