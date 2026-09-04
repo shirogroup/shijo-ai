@@ -84,6 +84,47 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     fetchUser();
   }, [fetchUser]);
 
+  /**
+   * Re-read the profile when this tab becomes visible again.
+   *
+   * WHY (bug found in live testing 2026-09-04): confirming an email opens the
+   * link in a NEW tab. The verify route updates the database and redirects
+   * that new tab — but the ORIGINAL dashboard tab still holds the React state
+   * it fetched on mount, where emailVerified is false. So the "confirm your
+   * email" notice and the bell dot stayed on screen after the user had already
+   * confirmed, until they manually reloaded. The server was correct throughout:
+   * /api/auth/me returned emailVerified: true immediately, and the response is
+   * not cached (cache-control: public, max-age=0, must-revalidate). Only the
+   * client was stale.
+   *
+   * This is deliberately generic rather than an email-verification special
+   * case — the same staleness hits plan tier after an upgrade in another tab,
+   * and quota after a generation elsewhere.
+   *
+   * Throttled: a user flicking between tabs must not fire a request per
+   * switch. Nothing here touches sessions, tokens or credentials — it only
+   * changes HOW OFTEN the client re-reads its own profile.
+   */
+  useEffect(() => {
+    const MIN_INTERVAL_MS = 30_000;
+    let lastAt = Date.now();
+
+    const maybeRefresh = () => {
+      if (document.visibilityState !== 'visible') return;
+      const now = Date.now();
+      if (now - lastAt < MIN_INTERVAL_MS) return;
+      lastAt = now;
+      fetchUser();
+    };
+
+    document.addEventListener('visibilitychange', maybeRefresh);
+    window.addEventListener('focus', maybeRefresh);
+    return () => {
+      document.removeEventListener('visibilitychange', maybeRefresh);
+      window.removeEventListener('focus', maybeRefresh);
+    };
+  }, [fetchUser]);
+
   const login = async (email: string, password: string) => {
     try {
       const response = await fetch('/api/auth/login', {

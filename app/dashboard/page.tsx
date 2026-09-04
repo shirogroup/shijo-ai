@@ -1,6 +1,6 @@
 'use client';
 
-import { Suspense } from 'react';
+import { Suspense, useEffect } from 'react';
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
@@ -17,7 +17,19 @@ const categoryOrder: ToolCategory[] = ['social', 'seo', 'ads', 'email'];
 // behind a Suspense boundary per Next.js App Router requirements.
 function EmailVerifyBanner() {
   const searchParams = useSearchParams();
+  const { refetch } = useAuth();
   const result = searchParams.get('emailVerify');
+
+  // The verify route updates the database and redirects here, but the client
+  // still holds the profile it fetched on mount — so without this the page
+  // said "Email confirmed" at the top while the top bar kept nagging the user
+  // to confirm their email. Pull the fresh profile once on arrival.
+  useEffect(() => {
+    if (result === 'success' || result === 'already') {
+      void refetch();
+    }
+  }, [result, refetch]);
+
   if (!result) return null;
 
   if (result === 'success') {
