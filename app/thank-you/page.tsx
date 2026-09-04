@@ -55,6 +55,7 @@ type VerifiedPurchase = {
   planKey: string;
   planName: string;
   interval: string;
+  email?: string;
 };
 
 /**
@@ -97,6 +98,13 @@ async function verifyPurchase(
       planKey,
       planName: PLAN_DISPLAY_NAME[planKey] || 'your new plan',
       interval,
+      // Enhanced Conversions. Ownership was already proved above
+      // (session.metadata.userId === userId), so this is the buyer's own
+      // address being handed back to the buyer's own browser.
+      email:
+        session.customer_details?.email ||
+        session.customer_email ||
+        undefined,
     };
   } catch {
     // Stripe unreachable or id unknown. Say thank you, report nothing.

@@ -34,6 +34,26 @@ type Purchase = {
   planKey: string;
   planName: string;
   interval: string;
+  /**
+   * The buyer's email, for Google Ads ENHANCED CONVERSIONS.
+   *
+   * Why this exists (added 2026-09-04): the Purchase conversion action in
+   * Google Ads read "Enhanced Conversions: Not configured" because the tag had
+   * no user-provided data to send. Without it, a conversion can only be matched
+   * to an ad click by cookie — and when the cookie is missing, blocked or
+   * expired, the sale is simply never attributed and the conversion is lost.
+   * Enhanced Conversions gives Google a second way to match: a hashed email.
+   *
+   * NOT hashed here on purpose. Google normalises and SHA-256 hashes it in
+   * the browser before anything leaves the page — that is the documented
+   * Enhanced Conversions contract for the unhashed `email` key. Do not
+   * pre-hash it; that is a different key (`sha256_email_address`) and mixing
+   * the two makes Google hash the hash, so every match fails.
+   *
+   * Optional: if the email is ever unavailable the conversion still fires,
+   * just without the extra matching signal.
+   */
+  email?: string;
 };
 
 export default function PurchaseTracker({ purchase }: { purchase: Purchase }) {
@@ -92,6 +112,23 @@ export default function PurchaseTracker({ purchase }: { purchase: Purchase }) {
     window.dataLayer = window.dataLayer || [];
     window.dataLayer.push({
       event: 'purchase',
+      // Enhanced Conversions payload.
+      //
+      // The key MUST be `email`, not `email_address`. Google's manual GTM
+      // setup doc (support.google.com/google-ads/answer/12785317) lists the
+      // accepted unhashed dataLayer keys as `email`, `phone_number` and
+      // `address.*`; `sha256_email_address` is the PRE-HASHED variant and is a
+      // different contract. Sending `email_address` unhashed matches nothing
+      // and Enhanced Conversions silently stays empty.
+      //
+      // Unhashed on purpose: Google normalises and SHA-256 hashes it in the
+      // browser before it leaves the page. Pre-hashing here would make Google
+      // hash the hash and every match would fail.
+      //
+      // GTM reads this via a User-Provided Data variable (manual
+      // configuration) whose Email field points at a Data Layer Variable for
+      // `user_data.email`.
+      user_data: purchase.email ? { email: purchase.email } : undefined,
       transaction_id: purchase.transactionId,
       value: purchase.value,
       currency: purchase.currency,

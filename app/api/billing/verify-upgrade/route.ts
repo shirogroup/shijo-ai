@@ -126,6 +126,10 @@ export async function GET() {
         planKey,
         planName: PLAN_DISPLAY_NAME[planKey] || 'your new plan',
         interval,
+        // For Enhanced Conversions. This is the signed-in user's own address,
+        // already loaded above and already theirs — no extra lookup, and it
+        // never reaches the page for anyone but the account owner.
+        email: user.email ?? undefined,
       },
     });
   } catch (error) {
