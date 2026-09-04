@@ -10,6 +10,8 @@
  * Sign up at https://resend.com and add your API key to Vercel env vars.
  */
 
+import { PLAN_DISPLAY_NAME } from '@/lib/stripe/plan-names';
+
 const RESEND_API_KEY = process.env.RESEND_API_KEY;
 const FROM_EMAIL = process.env.FROM_EMAIL || 'SHIJO.AI <noreply@shijo.ai>';
 // Optional Reply-To. Resend flags no-reply senders as a deliverability and
@@ -169,7 +171,14 @@ export function buildWelcomeEmail(
         <td style="padding: 6px 12px; font-size: 12px; text-align: right;">
           ${t.free
             ? '<span style="background: #dcfce7; color: #166534; padding: 2px 8px; border-radius: 9999px; font-weight: 600;">FREE</span>'
-            : '<span style="color: #9ca3af;">Pro</span>'
+            // The 10 locked tools are minPlan: 'pro' in lib/tools/registry.ts,
+            // and internal 'pro' is shown to customers as "Standard" ($29).
+            // "Pro" is the display name for internal 'growth' — the $199 tier.
+            // This was hardcoded to 'Pro', so the email marked a tool Pro and
+            // then offered to unlock it "for just $29/month" two inches below.
+            // Same class as D-21, where a hand-rolled chain told $199 customers
+            // they were on the Free plan. Never hand-roll it.
+            : `<span style="color: #9ca3af;">${PLAN_DISPLAY_NAME.pro}</span>`
           }
         </td>
       </tr>`
@@ -207,6 +216,32 @@ export function buildWelcomeEmail(
       <!-- CTA -->
       <div style="text-align: center; margin: 32px 0;">
         <a href="https://shijo.ai/dashboard/tools" style="display: inline-block; background: linear-gradient(135deg, #CC0000, #990000); color: white; text-decoration: none; padding: 14px 32px; border-radius: 12px; font-size: 16px; font-weight: 600;">Start Using Your Free Tools</a>
+      </div>
+
+      <!-- Divider -->
+      <hr style="border: none; border-top: 1px solid #e5e7eb; margin: 32px 0;" />
+
+      <!--
+        AI visibility (GEO). Added 2026-09-04. It was missing entirely, which
+        left the strongest thing in the product out of its own welcome email:
+        free on the Free plan, the differentiated offering (the 12 tools are a
+        commodity), and what the ads increasingly sell.
+
+        ACCURACY RULES — every number here is load-bearing:
+        - "one scan per day" matches SCANS_PER_IP_PER_UTC_DAY = 1.
+        - "not saved" is the truth for Free (GEO_ENTITLEMENTS.free.history is
+          false) and it is what the paywall tells them, so this must not imply
+          otherwise.
+        - "five answer engines" matches lib/geo/engines. Do NOT name the AI
+          vendors here — vendor disclosure belongs in the Privacy sub-processor
+          list, /security and /ai-compliance only.
+      -->
+      <h2 style="font-size: 20px; font-weight: 700; color: #111827; margin: 0 0 4px 0;">Also free: check your AI visibility</h2>
+      <p style="font-size: 14px; color: #6b7280; margin: 0 0 16px 0;">When someone asks an AI assistant for a recommendation in your category, does your business get named? Run a scan and see, engine by engine.</p>
+      <div style="background: #f9fafb; border: 1px solid #e5e7eb; border-radius: 12px; padding: 20px; text-align: center; margin-bottom: 32px;">
+        <p style="font-size: 14px; color: #374151; margin: 0 0 12px 0;">We ask <strong>five answer engines</strong> the questions your customers actually ask, then show you where you were named. <strong>One scan per day, free.</strong></p>
+        <a href="https://shijo.ai/geo" style="display: inline-block; background: #111827; color: white; text-decoration: none; padding: 10px 24px; border-radius: 8px; font-size: 14px; font-weight: 600;">Run a free scan</a>
+        <p style="font-size: 12px; color: #9ca3af; margin: 12px 0 0 0;">Free scans are not saved. Standard keeps every scan, charts your score over time, and exports the engine-by-engine detail as a CSV.</p>
       </div>
 
       <!-- Divider -->
