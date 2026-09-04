@@ -68,6 +68,26 @@ const baseUrl = 'https://www.shijo.ai';
       lastModified: new Date(),
       changeFrequency: 'weekly',
       priority: 0.8,
+      // Video sitemap extension, added 2026-09-04. This is the second half of
+      // making the explainer discoverable: the page carries VideoObject
+      // structured data, and this tells Search Console a video lives on that
+      // URL so it appears under Video indexing rather than waiting to be
+      // stumbled upon. title/description/thumbnail_loc/content_loc are the
+      // fields Google treats as required. Keep `duration` (seconds) in step
+      // with the encoded file and with PT58S in the page's JSON-LD.
+      videos: [
+        {
+          title: 'AI Visibility, explained',
+          thumbnail_loc: `${baseUrl}/videos/ai-visibility-explained-poster.jpg`,
+          description:
+            'A 58-second explainer: what AI visibility is, whether ChatGPT, Gemini, Perplexity and Google AI Overviews name your business in the answers they write, how Generative Engine Optimization (GEO) and Answer Engine Optimization (AEO) differ, and how to run a free AI visibility check.',
+          content_loc: `${baseUrl}/videos/ai-visibility-explained.mp4`,
+          duration: 58,
+          family_friendly: 'yes',
+          publication_date: '2026-09-04',
+          live: 'no',
+        },
+      ],
     },
     {
       url: `${baseUrl}/terms`,

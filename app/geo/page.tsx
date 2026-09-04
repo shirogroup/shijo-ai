@@ -44,6 +44,37 @@ export default function GeoPage() {
   return (
     <>
       <Header />
+      {/*
+        VideoObject structured data. Google's video indexing needs name,
+        description, thumbnailUrl, uploadDate, duration (ISO 8601) and
+        contentUrl to consider the video eligible; without it the <video> tag
+        alone is usually skipped. duration PT58S matches the encoded file
+        (58.04s) — keep the two in step if the video is ever re-cut.
+      */}
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{
+          __html: JSON.stringify({
+            '@context': 'https://schema.org',
+            '@type': 'VideoObject',
+            name: 'AI Visibility, explained',
+            description:
+              'A 58-second explainer: what AI visibility is, whether ChatGPT, Gemini, Perplexity and Google AI Overviews name your business in the answers they write, how Generative Engine Optimization (GEO) and Answer Engine Optimization (AEO) differ, and how to run a free AI visibility check.',
+            thumbnailUrl: ['https://www.shijo.ai/videos/ai-visibility-explained-poster.jpg'],
+            uploadDate: '2026-09-04T00:00:00-05:00',
+            duration: 'PT58S',
+            contentUrl: 'https://www.shijo.ai/videos/ai-visibility-explained.mp4',
+            embedUrl: 'https://www.shijo.ai/geo',
+            isFamilyFriendly: true,
+            inLanguage: 'en',
+            publisher: {
+              '@type': 'Organization',
+              name: 'SHIJO.AI',
+              url: 'https://www.shijo.ai',
+            },
+          }),
+        }}
+      />
       <main className="min-h-screen bg-background">
         <section className="border-b bg-muted/30">
           <div className="container mx-auto px-6 py-16 md:py-20 text-center">
@@ -82,6 +113,57 @@ export default function GeoPage() {
 
         <section className="container mx-auto px-6 py-12">
           <GeoChecker />
+        </section>
+
+        {/*
+          Instructional video. Added 2026-09-04.
+
+          WHY IT IS HERE AND NOT ON A PAGE OF ITS OWN: Google indexes a video
+          when it is prominent, self-hosted or embedded, and described by
+          VideoObject structured data on the SAME page. /geo is already the
+          canonical, indexed page for this topic, so the video reinforces the
+          page that ranks rather than competing with it for the same query.
+
+          ACCURACY: every line spoken on screen is copied verbatim from text
+          already published on this page and on the checker below it — the
+          engine list, the GEO and AEO definitions, and the "one free scan per
+          day" limit. There is no claim in the video that is not already live.
+
+          AUDIO: there is no narration. The video is fully captioned on screen
+          and is understood with the sound off; the only audio is a quiet
+          original ambient bed (synthesised from scratch for this file, so there
+          is no third-party licence attached to it). It never autoplays — the
+          element is `controls` only, so nothing makes noise unprompted.
+
+          `preload="none"` keeps the file off the critical path — the poster is
+          all that loads until a visitor presses play. That matters here: /geo
+          is a live ad landing page.
+        */}
+        <section className="container mx-auto px-6 pb-4">
+          <div className="max-w-3xl mx-auto">
+            <h2 className="text-sm font-semibold uppercase tracking-wide text-primary mb-3 text-center">
+              Watch: AI visibility in 60 seconds
+            </h2>
+            <video
+              className="w-full rounded-xl border border-border shadow-sm"
+              controls
+              preload="none"
+              playsInline
+              poster="/videos/ai-visibility-explained-poster.jpg"
+              width={1920}
+              height={1080}
+            >
+              <source src="/videos/ai-visibility-explained.mp4" type="video/mp4" />
+              Your browser cannot play this video. It explains what AI visibility
+              is, which answer engines SHIJO.AI checks, and how GEO and AEO
+              differ — all of which is written out on this page.
+            </video>
+            <p className="mt-3 text-sm text-muted-foreground text-center">
+              A 58-second explainer: what AI visibility is, which answer engines
+              we check, and how GEO and AEO differ. No narration — it is
+              captioned throughout, so it reads fine with the sound off.
+            </p>
+          </div>
         </section>
 
         <section className="container mx-auto px-6 pb-16">
