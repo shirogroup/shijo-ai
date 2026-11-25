@@ -41,9 +41,9 @@ export const faqEntries: FaqEntry[] = [
     updatedAt: '2026-09-02',
     readTime: '4 min read',
     shortAnswer:
-      'AI visibility is whether AI assistants such as ChatGPT, Gemini, Perplexity and Google AI Overviews name your business in their answers when someone asks a question your business should be the answer to. Unlike a search ranking, there is no single position to check — the same question can produce different answers at different moments.',
+      'AI visibility is whether AI assistants such as ChatGPT Search, Google Gemini, Perplexity, Claude and Google AI Overviews name your business in their answers when someone asks a question your business should be the answer to. Unlike a search ranking, there is no single position to check — the same question can produce different answers at different moments.',
     content: [
-      { type: 'p', text: 'AI visibility is whether AI assistants name your business when someone asks them a question you should be the answer to. When a person asks ChatGPT, Gemini, Perplexity or Google AI Overviews for a recommendation, the assistant returns a short written answer naming a handful of options. AI visibility is simply this: are you one of them?' },
+      { type: 'p', text: 'AI visibility is whether AI assistants name your business when someone asks them a question you should be the answer to. When a person asks ChatGPT Search, Google Gemini, Perplexity, Claude or Google AI Overviews for a recommendation, the assistant returns a short written answer naming a handful of options. AI visibility is simply this: are you one of them?' },
       { type: 'p', text: 'It is a different question from search ranking, and the difference matters. A ranking is a position in a list you can look up. An AI answer is generated text — there is no position ten to be on, no page two to climb from. You are either named in the answer or you are absent from it.' },
       { type: 'h2', text: 'Why it cannot be measured like a ranking' },
       { type: 'p', text: 'Three properties make AI visibility harder to pin down than a keyword position, and any tool that claims otherwise is overselling.' },
