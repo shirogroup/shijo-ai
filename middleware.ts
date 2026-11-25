@@ -29,7 +29,24 @@ function decodeJWTPayload(token: string): { userId: string; email: string; exp?:
   }
 }
 
+function hostname(request: NextRequest): string {
+  return (request.headers.get("host") ?? "").split(":")[0];
+}
+
 export function middleware(request: NextRequest) {
+  // learn.shijo.ai always serves the coming-soon training landing, including
+  // paths such as /pricing, so the main product and plan pages are not shown
+  // on this host. www.shijo.ai / shijo.ai are unchanged.
+  if (hostname(request) === "learn.shijo.ai") {
+    const url = request.nextUrl.clone();
+    if (url.pathname !== "/learn") {
+      url.pathname = "/learn";
+      url.search = "";
+      return NextResponse.rewrite(url);
+    }
+    return NextResponse.next();
+  }
+
   const { pathname } = request.nextUrl;
 
   // Protected routes — /admin additionally requires isAdmin, which is
@@ -72,5 +89,11 @@ export function middleware(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ['/dashboard/:path*', '/admin/:path*'],
+  // Broader than the previous dashboard/admin-only matcher so the
+  // learn.shijo.ai host rewrite can run on every page request. Static
+  // assets and Next internals are excluded. Auth checks below still
+  // apply only to /dashboard and /admin.
+  matcher: [
+    "/((?!_next/static|_next/image|_next/webpack-hmr|favicon.ico|icon.svg|apple-icon.svg|.*\\.(?:svg|png|jpg|jpeg|gif|webp|ico|txt|xml)$).*)",
+  ],
 };
