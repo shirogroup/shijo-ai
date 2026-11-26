@@ -29,7 +29,7 @@ export const metadata: Metadata = {
   alternates: { canonical: '/geo' },
   title: 'AI Visibility Checker — Free AI Search Visibility Tool | SHIJO.AI',
   description:
-    'Free AI visibility check: see whether ChatGPT, Gemini, Perplexity and Google AI Overviews name your business when people ask for a recommendation. No signup required.',
+    'Free AI visibility check: see whether ChatGPT Search, Google Gemini, Perplexity, Claude and Google AI Overviews name your business when people ask for a recommendation. No signup required.',
   keywords: [
     'ai visibility',
     'ai visibility checker',
@@ -59,7 +59,7 @@ export default function GeoPage() {
             '@type': 'VideoObject',
             name: 'AI Visibility, explained',
             description:
-              'A 58-second explainer: what AI visibility is, whether ChatGPT, Gemini, Perplexity and Google AI Overviews name your business in the answers they write, how Generative Engine Optimization (GEO) and Answer Engine Optimization (AEO) differ, and how to run a free AI visibility check.',
+              'A 58-second explainer: what AI visibility is, whether ChatGPT Search, Google Gemini, Perplexity, Claude and Google AI Overviews name your business in the answers they write, how Generative Engine Optimization (GEO) and Answer Engine Optimization (AEO) differ, and how to run a free AI visibility check.',
             thumbnailUrl: ['https://www.shijo.ai/videos/ai-visibility-explained-poster.jpg'],
             uploadDate: '2026-09-04T00:00:00-05:00',
             duration: 'PT58S',
@@ -85,11 +85,11 @@ export default function GeoPage() {
               AI visibility: when someone asks AI for a recommendation, do you come up?
             </h1>
             <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
-              AI visibility is whether ChatGPT, Gemini, Perplexity and Google AI
-              Overviews name your business in the answers they write. We ask
-              those answer engines the questions your customers actually ask —
-              then show you, engine by engine, whether you were named. No
-              account needed.
+              AI visibility is whether ChatGPT Search, Google Gemini, Perplexity,
+              Claude and Google AI Overviews name your business in the answers
+              they write. We ask those answer engines the questions your
+              customers actually ask — then show you, engine by engine, whether
+              you were named. No account needed.
             </p>
             <p className="text-sm text-muted-foreground max-w-2xl mx-auto mt-5">
               The work of earning those mentions goes by two names:{' '}

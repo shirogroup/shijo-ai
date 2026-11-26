@@ -80,7 +80,7 @@ const baseUrl = 'https://www.shijo.ai';
           title: 'AI Visibility, explained',
           thumbnail_loc: `${baseUrl}/videos/ai-visibility-explained-poster.jpg`,
           description:
-            'A 58-second explainer: what AI visibility is, whether ChatGPT, Gemini, Perplexity and Google AI Overviews name your business in the answers they write, how Generative Engine Optimization (GEO) and Answer Engine Optimization (AEO) differ, and how to run a free AI visibility check.',
+            'A 58-second explainer: what AI visibility is, whether ChatGPT Search, Google Gemini, Perplexity, Claude and Google AI Overviews name your business in the answers they write, how Generative Engine Optimization (GEO) and Answer Engine Optimization (AEO) differ, and how to run a free AI visibility check.',
           content_loc: `${baseUrl}/videos/ai-visibility-explained.mp4`,
           duration: 58,
           family_friendly: 'yes',
