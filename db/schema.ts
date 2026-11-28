@@ -585,6 +585,19 @@ export const signupThrottle = pgTable('signup_throttle', {
   keyWindowIdx: index('idx_signup_throttle_key_window').on(table.key, table.windowStart),
 }));
 
+// Optional Module 1 email list. Stored in the existing Postgres database
+// (DATABASE_URL) via Drizzle. Not an account, and not a support ticket.
+// Apply db/migrations/learn-module-subscribers.sql before this accepts rows.
+export const learnModuleSubscribers = pgTable('learn_module_subscribers', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  email: varchar('email', { length: 255 }).notNull().unique(),
+  name: varchar('name', { length: 80 }),
+  unsubscribeToken: varchar('unsubscribe_token', { length: 64 }).notNull(),
+  unsubscribedAt: timestamp('unsubscribed_at'),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  updatedAt: timestamp('updated_at').defaultNow().notNull(),
+});
+
 // ========================================
 // PASSWORD RESET TOKENS
 // ========================================
