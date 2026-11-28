@@ -30,21 +30,59 @@ function decodeJWTPayload(token: string): { userId: string; email: string; exp?:
 }
 
 function hostname(request: NextRequest): string {
-  return (request.headers.get("host") ?? "").split(":")[0];
+  return (request.headers.get("host") ?? "").split(":")[0].toLowerCase();
+}
+
+function barePath(pathname: string): string {
+  if (pathname.length > 1 && pathname.endsWith("/")) {
+    return pathname.slice(0, -1);
+  }
+  return pathname;
 }
 
 export function middleware(request: NextRequest) {
-  // learn.shijo.ai always serves the coming-soon training landing, including
-  // paths such as /pricing, so the main product and plan pages are not shown
-  // on this host. www.shijo.ai / shijo.ai are unchanged.
+  // learn.shijo.ai serves the free Module 1 lesson. Other paths on this host
+  // (including /pricing) still rewrite to the lesson so product and plan pages
+  // are not shown here. www.shijo.ai / shijo.ai are unchanged.
+  //
+  // Public URLs on this host:
+  //   /                → app route /learn (Module 1)
+  //   /visibility-log  → app route /learn/visibility-log
+  //   /downloads/visibility-log.md is the worksheet file and is not rewritten.
   if (hostname(request) === "learn.shijo.ai") {
     const url = request.nextUrl.clone();
-    if (url.pathname !== "/learn") {
+    const path = barePath(url.pathname);
+
+    if (path === "/downloads/visibility-log.md") {
+      return NextResponse.next();
+    }
+
+    if (path === "/") {
       url.pathname = "/learn";
-      url.search = "";
       return NextResponse.rewrite(url);
     }
-    return NextResponse.next();
+
+    if (path === "/visibility-log") {
+      url.pathname = "/learn/visibility-log";
+      return NextResponse.rewrite(url);
+    }
+
+    // The app routes also work, but the public URLs above are canonical.
+    if (path === "/learn") {
+      url.pathname = "/";
+      url.search = "";
+      return NextResponse.redirect(url);
+    }
+
+    if (path === "/learn/visibility-log") {
+      url.pathname = "/visibility-log";
+      url.search = "";
+      return NextResponse.redirect(url);
+    }
+
+    url.pathname = "/learn";
+    url.search = "";
+    return NextResponse.rewrite(url);
   }
 
   const { pathname } = request.nextUrl;
