@@ -18,3 +18,13 @@ export const MODULE_PATH = "/learn";
 export const LOG_PATH = "/learn/visibility-log";
 
 export const VISIBILITY_LOG_DOWNLOAD = "/downloads/visibility-log.md";
+
+/**
+ * Absolute one-click unsubscribe URL for a future Module email.
+ * No mail is sent today. Pass the row's unsubscribe_token.
+ */
+export function learnUnsubscribeUrl(token: string): string {
+  const url = new URL("/unsubscribe", "https://learn.shijo.ai");
+  url.searchParams.set("token", token);
+  return url.toString();
+}

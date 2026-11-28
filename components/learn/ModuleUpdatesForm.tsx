@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 
-type Status = "idle" | "saving" | "saved" | "unsubscribed" | "error";
+type Status = "idle" | "saving" | "saved" | "error";
 
 export function ModuleUpdatesForm() {
   const [name, setName] = useState("");
@@ -12,32 +12,19 @@ export function ModuleUpdatesForm() {
   const [status, setStatus] = useState<Status>("idle");
   const [message, setMessage] = useState("");
 
-  async function submit(intent: "subscribe" | "unsubscribe") {
+  async function submit() {
     setStatus("saving");
     setMessage("");
     try {
-      const res = await fetch(
-        intent === "subscribe" ? "/api/learn/subscribe" : "/api/learn/unsubscribe",
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            email,
-            name: intent === "subscribe" ? name : undefined,
-            consent: intent === "subscribe" ? consent : undefined,
-            fax,
-          }),
-        }
-      );
+      const res = await fetch("/api/learn/subscribe", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email, name, consent, fax }),
+      });
       const data = (await res.json().catch(() => null)) as { success?: boolean; error?: string } | null;
       if (!res.ok || !data?.success) {
         setStatus("error");
         setMessage(data?.error || "Something went wrong. Please try again.");
-        return;
-      }
-      if (intent === "unsubscribe") {
-        setStatus("unsubscribed");
-        setMessage("If that address was on the list, it is removed.");
         return;
       }
       setStatus("saved");
@@ -53,13 +40,13 @@ export function ModuleUpdatesForm() {
       className="relative rounded-xl border border-gray-200 p-5"
       onSubmit={(e) => {
         e.preventDefault();
-        void submit("subscribe");
+        void submit();
       }}
     >
       <h2 className="text-base font-bold text-gray-900">Optional email for later modules</h2>
       <p className="mt-2 text-sm text-gray-600 leading-relaxed">
         Leave your email if you want a note when Modules 2 and later are published,
-        and occasional SHIJO.AI tips. Unsubscribe any time with the button below.
+        and occasional SHIJO.AI tips. Every email includes a one-click unsubscribe link.
         This does not promise that an answer engine will name your business.
       </p>
 
@@ -119,7 +106,7 @@ export function ModuleUpdatesForm() {
         />
         <span>
           Email me when Modules 2 and later are ready, and send occasional SHIJO.AI tips.
-          I can unsubscribe with the button below.
+          Every email includes a one-click unsubscribe link.
         </span>
       </label>
 
@@ -130,14 +117,6 @@ export function ModuleUpdatesForm() {
           className="inline-flex items-center justify-center text-sm font-semibold bg-shiro-red hover:bg-shiro-red-dark disabled:opacity-60 text-white rounded-lg px-4 py-2.5 transition-colors"
         >
           {status === "saving" ? "Saving…" : "Send me updates"}
-        </button>
-        <button
-          type="button"
-          disabled={status === "saving"}
-          onClick={() => void submit("unsubscribe")}
-          className="inline-flex items-center justify-center text-sm font-semibold border border-gray-300 hover:border-shiro-red disabled:opacity-60 text-gray-900 rounded-lg px-4 py-2.5 transition-colors"
-        >
-          Unsubscribe
         </button>
       </div>
 

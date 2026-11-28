@@ -104,6 +104,33 @@ const nextConfig: NextConfig = {
         destination: "https://learn.shijo.ai/visibility-log",
         permanent: true,
       },
+      // Token links are https://learn.shijo.ai/unsubscribe?token=...
+      // Exact path, so /learn/sitemap.xml is still not redirected.
+      // Next keeps the query string, including token.
+      {
+        source: "/learn/unsubscribe",
+        has: [{ type: "host", value: "www.shijo.ai" }],
+        destination: "https://learn.shijo.ai/unsubscribe",
+        permanent: true,
+      },
+      {
+        source: "/learn/unsubscribe",
+        has: [{ type: "host", value: "shijo.ai" }],
+        destination: "https://learn.shijo.ai/unsubscribe",
+        permanent: true,
+      },
+      {
+        source: "/unsubscribe",
+        has: [{ type: "host", value: "www.shijo.ai" }],
+        destination: "https://learn.shijo.ai/unsubscribe",
+        permanent: true,
+      },
+      {
+        source: "/unsubscribe",
+        has: [{ type: "host", value: "shijo.ai" }],
+        destination: "https://learn.shijo.ai/unsubscribe",
+        permanent: true,
+      },
     ];
   },
 };

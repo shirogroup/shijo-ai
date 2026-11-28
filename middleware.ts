@@ -53,6 +53,7 @@ export function middleware(request: NextRequest) {
   //   /visibility-log  → app route /learn/visibility-log
   //   /sitemap.xml     → app route /learn/sitemap.xml (learn URLs only)
   //   /robots.txt is host-aware in app/robots.ts and is not rewritten
+  //   /unsubscribe     → app route /learn/unsubscribe (query token kept)
   //   /downloads/visibility-log.md is the worksheet file and is not rewritten.
   if (hostname(request) === "learn.shijo.ai") {
     const url = request.nextUrl.clone();
@@ -78,6 +79,17 @@ export function middleware(request: NextRequest) {
     // Module 1 email capture. The catch-all below would rewrite this to the
     // lesson HTML, so the form on this host could never reach the route.
     if (path.startsWith("/api/learn/")) {
+      return NextResponse.next();
+    }
+
+    // One-click unsubscribe. Preserve the token query. The catch-all below
+    // would rewrite this to the lesson and drop the query.
+    if (path === "/unsubscribe") {
+      url.pathname = "/learn/unsubscribe";
+      return NextResponse.rewrite(url);
+    }
+
+    if (path === "/learn/unsubscribe") {
       return NextResponse.next();
     }
 

@@ -104,6 +104,8 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ success: true });
     }
 
+    // Token is stored for learnUnsubscribeUrl() in lib/learn/links.ts.
+    // No email is sent from this route.
     await db.insert(learnModuleSubscribers).values({
       email,
       name,
