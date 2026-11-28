@@ -43,7 +43,10 @@ function barePath(pathname: string): string {
 export function middleware(request: NextRequest) {
   // learn.shijo.ai serves the free Module 1 lesson. Other paths on this host
   // (including /pricing) still rewrite to the lesson so product and plan pages
-  // are not shown here. www.shijo.ai / shijo.ai are unchanged.
+  // are not shown here. www.shijo.ai and shijo.ai permanently redirect
+  // /learn and /learn/visibility-log in next.config.ts. Those rules are
+  // host-scoped and exact, so they do not run on this host and they do
+  // not cover /learn/sitemap.xml.
   //
   // Public URLs on this host:
   //   /                → app route /learn (Module 1)
@@ -69,6 +72,12 @@ export function middleware(request: NextRequest) {
     }
 
     if (path === "/downloads/visibility-log.md") {
+      return NextResponse.next();
+    }
+
+    // Module 1 email capture. The catch-all below would rewrite this to the
+    // lesson HTML, so the form on this host could never reach the route.
+    if (path.startsWith("/api/learn/")) {
       return NextResponse.next();
     }
 

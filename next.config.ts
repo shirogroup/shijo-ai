@@ -74,6 +74,36 @@ const nextConfig: NextConfig = {
         destination: "/ai-marketing-tools",
         permanent: true,
       },
+      // Permanent canonical redirects for the free lesson. Host-scoped so
+      // learn.shijo.ai is untouched: that host rewrites "/" to the /learn
+      // route internally, and a redirect of /learn on that host would loop.
+      // Exact paths only. Do not widen this to /learn/:path* — #4 serves the
+      // learn sitemap at /learn/sitemap.xml and rewrites learn.shijo.ai/sitemap.xml
+      // to that route. A wildcard would send that internal path off-host.
+      {
+        source: "/learn",
+        has: [{ type: "host", value: "www.shijo.ai" }],
+        destination: "https://learn.shijo.ai",
+        permanent: true,
+      },
+      {
+        source: "/learn",
+        has: [{ type: "host", value: "shijo.ai" }],
+        destination: "https://learn.shijo.ai",
+        permanent: true,
+      },
+      {
+        source: "/learn/visibility-log",
+        has: [{ type: "host", value: "www.shijo.ai" }],
+        destination: "https://learn.shijo.ai/visibility-log",
+        permanent: true,
+      },
+      {
+        source: "/learn/visibility-log",
+        has: [{ type: "host", value: "shijo.ai" }],
+        destination: "https://learn.shijo.ai/visibility-log",
+        permanent: true,
+      },
     ];
   },
 };

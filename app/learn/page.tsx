@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { ArrowRight } from "lucide-react";
 import { GeoCheckCta } from "@/components/learn/GeoCheckCta";
+import { ModuleUpdatesForm } from "@/components/learn/ModuleUpdatesForm";
 import {
   GEO_CHECK_URL,
   LOG_PATH,
@@ -354,6 +355,10 @@ export default function ModuleOnePage() {
             list, and a short repeat loop. There is no checkout on this page.
           </p>
         </aside>
+
+        <div className="mt-10">
+          <ModuleUpdatesForm />
+        </div>
 
         <div className="mt-10">
           <GeoCheckCta
