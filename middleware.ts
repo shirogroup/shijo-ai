@@ -48,10 +48,25 @@ export function middleware(request: NextRequest) {
   // Public URLs on this host:
   //   /                → app route /learn (Module 1)
   //   /visibility-log  → app route /learn/visibility-log
+  //   /sitemap.xml     → app route /learn/sitemap.xml (learn URLs only)
+  //   /robots.txt is host-aware in app/robots.ts and is not rewritten
   //   /downloads/visibility-log.md is the worksheet file and is not rewritten.
   if (hostname(request) === "learn.shijo.ai") {
     const url = request.nextUrl.clone();
     const path = barePath(url.pathname);
+
+    // /robots.txt and /sitemap.xml are also matched below (the general
+    // matcher skips other .txt/.xml files). Let robots.txt through so
+    // app/robots.ts can branch on this host. Rewrite sitemap.xml to the
+    // learn-only sitemap; otherwise this host would serve the www urlset.
+    if (path === "/robots.txt") {
+      return NextResponse.next();
+    }
+
+    if (path === "/sitemap.xml") {
+      url.pathname = "/learn/sitemap.xml";
+      return NextResponse.rewrite(url);
+    }
 
     if (path === "/downloads/visibility-log.md") {
       return NextResponse.next();
@@ -133,5 +148,10 @@ export const config = {
   // apply only to /dashboard and /admin.
   matcher: [
     "/((?!_next/static|_next/image|_next/webpack-hmr|favicon.ico|icon.svg|apple-icon.svg|.*\\.(?:svg|png|jpg|jpeg|gif|webp|ico|txt|xml)$).*)",
+    // The pattern above excludes .txt and .xml, which is why learn.shijo.ai
+    // used to serve the www robots file and the 23-URL www sitemap. These
+    // two paths are matched on purpose so the host branch above can run.
+    "/robots.txt",
+    "/sitemap.xml",
   ],
 };
